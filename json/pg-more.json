@@ -45,7 +45,7 @@
       "changeable": 1,
       "filterable": 1,
       "timeout": 60,
-      "ext": "../pg/lib/tokenm.json$$$https://www.hdmoli.com/$$$noproxy$$$1$$$../pg/lib/moli.json"
+      "ext": "../pg/lib/tokenm.json$$$https://www.hdmoli.me/$$$noproxy$$$1$$$../pg/lib/moli.json"
     },
     {
       "key": "qwmp4",
@@ -57,7 +57,7 @@
       "changeable": 1,
       "filterable": 0,
       "timeout": 60,
-      "ext": "../pg/lib/tokenm.json$$$https://www.qwmp4.com/$$$noproxy$$$0$$$$$QIWEI"
+      "ext": "../pg/lib/tokenm.json$$$https://www.qwavi.com/$$$noproxy$$$0$$$$$QIWEI"
     },
     {
       "key": "xiaozhang",
@@ -69,7 +69,7 @@
       "changeable": 1,
       "filterable": 1,
       "timeout": 60,
-      "ext": "../pg/lib/tokenm.json$$$https://xzyshd.com$$$proxy$$$1"
+      "ext": "../pg/lib/tokenm.json$$$https://binhd.com/$$$proxy$$$1"
     },
     {
       "key": "meijumi",
