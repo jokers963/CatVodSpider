@@ -1,0 +1,91 @@
+{
+  "spider": "../jar/pg.jar",
+  "sites": [
+    {
+      "key": "libvio",
+      "name": "LIBVIO",
+      "type": 3,
+      "api": "csp_Libvio",
+      "searchable": 1,
+      "quickSearch": 1,
+      "changeable": 1,
+      "filterable": 1,
+      "timeout": 60,
+      "ext": "../pg/lib/tokenm.json$$$https://libvio.host/$$$noproxy$$$1"
+    },
+    {
+      "key": "xb6v",
+      "name": "新6V",
+      "type": 3,
+      "api": "csp_Xb6v",
+      "searchable": 1,
+      "changeable": 1,
+      "timeout": 60,
+      "ext": "../pg/lib/tokenm.json$$$https://www.66ss.org$$$noproxy$$$1"
+    },
+    {
+      "key": "wogg",
+      "name": "玩偶哥哥",
+      "type": 3,
+      "api": "csp_Wogg",
+      "searchable": 1,
+      "quickSearch": 1,
+      "changeable": 1,
+      "filterable": 1,
+      "timeout": 60,
+      "ext": "../pg/lib/tokenm.json$$$http://wogg.888484.xyz/$$$noproxy$$$1$$$../pg/lib/wogg.json$$$WOGG"
+    },
+    {
+      "key": "moli",
+      "name": "HDmoli",
+      "type": 3,
+      "api": "csp_Moli",
+      "searchable": 1,
+      "quickSearch": 1,
+      "changeable": 1,
+      "filterable": 1,
+      "timeout": 60,
+      "ext": "../pg/lib/tokenm.json$$$https://www.hdmoli.com/$$$noproxy$$$1$$$../pg/lib/moli.json"
+    },
+    {
+      "key": "qwmp4",
+      "name": "七味",
+      "type": 3,
+      "api": "csp_Qwmp4",
+      "searchable": 1,
+      "quickSearch": 1,
+      "changeable": 1,
+      "filterable": 0,
+      "timeout": 60,
+      "ext": "../pg/lib/tokenm.json$$$https://www.qwmp4.com/$$$noproxy$$$0$$$$$QIWEI"
+    },
+    {
+      "key": "xiaozhang",
+      "name": "校长影视",
+      "type": 3,
+      "api": "csp_XiaoZhang",
+      "searchable": 1,
+      "quickSearch": 1,
+      "changeable": 1,
+      "filterable": 1,
+      "timeout": 60,
+      "ext": "../pg/lib/tokenm.json$$$https://xzyshd.com$$$proxy$$$1"
+    },
+    {
+      "key": "meijumi",
+      "name": "美剧迷",
+      "type": 3,
+      "api": "csp_Meijumi",
+      "searchable": 1,
+      "quickSearch": 1,
+      "changeable": 1,
+      "filterable": 1,
+      "timeout": 120,
+      "ext": "../pg/lib/tokenm.json$$$https://www.meijumi.net/$$$proxy$$$1"
+    }
+  ],
+  "parses": [],
+  "lives": [],
+  "rules": [],
+  "ads": []
+}
