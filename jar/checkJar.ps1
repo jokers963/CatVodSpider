@@ -27,7 +27,12 @@ $size = (Get-Item -LiteralPath $Jar).Length
 
 $md5Path = "$Jar.md5"
 if (-not (Test-Path -LiteralPath $md5Path)) { Fail "missing md5: $md5Path" }
-$actualMd5 = (Get-FileHash -Algorithm MD5 -LiteralPath $Jar).Hash.ToLowerInvariant()
+$md5 = [System.Security.Cryptography.MD5]::Create()
+try {
+    $actualMd5 = [BitConverter]::ToString($md5.ComputeHash([IO.File]::ReadAllBytes($Jar))).Replace('-', '').ToLowerInvariant()
+} finally {
+    $md5.Dispose()
+}
 $expectedMd5 = (Get-Content -Raw -LiteralPath $md5Path).Trim().ToLowerInvariant()
 if ($actualMd5 -ne $expectedMd5) { Fail "md5 mismatch: $actualMd5 != $expectedMd5" }
 

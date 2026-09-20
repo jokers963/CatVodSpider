@@ -49,6 +49,15 @@
       "ext": "./market.json"
     },
     {
+      "key": "luoyuqiu",
+      "name": "落雨秋 · LIBVIO",
+      "type": 3,
+      "api": "csp_LuoYuQiu",
+      "searchable": 1,
+      "changeable": 0,
+      "ext": "https://libvio.host"
+    },
+    {
       "key": "push_agent",
       "name": "Push",
       "type": 3,
