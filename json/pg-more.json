@@ -46,42 +46,6 @@
       "filterable": 1,
       "timeout": 60,
       "ext": "../pg/lib/tokenm.json$$$https://www.hdmoli.me/$$$noproxy$$$1$$$../pg/lib/moli.json"
-    },
-    {
-      "key": "qwmp4",
-      "name": "七味",
-      "type": 3,
-      "api": "csp_Qwmp4",
-      "searchable": 1,
-      "quickSearch": 1,
-      "changeable": 1,
-      "filterable": 0,
-      "timeout": 60,
-      "ext": "../pg/lib/tokenm.json$$$https://www.qwavi.com/$$$noproxy$$$0$$$$$QIWEI"
-    },
-    {
-      "key": "xiaozhang",
-      "name": "校长影视",
-      "type": 3,
-      "api": "csp_XiaoZhang",
-      "searchable": 1,
-      "quickSearch": 1,
-      "changeable": 1,
-      "filterable": 1,
-      "timeout": 60,
-      "ext": "../pg/lib/tokenm.json$$$https://binhd.com/$$$proxy$$$1"
-    },
-    {
-      "key": "meijumi",
-      "name": "美剧迷",
-      "type": 3,
-      "api": "csp_Meijumi",
-      "searchable": 1,
-      "quickSearch": 1,
-      "changeable": 1,
-      "filterable": 1,
-      "timeout": 120,
-      "ext": "../pg/lib/tokenm.json$$$https://www.meijumi.net/$$$proxy$$$1"
     }
   ],
   "parses": [],
