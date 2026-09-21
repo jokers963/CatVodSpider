@@ -1,0 +1,21 @@
+{
+  "spider": "../jar/custom_spider.jar",
+  "sites": [
+    {
+      "key": "supjav",
+      "name": "SupJav",
+      "type": 3,
+      "api": "csp_SupJav",
+      "searchable": 1,
+      "quickSearch": 1,
+      "changeable": 0,
+      "filterable": 1,
+      "timeout": 60,
+      "ext": "https://supjav.com"
+    }
+  ],
+  "parses": [],
+  "lives": [],
+  "rules": [],
+  "ads": []
+}
