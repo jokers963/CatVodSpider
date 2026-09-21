@@ -91,7 +91,9 @@
         },
         playerContent: function () {
             const index = parseInt(window.location.hash.substring(1) || "0", 10);
-            const button = document.querySelectorAll(".video-wrap .btn-server")[index];
+            const group = document.querySelector(".video-wrap .cd-server");
+            const buttons = group ? group.querySelectorAll(".btn-server") : document.querySelectorAll(".video-wrap .btn-server");
+            const button = buttons[index];
             if (button) button.dispatchEvent(new Event("click"));
             return {type: "match"};
         }
