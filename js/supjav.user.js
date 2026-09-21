@@ -72,7 +72,10 @@
             const image = $(".post-meta .img").first();
             const name = image.attr("alt") || document.title;
             const media = [];
-            $(".video-wrap .btn-server").each(function (i) {
+            const buttons = $(".video-wrap .cd-server").length
+                    ? $(".video-wrap .cd-server:first .btn-server")
+                    : $(".video-wrap .btn-server");
+            buttons.each(function (i) {
                 media.push({
                     from: $(this).text().trim() || "播放",
                     media: [{name: name, type: "webview", ext: {replace: {pathname: ids[0], link: i}}}]
@@ -88,7 +91,8 @@
         },
         playerContent: function () {
             const index = parseInt(window.location.hash.substring(1) || "0", 10);
-            $(".video-wrap .btn-server").eq(index).trigger("click");
+            const button = document.querySelectorAll(".video-wrap .btn-server")[index];
+            if (button) button.dispatchEvent(new Event("click"));
             return {type: "match"};
         }
     };
