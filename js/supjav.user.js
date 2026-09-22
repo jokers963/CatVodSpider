@@ -91,10 +91,15 @@
         },
         playerContent: function () {
             const index = parseInt(window.location.hash.substring(1) || "0", 10);
-            const group = document.querySelector(".video-wrap .cd-server");
-            const buttons = group ? group.querySelectorAll(".btn-server") : document.querySelectorAll(".video-wrap .btn-server");
-            const button = buttons[index];
-            if (button) button.dispatchEvent(new Event("click"));
+            let retries = 0;
+            const click = function () {
+                const group = document.querySelector(".video-wrap .cd-server");
+                const buttons = group ? group.querySelectorAll(".btn-server") : document.querySelectorAll(".video-wrap .btn-server");
+                const button = buttons[index];
+                if (button) return button.click();
+                if (retries++ < 30) setTimeout(click, 300);
+            };
+            click();
             return {type: "match"};
         }
     };
