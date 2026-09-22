@@ -100,8 +100,14 @@
     };
 
     let sent = false;
+    let retries = 0;
     function sendResult() {
         if (sent) return;
+        if (!document.querySelector(".post") && retries++ < 45) {
+            GmSpiderInject.ShowWebview();
+            setTimeout(sendResult, 1000);
+            return;
+        }
         sent = true;
         const result = spider[method].apply(spider, args);
         GmSpiderInject.HideWebview();
