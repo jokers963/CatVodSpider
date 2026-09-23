@@ -119,6 +119,28 @@
           "searchContent": {"loadUrl": "https://jable.tv/search/${key}/"}
         }
       }
+    },
+    {
+      "key": "freepornvideos",
+      "name": "FreePornVideos",
+      "type": 3,
+      "api": "csp_GM",
+      "searchable": 1,
+      "quickSearch": 1,
+      "changeable": 0,
+      "filterable": 0,
+      "timeout": 60,
+      "ext": {
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/freepornvideos.user.js?v=1",
+        "debug": false,
+        "webViewSettings": {"blockNetworkImage": true},
+        "spider": {
+          "homeContent": {"loadUrl": "https://www.freepornvideos.xxx/"},
+          "categoryContent": {"loadUrl": "https://www.freepornvideos.xxx/${tid}/${pg:-1}/"},
+          "detailContent": {"loadUrl": "https://www.freepornvideos.xxx/videos/${id}/"},
+          "searchContent": {"loadUrl": "https://www.freepornvideos.xxx/search/${key}/${pg:-1}/"}
+        }
+      }
     }
   ],
   "parses": [],
