@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         Jable
 // @namespace    luoyuqiuspider
-// @version      1.0.0
+// @version      1.0.1
 // @description  Jable WebView adapter for the open-source GM spider runtime.
 // @match        https://jable.tv/*
+// @match        https://*.jable.tv/*
 // @grant        unsafeWindow
 // ==/UserScript==
 (function () {
