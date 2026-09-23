@@ -105,7 +105,11 @@
             "https://*.magsrv.com/*",
             "https://*.snaptrckr.fun/*",
             "https://*.storagexhd.com/*",
-            "https://*.doppiocdn.com/*"
+            "https://*.doppiocdn.com/*",
+            "https://adsco.re/*",
+            "https://*.adsco.re/*",
+            "https://*.tsyndicate.com/*",
+            "https://*.google-analytics.com/*"
           ]
         },
         "spider": {
