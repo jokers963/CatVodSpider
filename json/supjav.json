@@ -83,6 +83,18 @@
           "searchContent": {"loadUrl": "https://missav.ws/cn/search/${key}?page=${pg:-1}"}
         }
       }
+    },
+    {
+      "key": "jable",
+      "name": "Jable",
+      "type": 3,
+      "api": "csp_Jable",
+      "jar": "https://jokers963.github.io/CatVodSpider/jar/custom_spider.jar",
+      "searchable": 1,
+      "quickSearch": 1,
+      "changeable": 0,
+      "filterable": 1,
+      "timeout": 60
     }
   ],
   "parses": [],
