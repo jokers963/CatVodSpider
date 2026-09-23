@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         FreePornVideos
 // @namespace    luoyuqiuspider
-// @version      1.0.1
+// @version      1.0.2
 // @match        https://freepornvideos.xxx/*
 // @match        https://*.freepornvideos.xxx/*
 // @grant        unsafeWindow
@@ -33,16 +33,16 @@
     }
 
     function classes() {
-        const list = [
+        return [
             {type_id: "latest-updates", type_name: "最新"},
             {type_id: "top-rated", type_name: "高评分"},
-            {type_id: "most-popular", type_name: "热门"}
+            {type_id: "most-popular", type_name: "热门"},
+            {type_id: "categories/solo", type_name: "单人"},
+            {type_id: "categories/amateur", type_name: "素人"},
+            {type_id: "categories/lesbian", type_name: "女同"},
+            {type_id: "categories/jav-uncensored", type_name: "无码日影"},
+            {type_id: "categories/pov", type_name: "第一视角"}
         ];
-        document.querySelectorAll('.sidebar > ul.list a[href*="/categories/"]').forEach(function (link) {
-            const id = new URL(link.href, location.href).pathname.match(/^\/(?:[a-z]{2}\/)?categories\/([^/]+)\/?$/)?.[1];
-            if (id && list.length < 13) list.push({type_id: "categories/" + id, type_name: link.textContent.trim()});
-        });
-        return list;
     }
 
     function pageCount() {
