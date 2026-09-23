@@ -59,6 +59,31 @@
           "searchContent": {"loadUrl": "https://supjav.com/zh/page/${pg:-1}?s=${key}"}
         }
       }
+    },
+    {
+      "key": "missav",
+      "name": "MissAV",
+      "type": 3,
+      "api": "csp_GM",
+      "searchable": 1,
+      "quickSearch": 1,
+      "changeable": 0,
+      "filterable": 0,
+      "timeout": 60,
+      "ext": {
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/missav.user.js?v=1",
+        "debug": false,
+        "webViewSettings": {
+          "blockNetworkImage": true
+        },
+        "spider": {
+          "homeContent": {"loadUrl": "https://missav.ws/"},
+          "categoryContent": {"loadUrl": "https://missav.ws/${tid}?page=${pg:-1}"},
+          "detailContent": {"loadUrl": "https://missav.ws/${id}"},
+          "playerContent": {"loadUrl": "https://missav.ws/${pathname}"},
+          "searchContent": {"loadUrl": "https://missav.ws/search/${key}?page=${pg:-1}"}
+        }
+      }
     }
   ],
   "parses": [],
