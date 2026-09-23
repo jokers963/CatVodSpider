@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         MissAV
 // @namespace    luoyuqiuspider
-// @version      1.0.0
-// @description  Public-page adapter for the open-source GM spider runtime.
+// @version      1.1.0
+// @description  MissAV WebView adapter for the open-source GM spider runtime.
 // @match        https://missav.ws/*
 // @grant        unsafeWindow
 // ==/UserScript==
@@ -12,79 +12,102 @@
             : JSON.parse(GmSpiderInject.GetSpiderArgs());
     const method = args.shift();
 
-    function videos() {
-        const result = [];
-        const seen = new Set();
-        document.querySelectorAll("a[href]").forEach(function (link) {
-            let url;
-            try { url = new URL(link.href); } catch (_) { return; }
-            if (url.hostname !== "missav.ws" || !/^\/[a-z0-9-]*\d+[a-z0-9-]*\/?$/i.test(url.pathname)) return;
-            const id = url.pathname.replace(/^\/+|\/+$/g, "");
-            if (!id || seen.has(id)) return;
-            const card = link.closest("article, li, .thumbnail, .group, .relative") || link.parentElement;
-            const image = (card && card.querySelector("img")) || link.querySelector("img");
-            const name = link.getAttribute("title") || (image && image.getAttribute("alt")) || link.innerText.trim();
-            if (!name) return;
-            seen.add(id);
-            result.push({
-                vod_id: id,
-                vod_name: name,
-                vod_pic: image ? (image.dataset.src || image.dataset.lazySrc || image.src) : "",
-                vod_remarks: card ? card.innerText.trim().split("\n")[0] : ""
-            });
-        });
-        return result;
-    }
+    const classes = [
+        {type_id: "new", type_name: "最近更新"},
+        {type_id: "madou", type_name: "麻豆传媒"},
+        {type_id: "chinese-subtitle", type_name: "中文字幕"},
+        {type_id: "uncensored-leak", type_name: "无码流出"},
+        {type_id: "actresses/ranking", type_name: "女优排行"},
+        {type_id: "makers", type_name: "发行商"},
+        {type_id: "genres", type_name: "类型"}
+    ];
 
     function pageCount() {
-        let count = 1;
-        document.querySelectorAll("a[href]").forEach(function (link) {
-            const match = new URL(link.href).searchParams.get("page");
-            if (match && /^\d+$/.test(match)) count = Math.max(count, Number(match));
+        const text = document.querySelector("#price-currency")?.textContent || "";
+        const pages = Number(text.replace(/[^0-9]/g, ""));
+        return pages || 1;
+    }
+
+    function videos() {
+        const list = [];
+        document.querySelectorAll(".gap-5 .thumbnail").forEach(function (card) {
+            const title = card.querySelector(".text-secondary");
+            const link = title?.closest("a") || card.querySelector('a[href*="/cn/"]');
+            if (!link) return;
+            let id = title?.getAttribute("alt") || "";
+            if (!id) {
+                const match = new URL(link.href, location.href).pathname.match(/\/cn\/([^/]+)/);
+                id = match ? decodeURIComponent(match[1]) : "";
+            }
+            if (!id) return;
+            const image = card.querySelector("img");
+            list.push({
+                vod_id: id,
+                vod_name: title?.textContent.trim() || image?.alt || id,
+                vod_pic: image?.dataset.src || image?.dataset.lazySrc || image?.src || "",
+                vod_year: card.querySelector(".absolute")?.textContent.trim() || "",
+                vod_remarks: card.querySelector(".left-1")?.textContent.trim() || ""
+            });
         });
-        return count;
+        return list;
+    }
+
+    function folders() {
+        const list = [];
+        document.querySelectorAll(".gap-4 .text-nord13[href]").forEach(function (link) {
+            const match = new URL(link.href, location.href).pathname.match(/\/cn\/(.+)$/);
+            if (!match) return;
+            list.push({
+                vod_id: decodeURIComponent(match[1]),
+                vod_name: link.textContent.trim(),
+                vod_tag: "folder",
+                style: {type: "rect", ratio: 2}
+            });
+        });
+        return list;
     }
 
     const spider = {
-        homeContent: function () {
-            return {
-                class: [
-                    {type_id: "dm635/release", type_name: "新作"},
-                    {type_id: "dm278/chinese-subtitle", type_name: "中文字幕"}
-                ],
-                list: videos()
-            };
+        homeContent: function () { return {class: classes, list: videos()}; },
+        categoryContent: function (tid) {
+            const folderPage = ["actresses/ranking", "makers", "genres"].includes(tid);
+            return {list: folderPage ? folders() : videos(), pagecount: pageCount()};
         },
-        categoryContent: function () { return {list: videos(), pagecount: pageCount()}; },
         searchContent: function () { return {list: videos(), pagecount: pageCount()}; },
         detailContent: function (ids) {
             const title = document.querySelector('meta[property="og:title"]')?.content || document.title;
             const image = document.querySelector('meta[property="og:image"]')?.content || "";
+            let playUrl = "";
+            try { playUrl = unsafeWindow.hls?.url || ""; } catch (_) {}
+            if (!/^https:\/\//i.test(playUrl)) playUrl = "";
             return {list: [{
                 vod_id: ids[0],
                 vod_name: title,
                 vod_pic: image,
                 vod_content: title,
-                vod_play_data: [{
-                    from: "MissAV",
-                    media: [{name: "播放", type: "webview", ext: {replace: {pathname: ids[0]}}}]
-                }]
+                vod_play_from: "MissAV",
+                vod_play_url: playUrl ? "播放$" + playUrl : ""
             }]};
-        },
-        playerContent: function () {
-            return {type: "match"};
         }
     };
 
     let sent = false;
+    let poller = null;
     function sendResult() {
         if (sent || !spider[method]) return;
+        if (method === "detailContent") {
+            let playUrl = "";
+            try { playUrl = unsafeWindow.hls?.url || ""; } catch (_) {}
+            if (!playUrl && Date.now() - startedAt < 12000) return;
+        }
         sent = true;
+        if (poller) clearInterval(poller);
         const result = spider[method].apply(spider, args);
         GmSpiderInject.HideWebview();
         GmSpiderInject.SetSpiderResult(JSON.stringify(result));
     }
-
+    const startedAt = Date.now();
     if (document.readyState === "complete") setTimeout(sendResult, 0);
     else unsafeWindow.addEventListener("load", sendResult, {once: true});
+    if (method === "detailContent") poller = setInterval(sendResult, 250);
 })();
