@@ -16,7 +16,7 @@
         document.querySelectorAll(".list-videos .item").forEach(function (card) {
             const link = card.querySelector('a[href*="/videos/"]');
             if (!link) return;
-            const path = new URL(link.href, location.href).pathname.match(/^\/videos\/(\d+\/[^/]+)\/?$/);
+            const path = new URL(link.href, location.href).pathname.match(/^\/(?:[a-z]{2}\/)?videos\/(\d+\/[^/]+)\/?$/);
             if (!path || seen.has(path[1])) return;
             const image = card.querySelector("img[data-src], img[src]");
             const name = link.getAttribute("title") || image?.alt || "";
@@ -39,7 +39,7 @@
             {type_id: "most-popular", type_name: "热门"}
         ];
         document.querySelectorAll('.sidebar > ul.list a[href*="/categories/"]').forEach(function (link) {
-            const id = new URL(link.href, location.href).pathname.match(/^\/categories\/([^/]+)\/?$/)?.[1];
+            const id = new URL(link.href, location.href).pathname.match(/^\/(?:[a-z]{2}\/)?categories\/([^/]+)\/?$/)?.[1];
             if (id && list.length < 13) list.push({type_id: "categories/" + id, type_name: link.textContent.trim()});
         });
         return list;
