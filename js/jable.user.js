@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Jable
 // @namespace    luoyuqiuspider
-// @version      1.0.2
+// @version      1.0.3
 // @description  Jable WebView adapter for the open-source GM spider runtime.
 // @match        https://jable.tv/*
 // @match        https://*.jable.tv/*
@@ -72,18 +72,18 @@
         detailContent: function (ids) {
             const title = document.querySelector('meta[property="og:title"]')?.content || document.title;
             const image = document.querySelector('meta[property="og:image"]')?.content || "";
+            const playUrl = unsafeWindow.hlsUrl || [...document.querySelectorAll('script:not([src])')]
+                    .map(script => script.textContent.match(/\bhlsUrl\s*=\s*['"]([^'"]+\.m3u8(?:\?[^'"]*)?)['"]/))
+                    .find(Boolean)?.[1] || "";
             return {list: [{
                 vod_id: ids[0],
                 vod_name: title,
                 vod_pic: image,
                 vod_content: title,
-                vod_play_data: [{
-                    from: "Jable",
-                    media: [{name: "播放", type: "webview", ext: {replace: {pathname: ids[0]}}}]
-                }]
+                vod_play_from: "Jable",
+                vod_play_url: /^https:\/\/[^\s]+\.m3u8(?:\?|$)/i.test(playUrl) ? "播放$" + playUrl : ""
             }]};
-        },
-        playerContent: function () { return {type: "match"}; }
+        }
     };
 
     let sent = false;
@@ -92,6 +92,7 @@
     function sendResult() {
         if (sent || !spider[method]) return;
         const result = spider[method].apply(spider, args);
+        if (method === "detailContent" && !result.list[0].vod_play_url && Date.now() - startedAt < 12000) return;
         if ((method === "homeContent" || method === "categoryContent" || method === "searchContent")
                 && !result.list.length) {
             const challenged = document.querySelector("#challenge-stage, #challenge-form, #cf-challenge-running, input[name='cf-turnstile-response']")
