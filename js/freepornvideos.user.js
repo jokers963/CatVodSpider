@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         FreePornVideos
 // @namespace    luoyuqiuspider
-// @version      1.0.0
+// @version      1.0.1
 // @match        https://freepornvideos.xxx/*
 // @match        https://*.freepornvideos.xxx/*
 // @grant        unsafeWindow
