@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MissAV
 // @namespace    luoyuqiuspider
-// @version      1.1.0
+// @version      1.2.0
 // @description  MissAV WebView adapter for the open-source GM spider runtime.
 // @match        https://missav.ws/*
 // @grant        unsafeWindow
@@ -13,13 +13,11 @@
     const method = args.shift();
 
     const classes = [
-        {type_id: "new", type_name: "最近更新"},
-        {type_id: "madou", type_name: "麻豆传媒"},
         {type_id: "chinese-subtitle", type_name: "中文字幕"},
-        {type_id: "uncensored-leak", type_name: "无码流出"},
-        {type_id: "actresses/ranking", type_name: "女优排行"},
-        {type_id: "makers", type_name: "发行商"},
-        {type_id: "genres", type_name: "类型"}
+        {type_id: "new", type_name: "觀看日本 AV"},
+        {type_id: "makers?group=amateur", type_name: "素人"},
+        {type_id: "makers?group=uncensored", type_name: "無碼影片"},
+        {type_id: "makers?group=asian", type_name: "亞洲 AV"}
     ];
 
     function pageCount() {
@@ -52,16 +50,20 @@
         return list;
     }
 
-    function folders() {
+    function groupFolders(groupName) {
         const list = [];
-        document.querySelectorAll(".gap-4 .text-nord13[href]").forEach(function (link) {
-            const match = new URL(link.href, location.href).pathname.match(/\/cn\/(.+)$/);
-            if (!match) return;
-            list.push({
-                vod_id: decodeURIComponent(match[1]),
-                vod_name: link.textContent.trim(),
-                vod_tag: "folder",
-                style: {type: "rect", ratio: 2}
+        document.querySelectorAll("nav.hidden .relative").forEach(function (group) {
+            const heading = group.querySelector("a.group span");
+                if (!groupName.includes(heading?.textContent.trim())) return;
+            group.querySelectorAll(".py-1 a[href]").forEach(function (link) {
+                const match = new URL(link.href, location.href).pathname.match(/\/cn\/(.+)$/);
+                if (!match) return;
+                list.push({
+                    vod_id: decodeURIComponent(match[1]),
+                    vod_name: link.textContent.trim(),
+                    vod_tag: "folder",
+                    style: {type: "rect", ratio: 2}
+                });
             });
         });
         return list;
@@ -70,8 +72,14 @@
     const spider = {
         homeContent: function () { return {class: classes, list: videos()}; },
         categoryContent: function (tid) {
-            const folderPage = ["actresses/ranking", "makers", "genres"].includes(tid);
-            return {list: folderPage ? folders() : videos(), pagecount: pageCount()};
+            const groupName = {
+                amateur: ["素人"],
+                uncensored: ["无码影片", "無碼影片"],
+                asian: ["亚洲 AV", "亞洲 AV"]
+            }[new URLSearchParams(tid.split("?")[1] || "").get("group")];
+            return groupName
+                    ? {list: groupFolders(groupName), pagecount: 1}
+                    : {list: videos(), pagecount: pageCount()};
         },
         searchContent: function () { return {list: videos(), pagecount: pageCount()}; },
         detailContent: function (ids) {
