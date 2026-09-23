@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Jable
 // @namespace    luoyuqiuspider
-// @version      1.0.1
+// @version      1.0.2
 // @description  Jable WebView adapter for the open-source GM spider runtime.
 // @match        https://jable.tv/*
 // @match        https://*.jable.tv/*
@@ -87,14 +87,31 @@
     };
 
     let sent = false;
+    let shownChallenge = false;
+    const startedAt = Date.now();
     function sendResult() {
         if (sent || !spider[method]) return;
-        sent = true;
         const result = spider[method].apply(spider, args);
+        if ((method === "homeContent" || method === "categoryContent" || method === "searchContent")
+                && !result.list.length) {
+            const challenged = document.querySelector("#challenge-stage, #challenge-form, #cf-challenge-running, input[name='cf-turnstile-response']")
+                    || /just a moment|checking your browser|verify you are human|请稍候|验证您是否为真人/i.test(document.title);
+            if (challenged) {
+                if (!shownChallenge) {
+                    shownChallenge = true;
+                    GmSpiderInject.ShowWebview();
+                }
+                return;
+            }
+            if (Date.now() - startedAt < 30000) return;
+        }
+        sent = true;
+        clearInterval(poller);
         GmSpiderInject.HideWebview();
         GmSpiderInject.SetSpiderResult(JSON.stringify(result));
     }
 
+    const poller = setInterval(sendResult, 500);
     if (document.readyState === "complete") setTimeout(sendResult, 0);
     else unsafeWindow.addEventListener("load", sendResult, {once: true});
 })();
