@@ -98,7 +98,15 @@
         "userScript": "https://jokers963.github.io/CatVodSpider/js/jable.user.js?v=5",
         "debug": false,
         "webViewSettings": {
-          "blockNetworkImage": false
+          "blockNetworkImage": false,
+          "blockList": [
+            "https://*.mnaspm.com/*",
+            "https://*.greentrafsa.com/*",
+            "https://*.magsrv.com/*",
+            "https://*.snaptrckr.fun/*",
+            "https://*.storagexhd.com/*",
+            "https://*.doppiocdn.com/*"
+          ]
         },
         "spider": {
           "homeContent": {"loadUrl": "https://jable.tv/"},
