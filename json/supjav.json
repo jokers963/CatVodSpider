@@ -97,6 +97,9 @@
       "ext": {
         "userScript": "https://jokers963.github.io/CatVodSpider/js/jable.user.js?v=1",
         "debug": false,
+        "webViewSettings": {
+          "blockNetworkImage": false
+        },
         "spider": {
           "homeContent": {"loadUrl": "https://jable.tv/"},
           "categoryContent": {"loadUrl": "https://jable.tv/categories/${tid}/?mode=async&function=get_block&block_id=list_videos_common_videos_list&sort_by=post_date&from=${pg:-01}"},
