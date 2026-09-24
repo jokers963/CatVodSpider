@@ -9,6 +9,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -26,8 +28,13 @@ import okhttp3.Response;
 public class GMSubs extends Spider {
 
     private static final Pattern CODE = Pattern.compile("(?i)(?<![a-z0-9])([a-z]{2,8})[-_.](\\d{2,6})(?!\\d)");
-    private static final OkHttpClient HTTP = new OkHttpClient.Builder().callTimeout(3, TimeUnit.SECONDS).build();
+    private static OkHttpClient http;
     private Spider gm;
+
+    private static OkHttpClient http() {
+        if (http == null) http = new OkHttpClient.Builder().callTimeout(3, TimeUnit.SECONDS).build();
+        return http;
+    }
 
     // ponytail: use the first video code; expand only if real titles contain multiple codes.
     static String codeFromTitle(String title) {
@@ -35,9 +42,65 @@ public class GMSubs extends Spider {
         return match.find() ? (match.group(1) + "-" + match.group(2)).toUpperCase(Locale.ROOT) : "";
     }
 
-    static Pattern codeInSubtitle(String code) {
-        String[] parts = code.split("-", 2);
-        return Pattern.compile("(?i)(?<![a-z0-9])" + Pattern.quote(parts[0]) + "[-_. ]*" + Pattern.quote(parts[1]) + "(?!\\d)");
+    /** Strip separators so IPX-343, IPX343 and IPX_343 compare the same. */
+    static String normalizeCode(String code) {
+        return code == null ? "" : code.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
+    }
+
+    static String normalizeSubtitleName(String name) {
+        return name == null ? "" : name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
+    }
+
+    /**
+     * Lower is better: 0 starts with the code, 1 contains the code, 2 is an API hit without the code.
+     */
+    static int subtitleRank(String code, String name) {
+        String normalizedCode = normalizeCode(code);
+        String normalizedName = normalizeSubtitleName(name);
+        if (normalizedCode.isEmpty() || normalizedName.isEmpty()) return 2;
+        if (normalizedName.startsWith(normalizedCode)) return 0;
+        if (normalizedName.contains(normalizedCode)) return 1;
+        return 2;
+    }
+
+    static String subtitleFormat(String ext) {
+        return switch (ext == null ? "" : ext.toLowerCase(Locale.ROOT)) {
+            case "srt" -> "application/x-subrip";
+            case "ass", "ssa" -> "text/x-ssa";
+            case "vtt" -> "text/vtt";
+            default -> "";
+        };
+    }
+
+    /** Keep every valid Xunlei row, ranked by code relevance while preserving API order on ties. */
+    static JSONArray rankSubtitles(String code, JSONArray data) throws Exception {
+        JSONArray subs = new JSONArray();
+        if (data == null) return subs;
+        Set<String> seen = new HashSet<>();
+        List<JSONObject> ranked = new ArrayList<>();
+        for (int i = 0; i < data.length(); i++) {
+            JSONObject item = data.optJSONObject(i);
+            if (item == null) continue;
+            String name = item.optString("name").trim();
+            String url = item.optString("url");
+            String format = subtitleFormat(item.optString("ext"));
+            if (name.isEmpty() || !url.startsWith("https://") || format.isEmpty() || !seen.add(url)) continue;
+            ranked.add(new JSONObject()
+                    .put("name", "迅雷 · " + name)
+                    .put("url", url)
+                    .put("format", format)
+                    .put("_rank", subtitleRank(code, name))
+                    .put("_order", i));
+        }
+        ranked.sort(Comparator
+                .comparingInt((JSONObject item) -> item.optInt("_rank"))
+                .thenComparingInt(item -> item.optInt("_order")));
+        for (JSONObject item : ranked) {
+            item.remove("_rank");
+            item.remove("_order");
+            subs.put(item);
+        }
+        return subs;
     }
 
     /** GM stores the webview descriptor as data:text/plain;base64, plus the JSON. */
@@ -104,31 +167,11 @@ public class GMSubs extends Spider {
 
     private static JSONArray search(String code) throws Exception {
         Request request = new Request.Builder().url("https://api-shoulei-ssl.xunlei.com/oracle/subtitle?name=" + code).build();
-        try (Response response = HTTP.newCall(request).execute()) {
+        try (Response response = http().newCall(request).execute()) {
             if (!response.isSuccessful() || response.body() == null) return new JSONArray();
             JSONObject json = new JSONObject(response.body().string());
-            JSONArray data = json.optJSONArray("data");
-            JSONArray subs = new JSONArray();
-            if (json.optInt("code", -1) != 0 || data == null) return subs;
-            Pattern exact = codeInSubtitle(code);
-            Set<String> seen = new HashSet<>();
-            for (int i = 0; i < data.length() && subs.length() < 20; i++) {
-                JSONObject item = data.optJSONObject(i);
-                if (item == null) continue;
-                String name = item.optString("name");
-                String url = item.optString("url");
-                String ext = item.optString("ext").toLowerCase(Locale.ROOT);
-                if (!exact.matcher(name).find() || !url.startsWith("https://") || !seen.add(url)) continue;
-                String format = switch (ext) {
-                    case "srt" -> "application/x-subrip";
-                    case "ass", "ssa" -> "text/x-ssa";
-                    case "vtt" -> "text/vtt";
-                    default -> "";
-                };
-                if (format.isEmpty()) continue;
-                subs.put(new JSONObject().put("name", "迅雷 · " + name).put("url", url).put("format", format));
-            }
-            return subs;
+            if (json.optInt("code", -1) != 0) return new JSONArray();
+            return rankSubtitles(code, json.optJSONArray("data"));
         }
     }
 
