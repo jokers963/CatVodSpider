@@ -4,6 +4,12 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.util.Map;
+
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -60,6 +66,63 @@ public class GMSubsTest {
         assertFalse(containsUrl(ranked, "http://a.example/plain.srt"));
         assertFalse(containsUrl(ranked, "https://a.example/file.sub"));
         assertTrue(containsUrl(ranked, "https://a.example/exact.srt"));
+    }
+
+    @Test
+    public void masterPlaylistKeepsOnlyTheHighestResolutionThroughTheProxy() {
+        String master = "#EXTM3U\n#EXT-X-VERSION:6\n"
+                + "#EXT-X-STREAM-INF:BANDWIDTH=105600,RESOLUTION=1280x720\nhttps://gs07.example/a/720.m3u8\n"
+                + "#EXT-X-STREAM-INF:BANDWIDTH=1205600,RESOLUTION=1920x1080\nhttps://gs16.example/a/1080.m3u8\n"
+                + "#EXT-X-STREAM-INF:BANDWIDTH=52800,RESOLUTION=854x480\nhttps://gs18.example/a/480.m3u8\n";
+        String out = GMSubs.rewritePlaylist(master, "https://cdn3.example/data/x.m3u8", (url, playlist) -> (playlist ? "P:" : "S:") + url);
+        assertEquals("#EXTM3U\n#EXT-X-VERSION:6\n#EXT-X-STREAM-INF:BANDWIDTH=1205600,RESOLUTION=1920x1080\nP:https://gs16.example/a/1080.m3u8\n", out);
+    }
+
+    @Test
+    public void mediaPlaylistRoutesEverySegmentAndResolvesRelativeUris() {
+        String media = "#EXTM3U\r\n#EXT-X-TARGETDURATION:5\r\n#EXT-X-KEY:METHOD=AES-128,URI=\"key.bin\"\r\n#EXTINF:5.0,\r\nhttps://lh3.example/d/abc=d\r\n#EXTINF:5.0,\r\nseg/2.ts\r\n#EXT-X-ENDLIST\r\n";
+        String out = GMSubs.rewritePlaylist(media, "https://gs07.example/file/v/master.m3u8", (url, playlist) -> (playlist ? "P:" : "S:") + url);
+        assertEquals("#EXTM3U\n#EXT-X-TARGETDURATION:5\n#EXT-X-KEY:METHOD=AES-128,URI=\"S:https://gs07.example/file/v/key.bin\"\n"
+                + "#EXTINF:5.0,\nS:https://lh3.example/d/abc=d\n#EXTINF:5.0,\nS:https://gs07.example/file/v/seg/2.ts\n#EXT-X-ENDLIST\n", out);
+    }
+
+    @Test
+    public void stripsTheFakePngPrefixAndKeepsTheTransportStream() throws Exception {
+        byte[] ts = new byte[TS * 6];
+        for (int i = 0; i < 6; i++) ts[i * TS] = 0x47;
+        ts[5] = 0x47;
+        byte[] png = new byte[941];
+        png[0] = (byte) 0x89;
+        png[1] = 'P';
+        png[2] = 'N';
+        png[3] = 'G';
+        png[100] = 0x47;
+        byte[] segment = new byte[png.length + ts.length];
+        System.arraycopy(png, 0, segment, 0, png.length);
+        System.arraycopy(ts, 0, segment, png.length, ts.length);
+
+        assertEquals(941, GMSubs.tsOffset(segment, segment.length));
+        assertArrayEquals(ts, readAll(GMSubs.stripFakePng(new ByteArrayInputStream(segment))));
+        assertArrayEquals(ts, readAll(GMSubs.stripFakePng(new ByteArrayInputStream(ts))));
+    }
+
+    @Test
+    public void segmentRequestsDropRefererOriginAndCookie() {
+        Map<String, String> headers = GMSubs.headers("{\"User-Agent\":\"UA\",\"Referer\":\"https://turbovidhls.com/\",\"origin\":\"https://x\",\"Cookie\":\"a=b\"}");
+        assertEquals(4, headers.size());
+        Map<String, String> segment = GMSubs.segmentHeaders(headers);
+        assertEquals(1, segment.size());
+        assertEquals("UA", segment.get("User-Agent"));
+    }
+
+    private static final int TS = 188;
+
+    private static byte[] readAll(InputStream in) throws Exception {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        byte[] buf = new byte[4096];
+        int n;
+        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+        return out.toByteArray();
     }
 
     private static JSONObject item(String name, String url, String ext) throws Exception {
