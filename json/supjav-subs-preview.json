@@ -10,7 +10,7 @@
     "changeable": 0,
     "timeout": 60,
     "ext": {
-      "userScript": "https://jokers963.github.io/CatVodSpider/js/supjav-subs-preview.user.js?v=2",
+      "userScript": "https://jokers963.github.io/CatVodSpider/js/supjav-subs-preview.user.js?v=3",
       "debug": false,
       "webViewSettings": {
         "blockNetworkImage": true,

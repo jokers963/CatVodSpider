@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SupJav subtitle preview
 // @namespace    luoyuqiuspider
-// @version      1.0.3
+// @version      1.0.4
 // @description  Preview adapter without jQuery. Shows the verification page and returns as soon as content is parseable.
 // @match        https://supjav.com/*
 // @grant        GM_cookie
@@ -207,6 +207,13 @@
         const result = spider[method].apply(spider, args);
         if (contentReady(result)) {
             finish(result, true);
+            return;
+        }
+        // After a challenge, never report empty categories as success.
+        if (sawChallenge) {
+            if (Date.now() - startedAt >= VERIFY_REPORT_MS) {
+                finish(verificationResult(), false);
+            }
             return;
         }
         if (Date.now() - startedAt < 20000) return;
