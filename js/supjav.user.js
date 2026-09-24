@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      1.0.1
+// @version      1.0.2
 // @description  SupJav WebView adapter for the open-source GM spider runtime.
 // @match        https://supjav.com/*
 // @require      https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.slim.min.js
@@ -90,18 +90,20 @@
             }]};
         },
         playerContent: function () {
-            const index = parseInt(window.location.hash.substring(1) || "0", 10);
+            const index = parseInt((window.location.hash || "#0").substring(1), 10) || 0;
             const group = document.querySelector(".video-wrap .cd-server");
             const buttons = group ? group.querySelectorAll(".btn-server") : document.querySelectorAll(".video-wrap .btn-server");
             const button = buttons[index];
-            if (button) button.dispatchEvent(new Event("click"));
+            if (button) button.click();
             return {type: "match"};
         }
     };
 
     let sent = false;
+    const startedAt = Date.now();
     function sendResult() {
         if (sent) return;
+        if (method === "playerContent" && !document.querySelector(".video-wrap .btn-server") && Date.now() - startedAt < 8000) return;
         sent = true;
         const result = spider[method].apply(spider, args);
         GmSpiderInject.HideWebview();
