@@ -40,6 +40,13 @@ public class GMSubs extends Spider {
         return Pattern.compile("(?i)(?<![a-z0-9])" + Pattern.quote(parts[0]) + "[-_. ]*" + Pattern.quote(parts[1]) + "(?!\\d)");
     }
 
+    /** GM stores the webview descriptor as data:text/plain;base64, plus the JSON. */
+    static String playIdPayload(String id) {
+        String prefix = "data:text/plain;base64,";
+        if (id != null && id.startsWith(prefix)) return id.substring(prefix.length());
+        return id == null ? "" : id;
+    }
+
     @Override
     public void init(Context context, String extend) throws Exception {
         gm = (Spider) Class.forName("com.github.catvod.spider.GM", true, getClass().getClassLoader()).getDeclaredConstructor().newInstance();
@@ -83,7 +90,7 @@ public class GMSubs extends Spider {
         try {
             JSONObject play = new JSONObject(result);
             if (play.optString("url").isEmpty()) return result;
-            JSONObject medium = new JSONObject(new String(Base64.decode(id, Base64.DEFAULT), StandardCharsets.UTF_8));
+            JSONObject medium = new JSONObject(new String(Base64.decode(playIdPayload(id), Base64.DEFAULT), StandardCharsets.UTF_8));
             String code = codeFromTitle(medium.optString("name"));
             if (code.isEmpty()) return result;
             JSONArray subs = search(code);

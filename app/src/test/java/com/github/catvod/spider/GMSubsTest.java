@@ -16,4 +16,10 @@ public class GMSubsTest {
         assertFalse(GMSubs.codeInSubtitle(code).matcher("Re Zero SP45.ass").find());
         assertFalse(GMSubs.codeInSubtitle(code).matcher("REAL-7950.srt").find());
     }
+
+    @Test
+    public void stripsGmDataUrlPrefixBeforeReadingTheTitle() {
+        assertEquals("eyJuYW1lIjoiSVBYLTM0MyJ9", GMSubs.playIdPayload("data:text/plain;base64,eyJuYW1lIjoiSVBYLTM0MyJ9"));
+        assertEquals("eyJuYW1lIjoiUkVBTC03OTUifQ==", GMSubs.playIdPayload("eyJuYW1lIjoiUkVBTC03OTUifQ=="));
+    }
 }
