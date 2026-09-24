@@ -1,5 +1,5 @@
 {
-  "spider": "https://jokers963.github.io/CatVodSpider/jar/gm_subs.jar?v=3",
+  "spider": "https://jokers963.github.io/CatVodSpider/jar/gm_subs.jar?v=4",
   "sites": [
     {
       "key": "supjav",
@@ -155,19 +155,17 @@
       "filterable": 0,
       "timeout": 60,
       "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/av01.user.js?v=1",
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/av01.user.js?v=2",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": true,
           "blockList": [
             "https://*.google-analytics.com/*",
-            "https://*.googletagmanager.com/*"
+            "https://*.googletagmanager.com/*",
+            "https://www.av01.media/api/v1/videos/*/manifest/*",
+            "https://customers.iw01.xyz/api/v1/videos/*/manifest/*"
           ]
         },
-        "playUrlMatch": [
-          "https://www.av01.media/api/v1/videos/*/manifest/master.m3u8*",
-          "https://customers.iw01.xyz/api/v1/videos/*/manifest/*"
-        ],
         "spider": {
           "homeContent": {"loadUrl": "https://www.av01.media/cn"},
           "categoryContent": {"loadUrl": "https://www.av01.media/cn"},

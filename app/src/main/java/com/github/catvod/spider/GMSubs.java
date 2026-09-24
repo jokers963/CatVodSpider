@@ -40,6 +40,8 @@ public class GMSubs extends Spider {
     private static final Pattern CODE = Pattern.compile("(?i)(?<![a-z0-9])([a-z]{2,8})[-_.](\\d{2,6})(?!\\d)");
     /** TurboVIPlay HLS whose segments are MPEG-TS behind a fake PNG header on a host that rejects a Referer. */
     private static final Pattern FAKE_PNG_HLS = Pattern.compile("(?i)^https?://[^/]*\\b(turboviplay|turbosplayer)\\.com/");
+    /** AV01 master whose relative variant URIs must carry the master's access_token, as the site's own HLS loader does. */
+    private static final Pattern TOKEN_MASTER = Pattern.compile("(?i)^https://www\\.av01\\.media/api/v1/videos/\\d+/manifest/master\\.m3u8\\?(.*&)?access_token=");
     private static final Pattern URI_ATTR = Pattern.compile("URI=\"([^\"]+)\"");
     private static final String HLS = "application/x-mpegURL";
     private static final int TS_PACKET = 188;
@@ -196,7 +198,7 @@ public class GMSubs extends Spider {
         try {
             JSONObject play = new JSONObject(result);
             if (play.optString("url").isEmpty()) return result;
-            boolean changed = proxyFakePngHls(play);
+            boolean changed = proxyFakePngHls(play) || proxyTokenMaster(play);
             JSONArray subs = subtitles(codeFromPlay(flag, id));
             if (subs.length() > 0) {
                 play.put("subs", subs);
@@ -226,6 +228,22 @@ public class GMSubs extends Spider {
         play.put("format", HLS);
         play.remove("header");
         return true;
+    }
+
+    private boolean proxyTokenMaster(JSONObject play) throws Exception {
+        String url = play.optString("url");
+        if (!TOKEN_MASTER.matcher(url).find()) return false;
+        String base = proxyBase();
+        if (base.isEmpty()) return false;
+        play.put("url", proxyUrl(base, "master", url, headers(play.opt("header"))));
+        play.put("format", HLS);
+        return true;
+    }
+
+    static String withQuery(String url, String name, String value) {
+        HttpUrl parsed = HttpUrl.parse(url);
+        if (parsed == null || value == null || value.isEmpty() || parsed.queryParameter(name) != null) return url;
+        return parsed.newBuilder().addQueryParameter(name, value).build().toString();
     }
 
     /** The host app's local server forwards /proxy?siteKey=... back to this spider's proxy(). */
@@ -376,9 +394,21 @@ public class GMSubs extends Spider {
     public Object[] proxy(Map<String, String> params) throws Exception {
         String type = params.get("type");
         String url = params.get("url");
-        if (url == null || !url.startsWith("http") || !("m3u8".equals(type) || "ts".equals(type))) return gm.proxy(params);
+        if (url == null || !url.startsWith("http") || !("m3u8".equals(type) || "ts".equals(type) || "master".equals(type))) return gm.proxy(params);
         Map<String, String> headers = headers(params.get("h"));
+        if ("master".equals(type)) return proxyTokenMaster(url, headers);
         return "m3u8".equals(type) ? proxyPlaylist(url, headers) : proxySegment(url, headers);
+    }
+
+    private Object[] proxyTokenMaster(String url, Map<String, String> headers) throws IOException {
+        HttpUrl parsed = HttpUrl.parse(url);
+        String token = parsed == null ? null : parsed.queryParameter("access_token");
+        try (Response res = stream().newCall(request(url, headers)).execute()) {
+            if (!res.isSuccessful() || res.body() == null) return status(res.code());
+            String body = rewritePlaylist(res.body().string(), res.request().url().toString(), (target, playlist) ->
+                    playlist ? withQuery(target, "access_token", token) : target);
+            return new Object[]{200, HLS, new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8))};
+        }
     }
 
     private Object[] proxyPlaylist(String url, Map<String, String> headers) throws IOException {

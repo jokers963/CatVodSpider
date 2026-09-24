@@ -115,6 +115,19 @@ public class GMSubsTest {
         assertEquals("UA", segment.get("User-Agent"));
     }
 
+    @Test
+    public void tokenMasterCarriesTheAccessTokenToTheRelativeBestVariant() {
+        String master = "#EXTM3U\n#EXT-X-VERSION:3\n"
+                + "#EXT-X-STREAM-INF:BANDWIDTH=396161,RESOLUTION=640x360\nindex90-sv1-v1-a1.m3u8?ro=0\n"
+                + "#EXT-X-STREAM-INF:BANDWIDTH=3099362,RESOLUTION=1920x1080\nindex90-sv3-v1-a1.m3u8\n";
+        String out = GMSubs.rewritePlaylist(master, "https://www.av01.media/api/v1/videos/7/manifest/master.m3u8?access_token=T",
+                (url, playlist) -> playlist ? GMSubs.withQuery(url, "access_token", "T") : url);
+        assertEquals("#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-STREAM-INF:BANDWIDTH=3099362,RESOLUTION=1920x1080\n"
+                + "https://www.av01.media/api/v1/videos/7/manifest/index90-sv3-v1-a1.m3u8?access_token=T\n", out);
+        assertEquals("https://x/a.m3u8?ro=0&access_token=T", GMSubs.withQuery("https://x/a.m3u8?ro=0", "access_token", "T"));
+        assertEquals("https://x/a.m3u8?access_token=Z", GMSubs.withQuery("https://x/a.m3u8?access_token=Z", "access_token", "T"));
+    }
+
     private static final int TS = 188;
 
     private static byte[] readAll(InputStream in) throws Exception {

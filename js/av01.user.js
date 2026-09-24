@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AV01
 // @namespace    luoyuqiuspider
-// @version      1.0.0
+// @version      1.0.1
 // @description  AV01 WebView adapter for the open-source GM spider runtime.
 // @match        https://www.av01.media/*
 // @grant        unsafeWindow
@@ -123,18 +123,25 @@
                 }]
             }]};
         },
-        playerContent: function () {
-            const play = document.querySelector("media-play-button, .vds-play-button, button[aria-label*='Play' i]");
-            if (play) play.click();
-            return {type: "match"};
+        playerContent: async function () {
+            const id = location.pathname.split("/")[3];
+            const g = await geo();
+            if (!id || !g) return {type: "match"};
+            let access = "https://customers.iw01.xyz/api/v1/videos/" + id + "/cdn-access?token_v2=" + g.token_v2 + "&expires=" + g.expires + "&ip=" + g.ip;
+            if (g.comp) access += "&comp=true";
+            const token = (await json(access)).access_token;
+            if (!token) return {type: "match"};
+            return {
+                parse: 0,
+                url: location.origin + "/api/v1/videos/" + id + "/manifest/master.m3u8?access_token=" + encodeURIComponent(token),
+                header: {"User-Agent": navigator.userAgent, "Referer": location.origin + "/"}
+            };
         }
     };
 
     let sent = false;
-    const startedAt = Date.now();
     async function sendResult() {
         if (sent) return;
-        if (method === "playerContent" && !document.querySelector("media-player, video") && Date.now() - startedAt < 10000) return;
         sent = true;
         let result;
         try {
@@ -146,12 +153,7 @@
         GmSpiderInject.SetSpiderResult(JSON.stringify(result));
     }
 
-    if (method === "playerContent") {
-        const poller = setInterval(function () {
-            if (sent) clearInterval(poller);
-            else sendResult();
-        }, 300);
-    } else if (document.readyState === "loading") {
+    if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", sendResult, {once: true});
     } else {
         sendResult();
