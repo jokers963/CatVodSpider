@@ -141,51 +141,6 @@
           "searchContent": {"loadUrl": "https://www.freepornvideos.xxx/search/${key}/${pg:-1}/"}
         }
       }
-    },
-    {
-      "key": "javmix",
-      "name": "JavMix",
-      "type": 3,
-      "api": "csp_GMSubs",
-      "searchable": 1,
-      "quickSearch": 1,
-      "changeable": 0,
-      "filterable": 1,
-      "timeout": 60,
-      "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/javmix.user.js?v=1",
-        "debug": false,
-        "webViewSettings": {
-          "blockNetworkImage": true,
-          "blockList": [
-            "https://*.ad-nex.com/*",
-            "https://*.bance.jp/*",
-            "https://*.google-analytics.com/*",
-            "https://*.googletagmanager.com/*",
-            "https://*.whitetrafsa.com/*",
-            "https://*.yandex.ru/*"
-          ]
-        },
-        "playUrlMatch": [
-          "https://*.cdn-centaurus.com/*/master.m3u8*",
-          "https://*.cloudatacdn.com/*",
-          "https://*.cloudflarestorage.com/*",
-          "https://*.linkofnyz.com/*.m3u8*",
-          "https://*.tapecontent.net/*",
-          "https://*.turboviplay.*/*.m3u8*",
-          "https://*.vidoza.net/*.mp4*",
-          "https://*.voe-network.net/*/master.m3u8*",
-          "https://dood.la/pass_md5/*",
-          "https://streamtape.com/get_video*"
-        ],
-        "spider": {
-          "homeContent": {"loadUrl": "https://javmix.tv/"},
-          "categoryContent": {"loadUrl": "https://javmix.tv/${tid}/page/${pg:-1}/"},
-          "detailContent": {"loadUrl": "https://javmix.tv/${id}/"},
-          "playerContent": {"loadUrl": "https://javmix.tv/${pathname}/#${link}"},
-          "searchContent": {"loadUrl": "https://javmix.tv/page/${pg:-1}/?s=${key}"}
-        }
-      }
     }
   ],
   "parses": [],
