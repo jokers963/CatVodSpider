@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         SupJav subtitle preview
 // @namespace    luoyuqiuspider
-// @version      1.0.4
-// @description  Preview adapter without jQuery. Shows the verification page and returns as soon as content is parseable.
+// @version      1.0.5
+// @description  Preview adapter without jQuery. Returns as soon as content is parseable and leaves the WebView hidden unless the page is actually verifying.
 // @match        https://supjav.com/*
 // @grant        GM_cookie
 // @grant        unsafeWindow
@@ -67,9 +67,16 @@
         }).filter(Boolean);
     }
 
-    function challengeVisible() {
-        return !!qs(".loading-verifying, #challenge-stage, #challenge-form, #cf-challenge-running, input[name='cf-turnstile-response']")
-                || /just a moment|checking your browser|verify you are human|请稍候|验证您是否为真人/i.test(document.title);
+    // Same marker the official script uses before it will show the WebView.
+    function interactiveVerify() {
+        return !!qs(".loading-verifying");
+    }
+
+    // Automatic interstitial. Official does not show the WebView for these nodes.
+    function automaticChallenge() {
+        const title = document.title || "";
+        return !!qs("#challenge-stage, #challenge-form, #cf-challenge-running")
+                || /just a moment|checking your browser|verify you are human|正在进行安全验证|验证您是否为真人/i.test(title);
     }
 
     function serverButtons() {
@@ -127,7 +134,10 @@
         },
         detailContent: function (ids) {
             const vserver = qs("#vserver");
-            if (vserver) vserver.dispatchEvent(new Event("click"));
+            if (vserver && !vserver.dataset.previewClicked) {
+                vserver.dataset.previewClicked = "1";
+                vserver.dispatchEvent(new Event("click"));
+            }
             const image = qs(".post-meta .img");
             const name = attr(image, "alt") || document.title;
             const media = serverButtons().map(function (button, i) {
@@ -155,6 +165,8 @@
     let sent = false;
     let clicked = false;
     let sawChallenge = false;
+    let webviewShown = false;
+    let loaded = document.readyState === "complete";
 
     function logTiming(phase) {
         try {
@@ -171,6 +183,13 @@
         GmSpiderInject.SetSpiderResult(JSON.stringify(result));
     }
 
+    function showChallengeOnce() {
+        sawChallenge = true;
+        if (webviewShown || typeof GmSpiderInject === "undefined") return;
+        webviewShown = true;
+        GmSpiderInject.ShowWebview();
+    }
+
     function contentReady(result) {
         if (method === "homeContent" || method === "categoryContent" || method === "searchContent") {
             return result.list && result.list.length > 0;
@@ -184,23 +203,25 @@
     function sendResult() {
         if (sent || typeof GmSpiderInject === "undefined") return;
 
-        if (challengeVisible()) {
-            sawChallenge = true;
-            GmSpiderInject.ShowWebview();
-            if (Date.now() - startedAt >= VERIFY_REPORT_MS) {
-                finish(verificationResult(), false);
-            }
-            return;
-        }
-
         if (method === "playerContent") {
+            if (!serverButtons().length && (interactiveVerify() || automaticChallenge())) {
+                if (interactiveVerify()) showChallengeOnce();
+                if (Date.now() - startedAt >= VERIFY_REPORT_MS) {
+                    showChallengeOnce();
+                    finish({type: "match"}, false);
+                }
+                return;
+            }
             if (!clicked) {
-                if (!serverButtons().length) return;
+                if (!serverButtons().length) {
+                    if (loaded) finish({type: "match"}, true);
+                    return;
+                }
                 spider.playerContent();
                 clicked = true;
                 logTiming("player-click");
             }
-            finish({type: "match"}, false);
+            finish({type: "match"}, true);
             return;
         }
 
@@ -209,22 +230,32 @@
             finish(result, true);
             return;
         }
-        // After a challenge, never report empty categories as success.
-        if (sawChallenge) {
+
+        // Official only reveals the WebView for .loading-verifying, then hides it on load.
+        if (interactiveVerify()) {
+            showChallengeOnce();
+            if (Date.now() - startedAt >= VERIFY_REPORT_MS) finish(verificationResult(), false);
+            return;
+        }
+
+        // An automatic interstitial can finish in the hidden WebView. Don't cover the app with it.
+        if (automaticChallenge()) {
+            sawChallenge = true;
             if (Date.now() - startedAt >= VERIFY_REPORT_MS) {
+                showChallengeOnce();
                 finish(verificationResult(), false);
             }
             return;
         }
-        if (Date.now() - startedAt < 20000) return;
+
+        if (!loaded && Date.now() - startedAt < 20000) return;
         finish(result, true);
     }
 
     const poller = setInterval(sendResult, 400);
-    if (challengeVisible()) {
-        sawChallenge = true;
-        if (typeof GmSpiderInject !== "undefined") GmSpiderInject.ShowWebview();
-    }
     if (document.readyState === "complete") setTimeout(sendResult, 0);
-    else unsafeWindow.addEventListener("load", sendResult, {once: true});
+    else unsafeWindow.addEventListener("load", function () {
+        loaded = true;
+        sendResult();
+    }, {once: true});
 })();
