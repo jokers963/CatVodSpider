@@ -143,6 +143,39 @@
           "searchContent": {"loadUrl": "https://www.freepornvideos.xxx/search/${key}/${pg:-1}/"}
         }
       }
+    },
+    {
+      "key": "av01",
+      "name": "AV01",
+      "type": 3,
+      "api": "csp_GMSubs",
+      "searchable": 1,
+      "quickSearch": 1,
+      "changeable": 0,
+      "filterable": 0,
+      "timeout": 60,
+      "ext": {
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/av01.user.js?v=1",
+        "debug": false,
+        "webViewSettings": {
+          "blockNetworkImage": true,
+          "blockList": [
+            "https://*.google-analytics.com/*",
+            "https://*.googletagmanager.com/*"
+          ]
+        },
+        "playUrlMatch": [
+          "https://www.av01.media/api/v1/videos/*/manifest/master.m3u8*",
+          "https://customers.iw01.xyz/api/v1/videos/*/manifest/*"
+        ],
+        "spider": {
+          "homeContent": {"loadUrl": "https://www.av01.media/cn"},
+          "categoryContent": {"loadUrl": "https://www.av01.media/cn"},
+          "detailContent": {"loadUrl": "https://www.av01.media/cn/video/${id}"},
+          "playerContent": {"loadUrl": "https://www.av01.media/cn/video/${id}/${slug}"},
+          "searchContent": {"loadUrl": "https://www.av01.media/cn"}
+        }
+      }
     }
   ],
   "parses": [],
