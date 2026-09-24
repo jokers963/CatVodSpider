@@ -12,6 +12,32 @@
     "ext": {
       "userScript": "https://jokers963.github.io/CatVodSpider/js/supjav.user.js?v=5",
       "debug": false,
+      "webViewSettings": {
+        "blockNetworkImage": true,
+        "blockList": [
+          "*.css*",
+          "*.ico*",
+          "https://*.adforcast.com/*",
+          "https://*.adxadserv.com/*",
+          "https://*.bbrdbr.com/*",
+          "https://*.fanza.cc/*",
+          "https://*.googletagmanager.com/*",
+          "https://*.google-analytics.com/*",
+          "https://*.mnaspm.com/*",
+          "https://*.recombee.com/*",
+          "https://*.sacdnssedge.com/*",
+          "https://*.tapioni.com/*",
+          "https://*.yandex.ru/*",
+          "https://*/prebid.min.js",
+          "https://divisiondrearilyunfiled.com/*",
+          "https://endowmentoverhangutmost.com/*",
+          "https://imasdk.googleapis.com/*",
+          "https://psoroumukr.com/*",
+          "https://static.ads-twitter.com/*",
+          "https://streamhg.com/*",
+          "https://*.tsyndicate.com/*"
+        ]
+      },
       "playUrlMatch": [
         "https://*.cdn-centaurus.com/*/master.m3u8*",
         "https://*.cloudatacdn.com/*",
