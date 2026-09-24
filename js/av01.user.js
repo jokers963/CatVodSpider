@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AV01
 // @namespace    luoyuqiuspider
-// @version      1.0.1
+// @version      1.0.2
 // @description  AV01 WebView adapter for the open-source GM spider runtime.
 // @match        https://www.av01.media/*
 // @grant        unsafeWindow
@@ -124,18 +124,17 @@
             }]};
         },
         playerContent: async function () {
+            const header = {"User-Agent": navigator.userAgent, "Referer": location.origin + "/"};
             const id = location.pathname.split("/")[3];
             const g = await geo();
-            if (!id || !g) return {type: "match"};
-            let access = "https://customers.iw01.xyz/api/v1/videos/" + id + "/cdn-access?token_v2=" + g.token_v2 + "&expires=" + g.expires + "&ip=" + g.ip;
-            if (g.comp) access += "&comp=true";
-            const token = (await json(access)).access_token;
-            if (!token) return {type: "match"};
-            return {
-                parse: 0,
-                url: location.origin + "/api/v1/videos/" + id + "/manifest/master.m3u8?access_token=" + encodeURIComponent(token),
-                header: {"User-Agent": navigator.userAgent, "Referer": location.origin + "/"}
-            };
+            let token = "";
+            if (id && g) {
+                let access = "https://customers.iw01.xyz/api/v1/videos/" + id + "/cdn-access?token_v2=" + g.token_v2 + "&expires=" + g.expires + "&ip=" + g.ip;
+                if (g.comp) access += "&comp=true";
+                token = (await json(access)).access_token || "";
+            }
+            const url = token ? location.origin + "/api/v1/videos/" + id + "/manifest/master.m3u8?access_token=" + encodeURIComponent(token) : "";
+            return {type: "url", ext: {url: url, header: header}};
         }
     };
 
@@ -147,7 +146,9 @@
         try {
             result = await spider[method].apply(spider, args);
         } catch (error) {
-            result = {list: [], error: String(error && error.message || error)};
+            result = method === "playerContent"
+                    ? {type: "url", ext: {url: "", header: {}}}
+                    : {list: [], error: String(error && error.message || error)};
         }
         GmSpiderInject.HideWebview();
         GmSpiderInject.SetSpiderResult(JSON.stringify(result));
