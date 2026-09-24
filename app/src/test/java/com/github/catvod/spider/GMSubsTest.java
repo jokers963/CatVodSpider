@@ -17,6 +17,12 @@ public class GMSubsTest {
     }
 
     @Test
+    public void readsCodeFromTheLineNameWhenThePlayIdIsADirectAddress() {
+        assertEquals("IPX-343", GMSubs.codeFromPlay("ipx-343-uncensored 标题", "https://cdn.example/master.m3u8"));
+        assertEquals("", GMSubs.codeFromPlay("MissAV", "https://cdn.example/master.m3u8"));
+    }
+
+    @Test
     public void stripsGmDataUrlPrefixBeforeReadingTheTitle() {
         assertEquals("eyJuYW1lIjoiSVBYLTM0MyJ9", GMSubs.playIdPayload("data:text/plain;base64,eyJuYW1lIjoiSVBYLTM0MyJ9"));
         assertEquals("eyJuYW1lIjoiUkVBTC03OTUifQ==", GMSubs.playIdPayload("eyJuYW1lIjoiUkVBTC03OTUifQ=="));

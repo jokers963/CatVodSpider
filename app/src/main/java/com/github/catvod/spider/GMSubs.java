@@ -110,6 +110,24 @@ public class GMSubs extends Spider {
         return id == null ? "" : id;
     }
 
+    /** SupJav puts the title in the play id. Direct-address sites put it in the line name. */
+    static String codeFromPlay(String flag, String id) {
+        String fromId = codeFromPlayId(id);
+        return fromId.isEmpty() ? codeFromTitle(flag) : fromId;
+    }
+
+    private static String codeFromPlayId(String id) {
+        String payload = playIdPayload(id);
+        if (payload.startsWith("http://") || payload.startsWith("https://") || payload.isEmpty()) return "";
+        try {
+            String text = new String(Base64.decode(payload, Base64.DEFAULT), StandardCharsets.UTF_8).trim();
+            if (!text.startsWith("{")) return "";
+            return codeFromTitle(new JSONObject(text).optString("name"));
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
     @Override
     public void init(Context context, String extend) throws Exception {
         gm = (Spider) Class.forName("com.github.catvod.spider.GM", true, getClass().getClassLoader()).getDeclaredConstructor().newInstance();
@@ -153,8 +171,7 @@ public class GMSubs extends Spider {
         try {
             JSONObject play = new JSONObject(result);
             if (play.optString("url").isEmpty()) return result;
-            JSONObject medium = new JSONObject(new String(Base64.decode(playIdPayload(id), Base64.DEFAULT), StandardCharsets.UTF_8));
-            String code = codeFromTitle(medium.optString("name"));
+            String code = codeFromPlay(flag, id);
             if (code.isEmpty()) return result;
             JSONArray subs = search(code);
             if (subs.length() == 0) return result;

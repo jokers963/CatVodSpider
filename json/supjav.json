@@ -1,5 +1,5 @@
 {
-  "spider": "https://jokers963.github.io/CatVodSpider/jar/gm_subs.jar",
+  "spider": "https://jokers963.github.io/CatVodSpider/jar/gm_subs.jar?v=2",
   "sites": [
     {
       "key": "supjav",
@@ -71,7 +71,7 @@
       "filterable": 0,
       "timeout": 60,
       "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/missav.user.js?v=4",
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/missav.user.js?v=5",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": true

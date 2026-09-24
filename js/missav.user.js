@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MissAV
 // @namespace    luoyuqiuspider
-// @version      1.2.1
+// @version      1.2.2
 // @description  MissAV WebView adapter for the open-source GM spider runtime.
 // @match        https://missav.ws/*
 // @grant        unsafeWindow
@@ -88,23 +88,14 @@
             let playUrl = "";
             try { playUrl = unsafeWindow.hls?.url || ""; } catch (_) {}
             if (!/^https:\/\//i.test(playUrl)) playUrl = "";
-            const item = {
+            return {list: [{
                 vod_id: ids[0],
                 vod_name: title,
                 vod_pic: image,
-                vod_content: title
-            };
-            if (playUrl) {
-                item.vod_play_data = [{
-                    from: "MissAV",
-                    media: [{
-                        name: [ids[0], title].filter(Boolean).join(" "),
-                        type: "finalUrl",
-                        ext: {url: playUrl}
-                    }]
-                }];
-            }
-            return {list: [item]};
+                vod_content: title,
+                vod_play_from: playUrl ? [ids[0], title].filter(Boolean).join(" ") : "MissAV",
+                vod_play_url: playUrl ? "播放$" + playUrl : ""
+            }]};
         }
     };
 
