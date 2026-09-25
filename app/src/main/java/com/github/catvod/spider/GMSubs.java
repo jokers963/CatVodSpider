@@ -293,7 +293,7 @@ public class GMSubs extends Spider {
     }
 
     private void attemptEmbedTap(int generation, int misses, int taps) {
-        if (generation != embedTapGeneration.get() || misses > 48 || taps >= 2) return;
+        if (generation != embedTapGeneration.get() || misses > 48 || taps >= 1) return;
         List<WebView> views = candidateWebViews();
         if (views.isEmpty()) {
             if (misses == 0 || misses % 4 == 0) Log.i(TAP, "waiting view " + misses);
