@@ -27,13 +27,14 @@ public class GMSubsTest {
 
     @Test
     public void mapsThePlayerFrameCenterIntoTheWebView() {
-        String raw = "\"{\\\"x\\\":100,\\\"y\\\":200,\\\"w\\\":400,\\\"h\\\":300,\\\"iw\\\":1000}\"";
+        String raw = "\"{\\\"x\\\":100,\\\"y\\\":200,\\\"w\\\":400,\\\"h\\\":300,\\\"iw\\\":1000,\\\"clear\\\":1}\"";
         assertEquals("", GMSubs.unwrapJsString("null"));
         assertEquals("{\"x\":100}", GMSubs.unwrapJsString("\"{\\\"x\\\":100}\""));
         int[] point = GMSubs.embedTapPoint(raw, 500, 800);
         assertEquals(50, point[0]);
         assertEquals(100, point[1]);
-        assertEquals(null, GMSubs.embedTapPoint("\"{\\\"x\\\":10,\\\"y\\\":10,\\\"w\\\":20,\\\"h\\\":20,\\\"iw\\\":1000}\"", 500, 800));
+        assertEquals(null, GMSubs.embedTapPoint("\"{\\\"x\\\":100,\\\"y\\\":200,\\\"w\\\":400,\\\"h\\\":300,\\\"iw\\\":1000}\"", 500, 800));
+        assertEquals(null, GMSubs.embedTapPoint("\"{\\\"x\\\":10,\\\"y\\\":10,\\\"w\\\":20,\\\"h\\\":20,\\\"iw\\\":1000,\\\"clear\\\":1}\"", 500, 800));
     }
 
     @Test

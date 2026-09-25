@@ -53,10 +53,15 @@ public class GMSubs extends Spider {
     private static final Pattern URI_ATTR = Pattern.compile("URI=\"([^\"]+)\"");
     private static final String HLS = "application/x-mpegURL";
     /** ST and VOE only start the file request after a real tap on the play control inside their frame. */
-    private static final String EMBED_RECT = "(function(){var f=document.getElementById('video');if(!f)return '';"
+    private static final String EMBED_RECT = "(function(){var f=document.getElementById('video');"
+            + "if(!f||f.getAttribute('data-ready')!=='1')return '';"
             + "try{f.scrollIntoView({block:'center'})}catch(e){}"
-            + "var r=f.getBoundingClientRect();"
-            + "return JSON.stringify({x:r.left+r.width/2,y:r.top+r.height/2,w:r.width,h:r.height,iw:window.innerWidth||1});})()";
+            + "var r=f.getBoundingClientRect();var x=r.left+r.width/2,y=r.top+r.height/2;"
+            + "for(var i=0;i<8;i++){var t=document.elementFromPoint(x,y);"
+            + "if(!t||t===f||f.contains(t))break;t.remove();}"
+            + "var top=document.elementFromPoint(x,y);"
+            + "var clear=top===f||(f.contains&&f.contains(top));"
+            + "return JSON.stringify({x:x,y:y,w:r.width,h:r.height,iw:window.innerWidth||1,clear:clear?1:0});})()";
     private static final String TAP = "GMSubsTap";
     private final AtomicInteger embedTapGeneration = new AtomicInteger();
     private static final int TS_PACKET = 188;
@@ -223,7 +228,7 @@ public class GMSubs extends Spider {
             double width = point.optDouble("w");
             double height = point.optDouble("h");
             double innerWidth = point.optDouble("iw");
-            if (width < 80 || height < 80 || innerWidth < 1) return null;
+            if (width < 80 || height < 80 || innerWidth < 1 || point.optInt("clear") != 1) return null;
             double scale = viewWidth / innerWidth;
             int x = (int) Math.round(point.optDouble("x") * scale);
             int y = (int) Math.round(point.optDouble("y") * scale);
@@ -273,11 +278,11 @@ public class GMSubs extends Spider {
 
     private void scheduleEmbedTap() {
         int generation = embedTapGeneration.incrementAndGet();
-        Init.post(() -> attemptEmbedTap(generation, 0, 0), 1500);
+        Init.post(() -> attemptEmbedTap(generation, 0, 0), 2500);
     }
 
     private void attemptEmbedTap(int generation, int misses, int taps) {
-        if (generation != embedTapGeneration.get() || misses > 24 || taps >= 4) return;
+        if (generation != embedTapGeneration.get() || misses > 30 || taps >= 2) return;
         WebView webView = supjavWebView();
         if (webView == null) {
             if (misses == 0 || misses % 4 == 0) Log.i(TAP, "waiting view " + misses);
@@ -294,7 +299,7 @@ public class GMSubs extends Spider {
             }
             dispatchTap(webView, point[0], point[1]);
             Log.i(TAP, "tap " + (taps + 1) + " at " + point[0] + "," + point[1]);
-            Init.post(() -> attemptEmbedTap(generation, misses, taps + 1), 4000);
+            Init.post(() -> attemptEmbedTap(generation, misses, taps + 1), 6000);
         });
     }
 
