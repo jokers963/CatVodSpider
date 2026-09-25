@@ -282,18 +282,30 @@ public class GMSubs extends Spider {
 
     private void attemptEmbedTap(int generation, int misses, int taps) {
         if (generation != embedTapGeneration.get() || misses > 30 || taps >= 2) return;
-        WebView webView = supjavWebView();
-        if (webView == null) {
+        List<WebView> views = candidateWebViews();
+        if (views.isEmpty()) {
             if (misses == 0 || misses % 4 == 0) Log.i(TAP, "waiting view " + misses);
             Init.post(() -> attemptEmbedTap(generation, misses + 1, taps), 1200);
             return;
         }
+        tryEmbedTap(generation, misses, taps, views, 0);
+    }
+
+    private void tryEmbedTap(int generation, int misses, int taps, List<WebView> views, int index) {
+        if (generation != embedTapGeneration.get()) return;
+        if (index >= views.size()) {
+            Init.post(() -> attemptEmbedTap(generation, misses + 1, taps), 1200);
+            return;
+        }
+        WebView webView = views.get(index);
         webView.evaluateJavascript(EMBED_RECT, value -> {
             if (generation != embedTapGeneration.get()) return;
             int[] point = embedTapPoint(value, webView.getWidth(), webView.getHeight());
             if (point == null) {
-                if (misses % 3 == 0) Log.i(TAP, "waiting frame " + webView.getWidth() + "x" + webView.getHeight() + " " + unwrapJsString(value));
-                Init.post(() -> attemptEmbedTap(generation, misses + 1, taps), 1200);
+                if (misses % 3 == 0 && index == 0) {
+                    Log.i(TAP, "waiting frame " + views.size() + " " + webView.getWidth() + "x" + webView.getHeight());
+                }
+                tryEmbedTap(generation, misses, taps, views, index + 1);
                 return;
             }
             dispatchTap(webView, point[0], point[1]);
@@ -312,10 +324,24 @@ public class GMSubs extends Spider {
         webView.setVisibility(View.GONE);
     }
 
+    private static List<WebView> candidateWebViews() {
+        List<WebView> all = new ArrayList<>();
+        for (View root : windowRoots()) collectWebViews(root, all);
+        List<WebView> preferred = new ArrayList<>();
+        List<WebView> rest = new ArrayList<>();
+        for (WebView webView : all) {
+            if (webView.getWidth() <= 200 || webView.getHeight() <= 200) continue;
+            String url = webView.getUrl();
+            if (url != null && url.contains("supjav.com")) preferred.add(webView);
+            else rest.add(webView);
+        }
+        preferred.addAll(rest);
+        return preferred;
+    }
+
     private static WebView supjavWebView() {
-        WebView found = null;
-        for (View root : windowRoots()) found = preferWebView(found, supjavWebView(root));
-        return found;
+        List<WebView> views = candidateWebViews();
+        return views.isEmpty() ? null : views.get(0);
     }
 
     private static List<View> windowRoots() {
