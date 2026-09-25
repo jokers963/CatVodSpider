@@ -148,21 +148,8 @@
         const ready = pageReady();
         const waiting = Date.now() - startedAt;
         const challenged = cloudflareChallenge() || !!document.querySelector(".loading-verifying");
-        let challengeTimeout = false;
-        if (!ready && challenged && waiting > 12000) {
-            try {
-                if (!sessionStorage.getItem("supjav-cf-retry")) {
-                    sessionStorage.setItem("supjav-cf-retry", "1");
-                    location.reload();
-                    return;
-                }
-                challengeTimeout = method === "homeContent";
-            } catch (e) {}
-        }
+        const challengeTimeout = !ready && challenged && method === "homeContent" && waiting > 12000;
         if (!ready && !challengeTimeout && waiting < 35000) return;
-        if (ready) {
-            try { sessionStorage.removeItem("supjav-cf-retry"); } catch (e) {}
-        }
         sent = true;
         if (poller) clearInterval(poller);
         const result = spider[method].apply(spider, args);
