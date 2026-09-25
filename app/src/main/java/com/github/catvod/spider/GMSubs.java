@@ -277,11 +277,11 @@ public class GMSubs extends Spider {
 
     private void scheduleEmbedTap() {
         int generation = embedTapGeneration.incrementAndGet();
-        Init.post(() -> attemptEmbedTap(generation, 0, 0), 2500);
+        Init.post(() -> attemptEmbedTap(generation, 0, 0), 4000);
     }
 
     private void attemptEmbedTap(int generation, int misses, int taps) {
-        if (generation != embedTapGeneration.get() || misses > 30 || taps >= 2) return;
+        if (generation != embedTapGeneration.get() || misses > 36 || taps >= 2) return;
         List<WebView> views = candidateWebViews();
         if (views.isEmpty()) {
             if (misses == 0 || misses % 4 == 0) Log.i(TAP, "waiting view " + misses);
@@ -298,6 +298,15 @@ public class GMSubs extends Spider {
             return;
         }
         WebView webView = views.get(index);
+        if (webView.getWidth() <= 200 || webView.getHeight() <= 200) {
+            try {
+                webView.setVisibility(View.VISIBLE);
+                webView.evaluateJavascript("try{GmSpiderInject.ShowWebview()}catch(e){}", null);
+            } catch (Throwable ignored) {
+            }
+            tryEmbedTap(generation, misses, taps, views, index + 1);
+            return;
+        }
         webView.evaluateJavascript(EMBED_RECT, value -> {
             if (generation != embedTapGeneration.get()) return;
             int[] point = embedTapPoint(value, webView.getWidth(), webView.getHeight());
@@ -308,9 +317,14 @@ public class GMSubs extends Spider {
                 tryEmbedTap(generation, misses, taps, views, index + 1);
                 return;
             }
+            if (taps == 0 && misses < 2) {
+                Log.i(TAP, "frame ready " + point[0] + "," + point[1]);
+                Init.post(() -> attemptEmbedTap(generation, 2, 0), 3500);
+                return;
+            }
             dispatchTap(webView, point[0], point[1]);
             Log.i(TAP, "tap " + (taps + 1) + " at " + point[0] + "," + point[1]);
-            Init.post(() -> attemptEmbedTap(generation, misses, taps + 1), 6000);
+            Init.post(() -> attemptEmbedTap(generation, misses, taps + 1), 8000);
         });
     }
 
@@ -321,7 +335,6 @@ public class GMSubs extends Spider {
             webView.evaluateJavascript("try{GmSpiderInject.HideWebview()}catch(e){}", null);
         } catch (Throwable ignored) {
         }
-        webView.setVisibility(View.GONE);
     }
 
     private static List<WebView> candidateWebViews() {
@@ -330,9 +343,10 @@ public class GMSubs extends Spider {
         List<WebView> preferred = new ArrayList<>();
         List<WebView> rest = new ArrayList<>();
         for (WebView webView : all) {
-            if (webView.getWidth() <= 200 || webView.getHeight() <= 200) continue;
             String url = webView.getUrl();
-            if (url != null && url.contains("supjav.com")) preferred.add(webView);
+            boolean supjav = url != null && url.contains("supjav.com");
+            if (!supjav && (webView.getWidth() <= 200 || webView.getHeight() <= 200)) continue;
+            if (supjav) preferred.add(webView);
             else rest.add(webView);
         }
         preferred.addAll(rest);
