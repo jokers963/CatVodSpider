@@ -35,6 +35,16 @@ public class GMSubsTest {
     }
 
     @Test
+    public void waitsForTheRealEmbedHostBeforeTapping() {
+        assertTrue(GMSubs.embedSrcReady("ST", "https://streamtape.com/e/abc"));
+        assertTrue(GMSubs.embedSrcReady("ST", "https://964695132.tapecontent.net/radosgw/x"));
+        assertFalse(GMSubs.embedSrcReady("ST", "https://live.example/embed"));
+        assertTrue(GMSubs.embedSrcReady("VOE", "https://voe.sx/e/abc"));
+        assertFalse(GMSubs.embedSrcReady("VOE", "https://streamtape.com/e/abc"));
+        assertEquals("https://streamtape.com/e/abc", GMSubs.embedSrc("\"{\\\"src\\\":\\\"https://streamtape.com/e/abc\\\"}\""));
+    }
+
+    @Test
     public void mapsThePlayerFrameCenterIntoTheWebView() {
         String raw = "\"{\\\"x\\\":100,\\\"y\\\":200,\\\"w\\\":400,\\\"h\\\":300,\\\"iw\\\":1000,\\\"clear\\\":1}\"";
         assertEquals("", GMSubs.unwrapJsString("null"));

@@ -60,9 +60,11 @@ public class GMSubs extends Spider {
             + "if(!t||t===f||f.contains(t)||t.contains(f))break;t.remove();}"
             + "var top=document.elementFromPoint(x,y);"
             + "var clear=!top||top===f||f.contains(top)||top.contains(f);"
-            + "return JSON.stringify({x:x,y:y,w:r.width,h:r.height,iw:window.innerWidth||1,clear:clear?1:0});})()";
+            + "var src=f.src||f.getAttribute('src')||'';"
+            + "return JSON.stringify({x:x,y:y,w:r.width,h:r.height,iw:window.innerWidth||1,clear:clear?1:0,src:src});})()";
     private static final String TAP = "GMSubsTap";
     private final AtomicInteger embedTapGeneration = new AtomicInteger();
+    private volatile String embedTapFlag = "";
     private static final int TS_PACKET = 188;
     private static final int SNIFF_BYTES = 64 * 1024;
     private static OkHttpClient http;
@@ -238,6 +240,28 @@ public class GMSubs extends Spider {
         }
     }
 
+    /** ST/VOE only tap after the frame points at that host, not the live-ad iframe. */
+    static boolean embedSrcReady(String flag, String src) {
+        String host = src == null ? "" : src.toLowerCase(Locale.ROOT);
+        if ("ST".equalsIgnoreCase(flag)) {
+            return host.contains("streamtape") || host.contains("strtape") || host.contains("tapecontent");
+        }
+        if ("VOE".equalsIgnoreCase(flag)) {
+            return host.contains("voe") || host.contains("cloudwindow") || host.contains("voe-network");
+        }
+        return false;
+    }
+
+    static String embedSrc(String raw) {
+        String json = unwrapJsString(raw);
+        if (json.isEmpty()) return "";
+        try {
+            return new JSONObject(json).optString("src");
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
     static String unwrapJsString(String value) {
         if (value == null || value.equals("null")) return "";
         try {
@@ -298,6 +322,7 @@ public class GMSubs extends Spider {
     }
 
     private void scheduleEmbedTap(String flag) {
+        embedTapFlag = flag == null ? "" : flag;
         int generation = embedTapGeneration.incrementAndGet();
         Log.i(TAP, "schedule " + flag + " gen " + generation);
         Init.post(() -> attemptEmbedTap(generation, 0, 0), 1500);
@@ -340,7 +365,7 @@ public class GMSubs extends Spider {
         webView.evaluateJavascript(EMBED_RECT, value -> {
             if (generation != embedTapGeneration.get()) return;
             int[] point = embedTapPoint(value, webView.getWidth(), webView.getHeight());
-            if (point == null) {
+            if (point == null || !embedSrcReady(embedTapFlag, embedSrc(value))) {
                 if (misses % 3 == 0 && index == 0) {
                     Log.i(TAP, "waiting frame " + views.size() + " " + webView.getWidth() + "x" + webView.getHeight());
                 }
