@@ -265,11 +265,17 @@ public class GMSubs extends Spider {
     @Override
     public String playerContent(String flag, String id, List<String> vipFlags) throws Exception {
         boolean embed = needsEmbedTap(flag);
-        if (embed) scheduleEmbedTap(flag);
+        if (embed) {
+            scheduleEmbedTap(flag);
+        } else {
+            cancelEmbedTap();
+        }
         String result = gm.playerContent(flag, id, vipFlags);
         if (embed) {
             Log.i(TAP, "gm returned " + resultType(result));
             if (!isMatchResult(result)) embedTapGeneration.incrementAndGet();
+        } else {
+            cancelEmbedTap();
         }
         try {
             JSONObject play = new JSONObject(result);
@@ -284,6 +290,11 @@ public class GMSubs extends Spider {
         } catch (Exception ignored) {
             return result;
         }
+    }
+
+    private void cancelEmbedTap() {
+        embedTapGeneration.incrementAndGet();
+        Init.post(this::hideEmbedWebView, 200);
     }
 
     private void scheduleEmbedTap(String flag) {
@@ -306,15 +317,22 @@ public class GMSubs extends Spider {
     private void tryEmbedTap(int generation, int misses, int taps, List<WebView> views, int index) {
         if (generation != embedTapGeneration.get()) return;
         if (index >= views.size()) {
+            if (misses >= 20) {
+                Log.i(TAP, "give up " + misses);
+                hideEmbedWebView();
+                return;
+            }
             Init.post(() -> attemptEmbedTap(generation, misses + 1, taps), 1200);
             return;
         }
         WebView webView = views.get(index);
         if (webView.getWidth() <= 200 || webView.getHeight() <= 200) {
-            try {
-                webView.setVisibility(View.VISIBLE);
-                webView.evaluateJavascript("try{GmSpiderInject.ShowWebview()}catch(e){}", null);
-            } catch (Throwable ignored) {
+            if (misses < 10) {
+                try {
+                    webView.setVisibility(View.VISIBLE);
+                    webView.evaluateJavascript("try{GmSpiderInject.ShowWebview()}catch(e){}", null);
+                } catch (Throwable ignored) {
+                }
             }
             tryEmbedTap(generation, misses, taps, views, index + 1);
             return;
@@ -713,7 +731,7 @@ public class GMSubs extends Spider {
 
     @Override
     public void destroy() {
-        embedTapGeneration.incrementAndGet();
+        cancelEmbedTap();
         if (gm != null) gm.destroy();
     }
 }
