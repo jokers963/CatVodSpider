@@ -251,7 +251,10 @@ public class GMSubs extends Spider {
         try {
             result = gm.playerContent(flag, id, vipFlags);
         } finally {
-            if (needsEmbedTap(flag)) embedTapGeneration.incrementAndGet();
+            if (needsEmbedTap(flag)) {
+                embedTapGeneration.incrementAndGet();
+                Init.post(this::hideEmbedWebView, 800);
+            }
         }
         try {
             JSONObject play = new JSONObject(result);
@@ -293,6 +296,16 @@ public class GMSubs extends Spider {
             Log.i(TAP, "tap " + (taps + 1) + " at " + point[0] + "," + point[1]);
             Init.post(() -> attemptEmbedTap(generation, misses, taps + 1), 4000);
         });
+    }
+
+    private void hideEmbedWebView() {
+        WebView webView = supjavWebView();
+        if (webView == null) return;
+        try {
+            webView.evaluateJavascript("try{GmSpiderInject.HideWebview()}catch(e){}", null);
+        } catch (Throwable ignored) {
+        }
+        webView.setVisibility(View.GONE);
     }
 
     private static WebView supjavWebView() {

@@ -1,5 +1,5 @@
 {
-  "spider": "https://jokers963.github.io/CatVodSpider/jar/gm_subs.jar?v=6",
+  "spider": "https://jokers963.github.io/CatVodSpider/jar/gm_subs.jar?v=7",
   "sites": [
     {
       "key": "supjav",
@@ -44,7 +44,7 @@
           "https://*.cloudatacdn.com/*",
           "https://*.cloudflarestorage.com/*",
           "https://*.linkofnyz.com/*.m3u8*",
-          "https://*.tapecontent.net/*",
+          "https://[0-9]+\\.tapecontent\\.net/.+",
           "https://*.turboviplay.com/*.m3u8*",
           "https://*.turbosplayer.com/*m3u8*",
           "https://*.turbovidhls.com/*m3u8*",
