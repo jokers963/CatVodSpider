@@ -148,7 +148,7 @@
         const ready = pageReady();
         const waiting = Date.now() - startedAt;
         const challenged = cloudflareChallenge() || !!document.querySelector(".loading-verifying");
-        const challengeTimeout = !ready && challenged && method === "homeContent" && waiting > 12000;
+        const challengeTimeout = !ready && challenged && method === "homeContent" && waiting > 5000;
         if (!ready && !challengeTimeout && waiting < 35000) return;
         sent = true;
         if (poller) clearInterval(poller);
