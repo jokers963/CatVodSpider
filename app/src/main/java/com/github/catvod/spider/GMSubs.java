@@ -53,14 +53,13 @@ public class GMSubs extends Spider {
     private static final Pattern URI_ATTR = Pattern.compile("URI=\"([^\"]+)\"");
     private static final String HLS = "application/x-mpegURL";
     /** ST and VOE only start the file request after a real tap on the play control inside their frame. */
-    private static final String EMBED_RECT = "(function(){var f=document.getElementById('video');"
-            + "if(!f||f.getAttribute('data-ready')!=='1')return '';"
+    private static final String EMBED_RECT = "(function(){var f=document.getElementById('video');if(!f)return '';"
             + "try{f.scrollIntoView({block:'center'})}catch(e){}"
             + "var r=f.getBoundingClientRect();var x=r.left+r.width/2,y=r.top+r.height/2;"
             + "for(var i=0;i<8;i++){var t=document.elementFromPoint(x,y);"
-            + "if(!t||t===f||f.contains(t))break;t.remove();}"
+            + "if(!t||t===f||f.contains(t)||t.contains(f))break;t.remove();}"
             + "var top=document.elementFromPoint(x,y);"
-            + "var clear=top===f||(f.contains&&f.contains(top));"
+            + "var clear=!top||top===f||f.contains(top)||top.contains(f);"
             + "return JSON.stringify({x:x,y:y,w:r.width,h:r.height,iw:window.innerWidth||1,clear:clear?1:0});})()";
     private static final String TAP = "GMSubsTap";
     private final AtomicInteger embedTapGeneration = new AtomicInteger();
@@ -293,7 +292,7 @@ public class GMSubs extends Spider {
             if (generation != embedTapGeneration.get()) return;
             int[] point = embedTapPoint(value, webView.getWidth(), webView.getHeight());
             if (point == null) {
-                if (misses % 4 == 0) Log.i(TAP, "waiting frame " + webView.getWidth() + "x" + webView.getHeight());
+                if (misses % 3 == 0) Log.i(TAP, "waiting frame " + webView.getWidth() + "x" + webView.getHeight() + " " + unwrapJsString(value));
                 Init.post(() -> attemptEmbedTap(generation, misses + 1, taps), 1200);
                 return;
             }
