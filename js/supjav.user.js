@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      1.0.9
+// @version      1.0.10
 // @description  SupJav WebView adapter for the open-source GM spider runtime.
 // @match        https://supjav.com/*
 // @require      https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.slim.min.js
@@ -133,8 +133,20 @@
     function sendResult() {
         if (sent) return;
         const ready = pageReady();
-        if ((cloudflareChallenge() || document.querySelector(".loading-verifying")) && !ready) return;
-        if (!ready && Date.now() - startedAt < 35000) return;
+        const waiting = Date.now() - startedAt;
+        if (!ready && (cloudflareChallenge() || document.querySelector(".loading-verifying")) && waiting > 12000) {
+            try {
+                if (!sessionStorage.getItem("supjav-cf-retry")) {
+                    sessionStorage.setItem("supjav-cf-retry", "1");
+                    location.reload();
+                    return;
+                }
+            } catch (e) {}
+        }
+        if (!ready && waiting < 35000) return;
+        if (ready) {
+            try { sessionStorage.removeItem("supjav-cf-retry"); } catch (e) {}
+        }
         sent = true;
         if (poller) clearInterval(poller);
         const result = spider[method].apply(spider, args);
