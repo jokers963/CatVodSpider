@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      1.0.5
+// @version      1.0.6
 // @description  SupJav WebView adapter for the open-source GM spider runtime.
 // @match        https://supjav.com/*
 // @require      https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.slim.min.js
@@ -94,7 +94,22 @@
             const group = document.querySelector(".video-wrap .cd-server");
             const buttons = group ? group.querySelectorAll(".btn-server") : document.querySelectorAll(".video-wrap .btn-server");
             const button = buttons[index];
+            tappedLine = button ? (button.textContent || "").trim() : "";
             if (button) button.click();
+            document.querySelectorAll('[id^="asg-"]').forEach(function (el) { el.remove(); });
+            const arm = function () {
+                const frame = document.getElementById("video");
+                if (!frame || frame.getAttribute("data-armed") === "1") return !!frame;
+                frame.setAttribute("data-armed", "1");
+                const mark = function () { frame.setAttribute("data-ready", "1"); };
+                frame.addEventListener("load", function () { setTimeout(mark, 3500); }, {once: true});
+                setTimeout(mark, 10000);
+                return true;
+            };
+            if (!arm()) {
+                const wait = setInterval(function () { if (arm()) clearInterval(wait); }, 200);
+                setTimeout(function () { clearInterval(wait); }, 10000);
+            }
             return {type: "match"};
         }
     };
@@ -113,6 +128,7 @@
     }
 
     let sent = false;
+    let tappedLine = "";
     const startedAt = Date.now();
     function sendResult() {
         if (sent) return;
@@ -122,12 +138,26 @@
         sent = true;
         if (poller) clearInterval(poller);
         const result = spider[method].apply(spider, args);
-        GmSpiderInject.HideWebview();
+        const line = tappedLine || ((document.querySelector(".btn-server.active") || {}).textContent || "").trim();
+        const embed = method === "playerContent" && /^(ST|VOE)$/i.test(line);
+        if (!embed) GmSpiderInject.HideWebview();
         GmSpiderInject.SetSpiderResult(JSON.stringify(result));
+        if (embed) {
+            const show = function () { try { GmSpiderInject.ShowWebview(); } catch (e) {} };
+            show();
+            setTimeout(show, 400);
+            setTimeout(show, 1200);
+            setTimeout(function () { try { GmSpiderInject.HideWebview(); } catch (e) {} }, 18000);
+        }
     }
 
     const poller = setInterval(sendResult, 400);
     GmSpiderInject.HideWebview();
+    if (method === "playerContent") {
+        setInterval(function () {
+            document.querySelectorAll('[id^="asg-"]').forEach(function (el) { el.remove(); });
+        }, 300);
+    }
     $(document).ready(sendResult);
     $(unsafeWindow).on("load", sendResult);
 })();

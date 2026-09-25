@@ -17,6 +17,26 @@ import static org.junit.Assert.assertTrue;
 public class GMSubsTest {
 
     @Test
+    public void onlyStreamtapeAndVoeNeedATapInsideThePlayerFrame() {
+        assertTrue(GMSubs.needsEmbedTap("ST"));
+        assertTrue(GMSubs.needsEmbedTap("voe"));
+        assertFalse(GMSubs.needsEmbedTap("TV"));
+        assertFalse(GMSubs.needsEmbedTap("FST"));
+        assertFalse(GMSubs.needsEmbedTap(""));
+    }
+
+    @Test
+    public void mapsThePlayerFrameCenterIntoTheWebView() {
+        String raw = "\"{\\\"x\\\":100,\\\"y\\\":200,\\\"w\\\":400,\\\"h\\\":300,\\\"iw\\\":1000}\"";
+        assertEquals("", GMSubs.unwrapJsString("null"));
+        assertEquals("{\"x\":100}", GMSubs.unwrapJsString("\"{\\\"x\\\":100}\""));
+        int[] point = GMSubs.embedTapPoint(raw, 500, 800);
+        assertEquals(50, point[0]);
+        assertEquals(100, point[1]);
+        assertEquals(null, GMSubs.embedTapPoint("\"{\\\"x\\\":10,\\\"y\\\":10,\\\"w\\\":20,\\\"h\\\":20,\\\"iw\\\":1000}\"", 500, 800));
+    }
+
+    @Test
     public void extractsVideoCodeFromTitle() {
         assertEquals("REAL-795", GMSubs.codeFromTitle("REAL-795 A Slow-lip Delivery Service That Uses Incredible Technique"));
         assertEquals("IPX-343", GMSubs.codeFromTitle("IPX-343 「奥はダメ！もうイッてる！！」"));

@@ -1,5 +1,5 @@
 {
-  "spider": "https://jokers963.github.io/CatVodSpider/jar/gm_subs.jar?v=4",
+  "spider": "https://jokers963.github.io/CatVodSpider/jar/gm_subs.jar?v=5",
   "sites": [
     {
       "key": "supjav",
@@ -12,12 +12,11 @@
       "filterable": 1,
       "timeout": 60,
       "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/supjav.user.js?v=9",
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/supjav.user.js?v=10",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": true,
           "blockList": [
-            "*.css*",
             "*.ico*",
             "https://*.adforcast.com/*",
             "https://*.adxadserv.com/*",
@@ -50,6 +49,7 @@
           "https://*.turbosplayer.com/*m3u8*",
           "https://*.turbovidhls.com/*m3u8*",
           "https://*.voe-network.net/*/master.m3u8*",
+          "https://*.cloudwindow-route.com/*",
           "https://dood.la/pass_md5/*",
           "https://streamtape.com/get_video*"
         ],
