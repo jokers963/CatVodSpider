@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      1.0.2
+// @version      1.0.4
 // @description  SupJav WebView adapter for the open-source GM spider runtime.
 // @match        https://supjav.com/*
 // @require      https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.slim.min.js
@@ -99,20 +99,41 @@
         }
     };
 
+    function cloudflareChallenge() {
+        return /just a moment|请稍候|請稍候/i.test(document.title)
+                || !!document.querySelector("#challenge-form, #challenge-running, .cf-turnstile")
+                || typeof unsafeWindow._cf_chl_opt !== "undefined";
+    }
+
+    function pageReady() {
+        if (method === "playerContent" || method === "detailContent") {
+            return !!document.querySelector(".video-wrap .btn-server, .post-meta .img");
+        }
+        return !!document.querySelector(".post");
+    }
+
     let sent = false;
     const startedAt = Date.now();
     function sendResult() {
         if (sent) return;
-        if (method === "playerContent" && !document.querySelector(".video-wrap .btn-server") && Date.now() - startedAt < 8000) return;
+        const verifying = cloudflareChallenge() || !!document.querySelector(".loading-verifying");
+        const ready = pageReady();
+        if (verifying && !ready) {
+            GmSpiderInject.ShowWebview();
+            return;
+        }
+        if (!ready && Date.now() - startedAt < 35000) return;
         sent = true;
+        if (poller) clearInterval(poller);
         const result = spider[method].apply(spider, args);
         GmSpiderInject.HideWebview();
         GmSpiderInject.SetSpiderResult(JSON.stringify(result));
     }
 
+    const poller = setInterval(sendResult, 400);
     $(document).ready(function () {
-        if ($(".loading-verifying").length) GmSpiderInject.ShowWebview();
-        if (document.readyState === "complete") setTimeout(sendResult, 0);
+        if (cloudflareChallenge() || $(".loading-verifying").length) GmSpiderInject.ShowWebview();
+        sendResult();
     });
     $(unsafeWindow).on("load", sendResult);
 })();
