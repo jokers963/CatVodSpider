@@ -336,6 +336,7 @@ public class GMSubs extends Spider {
             }
             dispatchTap(webView, point[0], point[1]);
             Log.i(TAP, "tap " + (taps + 1) + " at " + point[0] + "," + point[1]);
+            Init.post(this::hideEmbedWebView, 2500);
             Init.post(() -> attemptEmbedTap(generation, misses, taps + 1), 8000);
         });
     }
