@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      1.0.18
+// @version      1.0.19
 // @description  SupJav WebView adapter for the open-source GM spider runtime.
 // @match        https://supjav.com/*
 // @require      https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.slim.min.js
@@ -90,10 +90,20 @@
             }]};
         },
         playerContent: function () {
-            const index = parseInt((window.location.hash || "#0").substring(1), 10) || 0;
+            const raw = (window.location.hash || "#0").substring(1);
+            const index = parseInt(raw, 10);
             const group = document.querySelector(".video-wrap .cd-server");
             const buttons = group ? group.querySelectorAll(".btn-server") : document.querySelectorAll(".video-wrap .btn-server");
-            const button = buttons[index];
+            let button = String(index) === raw && index >= 0 && index < buttons.length ? buttons[index] : null;
+            if (!button) {
+                const want = raw.toUpperCase();
+                for (let i = 0; i < buttons.length; i++) {
+                    if ((buttons[i].textContent || "").trim().toUpperCase() === want) {
+                        button = buttons[i];
+                        break;
+                    }
+                }
+            }
             tappedLine = button ? (button.textContent || "").trim() : "";
             if (button) button.click();
             document.querySelectorAll('[id^="asg-"]').forEach(function (el) { el.remove(); });

@@ -252,6 +252,12 @@ public class GMSubs extends Spider {
         return false;
     }
 
+    static String clickFlagScript(String flag) {
+        String name = flag == null ? "" : flag.trim().replaceAll("[^A-Za-z0-9]", "");
+        return "(function(){var n='" + name + "'.toUpperCase();var list=document.querySelectorAll('.video-wrap .btn-server');"
+                + "for(var i=0;i<list.length;i++){if((list[i].textContent||'').trim().toUpperCase()===n){list[i].click();return n;}}return '';})()";
+    }
+
     static String embedSrc(String raw) {
         String json = unwrapJsString(raw);
         if (json.isEmpty()) return "";
@@ -342,7 +348,7 @@ public class GMSubs extends Spider {
     private void tryEmbedTap(int generation, int misses, int taps, List<WebView> views, int index) {
         if (generation != embedTapGeneration.get()) return;
         if (index >= views.size()) {
-            if (misses >= 20) {
+            if (misses >= 32) {
                 Log.i(TAP, "give up " + misses);
                 hideEmbedWebView();
                 return;
@@ -351,14 +357,13 @@ public class GMSubs extends Spider {
             return;
         }
         WebView webView = views.get(index);
+        try {
+            webView.setVisibility(View.VISIBLE);
+            webView.evaluateJavascript("try{GmSpiderInject.ShowWebview()}catch(e){}", null);
+            if (misses % 3 == 0) webView.evaluateJavascript(clickFlagScript(embedTapFlag), null);
+        } catch (Throwable ignored) {
+        }
         if (webView.getWidth() <= 200 || webView.getHeight() <= 200) {
-            if (misses < 10) {
-                try {
-                    webView.setVisibility(View.VISIBLE);
-                    webView.evaluateJavascript("try{GmSpiderInject.ShowWebview()}catch(e){}", null);
-                } catch (Throwable ignored) {
-                }
-            }
             tryEmbedTap(generation, misses, taps, views, index + 1);
             return;
         }
