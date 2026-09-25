@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.os.SystemClock;
 import android.util.Base64;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -52,11 +53,11 @@ public class GMSubs extends Spider {
     private static final Pattern URI_ATTR = Pattern.compile("URI=\"([^\"]+)\"");
     private static final String HLS = "application/x-mpegURL";
     /** ST and VOE only start the file request after a real tap on the play control inside their frame. */
-    private static final String EMBED_RECT = "(function(){var f=document.getElementById('video');"
-            + "if(!f||f.getAttribute('data-ready')!=='1')return '';"
+    private static final String EMBED_RECT = "(function(){var f=document.getElementById('video');if(!f)return '';"
             + "try{f.scrollIntoView({block:'center'})}catch(e){}"
             + "var r=f.getBoundingClientRect();"
             + "return JSON.stringify({x:r.left+r.width/2,y:r.top+r.height/2,w:r.width,h:r.height,iw:window.innerWidth||1});})()";
+    private static final String TAP = "GMSubsTap";
     private final AtomicInteger embedTapGeneration = new AtomicInteger();
     private static final int TS_PACKET = 188;
     private static final int SNIFF_BYTES = 64 * 1024;
@@ -246,7 +247,12 @@ public class GMSubs extends Spider {
     @Override
     public String playerContent(String flag, String id, List<String> vipFlags) throws Exception {
         if (needsEmbedTap(flag)) scheduleEmbedTap();
-        String result = gm.playerContent(flag, id, vipFlags);
+        String result;
+        try {
+            result = gm.playerContent(flag, id, vipFlags);
+        } finally {
+            if (needsEmbedTap(flag)) embedTapGeneration.incrementAndGet();
+        }
         try {
             JSONObject play = new JSONObject(result);
             if (play.optString("url").isEmpty()) return result;
@@ -264,33 +270,55 @@ public class GMSubs extends Spider {
 
     private void scheduleEmbedTap() {
         int generation = embedTapGeneration.incrementAndGet();
-        Init.post(() -> attemptEmbedTap(generation, 0), 800);
+        Init.post(() -> attemptEmbedTap(generation, 0, 0), 1500);
     }
 
-    private void attemptEmbedTap(int generation, int tries) {
-        if (generation != embedTapGeneration.get() || tries > 40) return;
-        Activity activity = currentActivity();
-        WebView webView = activity == null || activity.getWindow() == null
-                ? null : supjavWebView(activity.getWindow().getDecorView());
+    private void attemptEmbedTap(int generation, int misses, int taps) {
+        if (generation != embedTapGeneration.get() || misses > 24 || taps >= 4) return;
+        WebView webView = supjavWebView();
         if (webView == null) {
-            Init.post(() -> attemptEmbedTap(generation, tries + 1), 1200);
+            if (misses == 0 || misses % 4 == 0) Log.i(TAP, "waiting view " + misses);
+            Init.post(() -> attemptEmbedTap(generation, misses + 1, taps), 1200);
             return;
         }
         webView.evaluateJavascript(EMBED_RECT, value -> {
             if (generation != embedTapGeneration.get()) return;
             int[] point = embedTapPoint(value, webView.getWidth(), webView.getHeight());
             if (point == null) {
-                Init.post(() -> attemptEmbedTap(generation, tries + 1), 1200);
+                if (misses % 4 == 0) Log.i(TAP, "waiting frame " + webView.getWidth() + "x" + webView.getHeight());
+                Init.post(() -> attemptEmbedTap(generation, misses + 1, taps), 1200);
                 return;
             }
             dispatchTap(webView, point[0], point[1]);
-            Init.post(() -> {
-                try {
-                    webView.evaluateJavascript("try{GmSpiderInject.HideWebview()}catch(e){}", null);
-                } catch (Throwable ignored) {
-                }
-            }, 2000);
+            Log.i(TAP, "tap " + (taps + 1) + " at " + point[0] + "," + point[1]);
+            Init.post(() -> attemptEmbedTap(generation, misses, taps + 1), 4000);
         });
+    }
+
+    private static WebView supjavWebView() {
+        WebView found = null;
+        for (View root : windowRoots()) found = preferWebView(found, supjavWebView(root));
+        return found;
+    }
+
+    private static List<View> windowRoots() {
+        List<View> roots = new ArrayList<>();
+        try {
+            Class<?> global = Class.forName("android.view.WindowManagerGlobal");
+            Object instance = global.getMethod("getInstance").invoke(null);
+            java.lang.reflect.Field field = global.getDeclaredField("mViews");
+            field.setAccessible(true);
+            Object views = field.get(instance);
+            if (views instanceof List<?> list) {
+                for (Object item : list) {
+                    if (item instanceof View view) roots.add(view);
+                }
+            }
+        } catch (Throwable ignored) {
+            Activity activity = currentActivity();
+            if (activity != null && activity.getWindow() != null) roots.add(activity.getWindow().getDecorView());
+        }
+        return roots;
     }
 
     private static Activity currentActivity() {
@@ -304,16 +332,27 @@ public class GMSubs extends Spider {
         return null;
     }
 
+    private static WebView preferWebView(WebView current, WebView candidate) {
+        if (candidate == null) return current;
+        if (current == null || candidate.getWidth() > current.getWidth()) return candidate;
+        return current;
+    }
+
     private static WebView supjavWebView(View root) {
         List<WebView> views = new ArrayList<>();
         collectWebViews(root, views);
         WebView found = null;
+        WebView fallback = null;
         for (WebView webView : views) {
+            if (webView.getWidth() <= 200) continue;
             String url = webView.getUrl();
-            if (url == null || !url.contains("supjav.com") || webView.getWidth() <= 0) continue;
-            if (found == null || webView.getWidth() > found.getWidth()) found = webView;
+            if (url != null && url.contains("supjav.com")) {
+                if (found == null || webView.getWidth() > found.getWidth()) found = webView;
+            } else if (fallback == null || webView.getWidth() > fallback.getWidth()) {
+                fallback = webView;
+            }
         }
-        return found;
+        return found != null ? found : fallback;
     }
 
     private static void collectWebViews(View view, List<WebView> out) {
