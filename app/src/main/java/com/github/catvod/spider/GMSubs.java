@@ -248,17 +248,28 @@ public class GMSubs extends Spider {
         return value;
     }
 
+    /** The host keeps watching the page after a match result, so the play-control tap must stay armed. */
+    static boolean isMatchResult(String result) {
+        return "match".equalsIgnoreCase(resultType(result));
+    }
+
+    static String resultType(String result) {
+        if (result == null || result.isEmpty()) return "";
+        try {
+            return new JSONObject(result).optString("type");
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
     @Override
     public String playerContent(String flag, String id, List<String> vipFlags) throws Exception {
-        if (needsEmbedTap(flag)) scheduleEmbedTap();
-        String result;
-        try {
-            result = gm.playerContent(flag, id, vipFlags);
-        } finally {
-            if (needsEmbedTap(flag)) {
-                embedTapGeneration.incrementAndGet();
-                Init.post(this::hideEmbedWebView, 800);
-            }
+        boolean embed = needsEmbedTap(flag);
+        if (embed) scheduleEmbedTap(flag);
+        String result = gm.playerContent(flag, id, vipFlags);
+        if (embed) {
+            Log.i(TAP, "gm returned " + resultType(result));
+            if (!isMatchResult(result)) embedTapGeneration.incrementAndGet();
         }
         try {
             JSONObject play = new JSONObject(result);
@@ -275,13 +286,14 @@ public class GMSubs extends Spider {
         }
     }
 
-    private void scheduleEmbedTap() {
+    private void scheduleEmbedTap(String flag) {
         int generation = embedTapGeneration.incrementAndGet();
-        Init.post(() -> attemptEmbedTap(generation, 0, 0), 4000);
+        Log.i(TAP, "schedule " + flag + " gen " + generation);
+        Init.post(() -> attemptEmbedTap(generation, 0, 0), 1500);
     }
 
     private void attemptEmbedTap(int generation, int misses, int taps) {
-        if (generation != embedTapGeneration.get() || misses > 36 || taps >= 2) return;
+        if (generation != embedTapGeneration.get() || misses > 48 || taps >= 2) return;
         List<WebView> views = candidateWebViews();
         if (views.isEmpty()) {
             if (misses == 0 || misses % 4 == 0) Log.i(TAP, "waiting view " + misses);
@@ -700,6 +712,7 @@ public class GMSubs extends Spider {
 
     @Override
     public void destroy() {
+        embedTapGeneration.incrementAndGet();
         if (gm != null) gm.destroy();
     }
 }

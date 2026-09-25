@@ -26,6 +26,15 @@ public class GMSubsTest {
     }
 
     @Test
+    public void keepsTheTapArmedWhenThePageOnlyAsksTheHostToMatch() {
+        assertTrue(GMSubs.isMatchResult("{\"type\":\"match\"}"));
+        assertTrue(GMSubs.isMatchResult("{\"type\":\"Match\"}"));
+        assertFalse(GMSubs.isMatchResult("{\"type\":\"url\"}"));
+        assertFalse(GMSubs.isMatchResult(""));
+        assertFalse(GMSubs.isMatchResult(null));
+    }
+
+    @Test
     public void mapsThePlayerFrameCenterIntoTheWebView() {
         String raw = "\"{\\\"x\\\":100,\\\"y\\\":200,\\\"w\\\":400,\\\"h\\\":300,\\\"iw\\\":1000,\\\"clear\\\":1}\"";
         assertEquals("", GMSubs.unwrapJsString("null"));

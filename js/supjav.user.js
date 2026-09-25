@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      1.0.11
+// @version      1.0.12
 // @description  SupJav WebView adapter for the open-source GM spider runtime.
 // @match        https://supjav.com/*
 // @require      https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.slim.min.js
@@ -157,9 +157,9 @@
         if (embed) {
             const show = function () { try { GmSpiderInject.ShowWebview(); } catch (e) {} };
             show();
-            setTimeout(show, 400);
-            setTimeout(show, 1200);
-            setTimeout(function () { try { GmSpiderInject.HideWebview(); } catch (e) {} }, 30000);
+            const keep = setInterval(show, 1500);
+            setTimeout(function () { clearInterval(keep); }, 20000);
+            setTimeout(function () { try { GmSpiderInject.HideWebview(); } catch (e) {} }, 50000);
         }
     }
 
