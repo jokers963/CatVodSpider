@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      1.0.7
+// @version      1.0.8
 // @description  SupJav WebView adapter for the open-source GM spider runtime.
 // @match        https://supjav.com/*
 // @require      https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.slim.min.js
@@ -156,6 +156,13 @@
     if (method === "playerContent") {
         setInterval(function () {
             document.querySelectorAll('[id^="asg-"]').forEach(function (el) { el.remove(); });
+            const video = document.getElementById("video");
+            document.querySelectorAll("body *").forEach(function (el) {
+                if (el === video || (video && video.contains(el)) || el.contains(video)) return;
+                const style = window.getComputedStyle(el);
+                const layer = style.position === "fixed" || style.position === "sticky";
+                if (layer && parseInt(style.zIndex || "0", 10) > 5) el.remove();
+            });
         }, 300);
     }
     $(document).ready(sendResult);
