@@ -147,22 +147,36 @@
         if (sent) return;
         const ready = pageReady();
         const waiting = Date.now() - startedAt;
-        if (!ready && (cloudflareChallenge() || document.querySelector(".loading-verifying")) && waiting > 12000) {
+        const challenged = cloudflareChallenge() || !!document.querySelector(".loading-verifying");
+        let challengeTimeout = false;
+        if (!ready && challenged && waiting > 12000) {
             try {
                 if (!sessionStorage.getItem("supjav-cf-retry")) {
                     sessionStorage.setItem("supjav-cf-retry", "1");
                     location.reload();
                     return;
                 }
+                challengeTimeout = method === "homeContent";
             } catch (e) {}
         }
-        if (!ready && waiting < 35000) return;
+        if (!ready && !challengeTimeout && waiting < 35000) return;
         if (ready) {
             try { sessionStorage.removeItem("supjav-cf-retry"); } catch (e) {}
         }
         sent = true;
         if (poller) clearInterval(poller);
         const result = spider[method].apply(spider, args);
+        if (!ready && method === "homeContent") {
+            const message = challenged ? "站点验证或访问限制，未自动绕过" : "页面内容未返回，请稍后重试";
+            result.list = [{
+                vod_id: "supjav-unavailable",
+                vod_name: "SupJav 页面暂未就绪",
+                vod_pic: "",
+                vod_remarks: message,
+                vod_content: message,
+                vod_year: ""
+            }];
+        }
         const line = tappedLine || ((document.querySelector(".btn-server.active") || {}).textContent || "").trim();
         const embed = method === "playerContent" && /^(ST|VOE)$/i.test(line);
         if (!embed) GmSpiderInject.HideWebview();
