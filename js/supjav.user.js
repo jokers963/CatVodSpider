@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      1.0.23
+// @version      1.0.24
 // @description  SupJav WebView adapter for the open-source GM spider runtime.
 // @match        https://supjav.com/*
 // @require      https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.slim.min.js
@@ -135,25 +135,32 @@
 
     function pageReady() {
         if (method === "playerContent" || method === "detailContent") {
-            return !!document.querySelector(".video-wrap .btn-server, .post-meta .img");
+            return !!document.querySelector(".video-wrap .btn-server");
         }
         return !!document.querySelector(".post");
     }
 
     let sent = false;
+    let verificationShown = false;
     const startedAt = Date.now();
     function sendResult() {
         if (sent) return;
         const ready = pageReady();
         const waiting = Date.now() - startedAt;
         const challenged = cloudflareChallenge() || !!document.querySelector(".loading-verifying");
+        if (!ready && challenged && !verificationShown) {
+            verificationShown = true;
+            GmSpiderInject.ShowWebview();
+        }
         // Return immediately when content is ready; do not abort a still-loading page after only five seconds.
-        if (!ready && waiting < 35000) return;
+        if (!ready && waiting < (challenged ? 55000 : 35000)) return;
         sent = true;
         if (poller) clearInterval(poller);
-        const result = spider[method].apply(spider, args);
+        const message = challenged ? "站点验证未完成，请在页面完成验证后重试" : "页面内容未返回，请稍后重试";
+        const result = ready ? spider[method].apply(spider, args)
+                : method === "playerContent" ? {type: "url", ext: {url: "", header: {}}}
+                : {list: [], msg: message};
         if (!ready && method === "homeContent") {
-            const message = challenged ? "站点验证或访问限制，未自动绕过" : "页面内容未返回，请稍后重试";
             result.list = [{
                 vod_id: "supjav-unavailable",
                 vod_name: "SupJav 页面暂未就绪",
