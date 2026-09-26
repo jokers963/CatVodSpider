@@ -327,22 +327,20 @@ public class GMSubs extends Spider {
     @Override
     public String playerContent(String flag, String id, List<String> vipFlags) throws Exception {
         boolean embed = needsEmbedTap(flag);
-        if (embed) {
-            scheduleEmbedTap(flag, id);
-        } else {
-            cancelEmbedTap();
-        }
+        int generation = embed ? scheduleEmbedTap(flag, id) : -1;
+        if (!embed) cancelEmbedTap();
         String result = gm.playerContent(flag, id, vipFlags);
-        if (embed) {
-            Log.i(TAP, "gm returned " + resultType(result));
-            if (!isMatchResult(result)) embedTapGeneration.incrementAndGet();
-        } else {
-            cancelEmbedTap();
-        }
+        boolean finished = embed && !isMatchResult(result) && finishEmbedTap(generation);
+        if (embed) Log.i(TAP, "gm returned " + resultType(result));
         try {
             JSONObject play = new JSONObject(result);
             if (play.optString("url").isEmpty()) return result;
-            if (embed) cancelEmbedTap();
+            if (finished) {
+                WebView resolved = embedWebView;
+                Init.post(() -> {
+                    if (embedTapGeneration.get() == generation + 1) hideEmbedWebView(resolved);
+                }, 200);
+            }
             boolean changed = proxyFakePngHls(play) || proxyTokenMaster(play);
             JSONArray subs = subtitles(codeFromPlay(flag, id));
             if (subs.length() > 0) {
@@ -361,7 +359,12 @@ public class GMSubs extends Spider {
         Init.post(() -> hideEmbedWebView(previous), 200);
     }
 
-    private void scheduleEmbedTap(String flag, String id) {
+    /** An older resolver must never cancel a newer request's pending player tap. */
+    boolean finishEmbedTap(int generation) {
+        return embedTapGeneration.compareAndSet(generation, generation + 1);
+    }
+
+    private int scheduleEmbedTap(String flag, String id) {
         cancelEmbedTap();
         embedWebView = null;
         embedTapFlag = flag == null ? "" : flag;
@@ -369,6 +372,7 @@ public class GMSubs extends Spider {
         int generation = embedTapGeneration.incrementAndGet();
         Log.i(TAP, "schedule " + flag + " gen " + generation + " targetValid=" + !embedTapUrl.isEmpty());
         Init.post(() -> attemptEmbedTap(generation, 0, 0), 1500);
+        return generation;
     }
 
     private void attemptEmbedTap(int generation, int misses, int taps) {

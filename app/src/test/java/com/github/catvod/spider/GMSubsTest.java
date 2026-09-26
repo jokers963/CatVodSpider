@@ -17,6 +17,15 @@ import static org.junit.Assert.assertTrue;
 public class GMSubsTest {
 
     @Test
+    public void aStaleResolverCannotCancelTheNextPlaybackGeneration() {
+        GMSubs spider = new GMSubs();
+        assertTrue(spider.finishEmbedTap(0));
+        assertFalse(spider.finishEmbedTap(0));
+        assertTrue(spider.finishEmbedTap(1));
+        assertFalse(spider.finishEmbedTap(0));
+    }
+
+    @Test
     public void embedTapTargetsOnlyTheRequestedPlayerPage() {
         String descriptor = "{\"name\":\"REAL-795 title\",\"ext\":{\"replace\":{\"pathname\":\"1234\",\"link\":2}}}";
         assertEquals("https://supjav.com/zh/1234#2", GMSubs.embedPageFromDescriptor(descriptor));
