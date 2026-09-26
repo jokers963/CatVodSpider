@@ -2,6 +2,38 @@
   "spider": "https://jokers963.github.io/CatVodSpider/jar/gm_subs.jar?v=30",
   "sites": [
     {
+      "key": "javguru",
+      "name": "Jav.Guru",
+      "type": 3,
+      "api": "csp_GMSubs",
+      "searchable": 1,
+      "quickSearch": 1,
+      "changeable": 0,
+      "filterable": 0,
+      "timeout": 60,
+      "ext": {
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/javguru.user.js?v=1",
+        "debug": false,
+        "playUrlMatch": [
+          "https://*.cdn-centaurus.com/*/master.m3u8*",
+          "https://*.cloudatacdn.com/*",
+          "https://*.cloudflarestorage.com/*",
+          "https://*.linkofnyz.com/*.m3u8*",
+          "https://*.turboviplay.com/*.m3u8*",
+          "https://*.turbosplayer.com/*m3u8*",
+          "https://*.turbovidhls.com/*m3u8*",
+          "https://dood.la/pass_md5/*"
+        ],
+        "spider": {
+          "homeContent": {"loadUrl": "https://jav.guru/"},
+          "categoryContent": {"loadUrl": "https://jav.guru/${tid}/page/${pg:-1}/"},
+          "detailContent": {"loadUrl": "https://jav.guru/${id}"},
+          "playerContent": {"loadUrl": "https://jav.guru/${pathname}#${link}"},
+          "searchContent": {"loadUrl": "https://jav.guru/page/${pg:-1}/?s=${key}"}
+        }
+      }
+    },
+    {
       "key": "supjav",
       "name": "SupJav",
       "type": 3,
