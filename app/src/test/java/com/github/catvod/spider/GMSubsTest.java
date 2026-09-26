@@ -130,6 +130,21 @@ public class GMSubsTest {
 
     private static final int TS = 188;
 
+    @Test
+    public void tokenMastersKeepAdaptiveVariantsOnTheAuthorizedApiHost() {
+        String master = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=300000,RESOLUTION=640x360\nlow.m3u8?ro=0\n"
+                + "#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1920x1080\nhigh.m3u8\n"
+                + "#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=1000,URI=\"iframe.m3u8\"\n";
+        String result = GMSubs.rewritePlaylist(master, "https://www.av01.media/api/v1/videos/7/manifest/master.m3u8",
+                (url, playlist) -> playlist ? GMSubs.tokenManifestUrl(url, "T") : url, false);
+        assertTrue(result.contains("RESOLUTION=640x360\nhttps://customers.iw01.xyz/api/v1/videos/7/manifest/low.m3u8?ro=0&access_token=T"));
+        assertTrue(result.contains("RESOLUTION=1920x1080\nhttps://customers.iw01.xyz/api/v1/videos/7/manifest/high.m3u8?access_token=T"));
+        assertTrue(result.contains("URI=\"https://customers.iw01.xyz/api/v1/videos/7/manifest/iframe.m3u8?access_token=T\""));
+        assertEquals("https://cdn.example/other.m3u8", GMSubs.tokenManifestUrl("https://cdn.example/other.m3u8", "T"));
+        assertEquals("https://customers.iw01.xyz/api/v1/videos/7/manifest/high.m3u8?access_token=Z",
+                GMSubs.tokenManifestUrl("https://www.av01.media/api/v1/videos/7/manifest/high.m3u8?access_token=Z", "T"));
+    }
+
     private static byte[] readAll(InputStream in) throws Exception {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         byte[] buf = new byte[4096];

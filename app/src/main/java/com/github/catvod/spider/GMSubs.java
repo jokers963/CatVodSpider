@@ -246,6 +246,15 @@ public class GMSubs extends Spider {
         return parsed.newBuilder().addQueryParameter(name, value).build().toString();
     }
 
+    /** AV01 issues its playback token for the alternate manifest API, just as its web player uses. */
+    static String tokenManifestUrl(String url, String token) {
+        HttpUrl parsed = HttpUrl.parse(url);
+        if (parsed == null || !parsed.isHttps()
+                || !(parsed.host().equals("www.av01.media") || parsed.host().equals("customers.iw01.xyz"))
+                || !parsed.encodedPath().matches("/api/v1/videos/[0-9]+/manifest/.*")) return url;
+        return withQuery(parsed.newBuilder().host("customers.iw01.xyz").build().toString(), "access_token", token);
+    }
+
     /** The host app's local server forwards /proxy?siteKey=... back to this spider's proxy(). */
     private static String proxyBase() {
         try {
@@ -301,6 +310,10 @@ public class GMSubs extends Spider {
      * A master playlist keeps only its highest resolution (then bandwidth) variant.
      */
     static String rewritePlaylist(String text, String baseUrl, BiFunction<String, Boolean, String> link) {
+        return rewritePlaylist(text, baseUrl, link, true);
+    }
+
+    static String rewritePlaylist(String text, String baseUrl, BiFunction<String, Boolean, String> link, boolean highestOnly) {
         String[] lines = text.replace("\r", "").split("\n");
         StringBuilder out = new StringBuilder();
         boolean master = text.contains("#EXT-X-STREAM-INF");
@@ -311,7 +324,7 @@ public class GMSubs extends Spider {
         for (String raw : lines) {
             String line = raw.trim();
             if (line.isEmpty()) continue;
-            if (master && line.startsWith("#EXT-X-STREAM-INF")) {
+            if (master && highestOnly && line.startsWith("#EXT-X-STREAM-INF")) {
                 pendingInf = line;
                 continue;
             }
@@ -320,7 +333,7 @@ public class GMSubs extends Spider {
                 continue;
             }
             String absolute = resolve(baseUrl, line);
-            if (master) {
+            if (master && highestOnly) {
                 long[] score = variantScore(pendingInf);
                 if (bestScore == null || compare(score, bestScore) > 0) {
                     bestScore = score;
@@ -329,7 +342,7 @@ public class GMSubs extends Spider {
                 }
                 pendingInf = null;
             } else {
-                out.append(link.apply(absolute, false)).append('\n');
+                out.append(link.apply(absolute, master)).append('\n');
             }
         }
         if (master && bestUri != null) {
@@ -342,7 +355,7 @@ public class GMSubs extends Spider {
     private static String rewriteUriAttr(String line, String baseUrl, BiFunction<String, Boolean, String> link, boolean master) {
         Matcher m = URI_ATTR.matcher(line);
         if (!m.find()) return line;
-        boolean playlist = master && line.startsWith("#EXT-X-MEDIA");
+        boolean playlist = master && (line.startsWith("#EXT-X-MEDIA") || line.startsWith("#EXT-X-I-FRAME-STREAM-INF"));
         String target = link.apply(resolve(baseUrl, m.group(1)), playlist);
         return line.substring(0, m.start(1)) + target + line.substring(m.end(1));
     }
@@ -406,7 +419,7 @@ public class GMSubs extends Spider {
         try (Response res = stream().newCall(request(url, headers)).execute()) {
             if (!res.isSuccessful() || res.body() == null) return status(res.code());
             String body = rewritePlaylist(res.body().string(), res.request().url().toString(), (target, playlist) ->
-                    playlist ? withQuery(target, "access_token", token) : target);
+                    playlist ? tokenManifestUrl(target, token) : target, false);
             return new Object[]{200, HLS, new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8))};
         }
     }
