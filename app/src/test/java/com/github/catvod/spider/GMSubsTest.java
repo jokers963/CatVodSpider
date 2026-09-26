@@ -145,6 +145,16 @@ public class GMSubsTest {
                 GMSubs.tokenManifestUrl("https://www.av01.media/api/v1/videos/7/manifest/high.m3u8?access_token=Z", "T"));
     }
 
+    @Test
+    public void adaptiveMediaPlaylistRoutesInitializationAndSegmentsWithoutDroppingTokens() {
+        String media = "#EXTM3U\n#EXT-X-MAP:URI=\"https://customers.iw01.xyz/init.mp4?access_token=T\"\n"
+                + "#EXTINF:5,\nhttps://customers.iw01.xyz/seg.m4s?access_token=T\n";
+        String result = GMSubs.rewritePlaylist(media, "https://customers.iw01.xyz/index.m3u8",
+                (url, playlist) -> (playlist ? "manifest:" : "media:") + url, false);
+        assertTrue(result.contains("URI=\"media:https://customers.iw01.xyz/init.mp4?access_token=T\""));
+        assertTrue(result.contains("\nmedia:https://customers.iw01.xyz/seg.m4s?access_token=T\n"));
+    }
+
     private static byte[] readAll(InputStream in) throws Exception {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         byte[] buf = new byte[4096];

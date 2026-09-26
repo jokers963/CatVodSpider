@@ -407,9 +407,10 @@ public class GMSubs extends Spider {
     public Object[] proxy(Map<String, String> params) throws Exception {
         String type = params.get("type");
         String url = params.get("url");
-        if (url == null || !url.startsWith("http") || !("m3u8".equals(type) || "ts".equals(type) || "master".equals(type))) return gm.proxy(params);
+        if (url == null || !url.startsWith("http") || !("m3u8".equals(type) || "ts".equals(type) || "master".equals(type) || "media".equals(type))) return gm.proxy(params);
         Map<String, String> headers = headers(params.get("h"));
         if ("master".equals(type)) return proxyTokenMaster(url, headers);
+        if ("media".equals(type)) return proxyMedia(url, headers);
         return "m3u8".equals(type) ? proxyPlaylist(url, headers) : proxySegment(url, headers);
     }
 
@@ -419,9 +420,21 @@ public class GMSubs extends Spider {
         try (Response res = stream().newCall(request(url, headers)).execute()) {
             if (!res.isSuccessful() || res.body() == null) return status(res.code());
             String body = rewritePlaylist(res.body().string(), res.request().url().toString(), (target, playlist) ->
-                    playlist ? tokenManifestUrl(target, token) : target, false);
+                    proxyUrl(proxyBase(), playlist ? "master" : "media",
+                            playlist ? tokenManifestUrl(target, token) : target, headers), false);
             return new Object[]{200, HLS, new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8))};
         }
+    }
+
+    /** Keep AV01's initialization and media requests on the same client and headers as its manifests. */
+    private Object[] proxyMedia(String url, Map<String, String> headers) throws IOException {
+        Response res = stream().newCall(request(url, headers)).execute();
+        if (!res.isSuccessful() || res.body() == null) {
+            int code = res.code();
+            res.close();
+            return status(code);
+        }
+        return new Object[]{200, res.header("Content-Type", "application/octet-stream"), res.body().byteStream()};
     }
 
     private Object[] proxyPlaylist(String url, Map<String, String> headers) throws IOException {
