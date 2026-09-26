@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Jable
 // @namespace    luoyuqiuspider
-// @version      1.0.4
+// @version      1.0.5
 // @description  Jable WebView adapter for the open-source GM spider runtime.
 // @match        https://jable.tv/*
 // @match        https://*.jable.tv/*
@@ -80,7 +80,7 @@
                 vod_name: title,
                 vod_pic: image,
                 vod_content: title,
-                vod_play_from: "Jable",
+                vod_play_from: ["Jable", ids[0], title].join(" "),
                 vod_play_url: /^https:\/\/[^\s]+\.m3u8(?:\?|$)/i.test(playUrl) ? "播放$" + playUrl : ""
             }]};
         }
