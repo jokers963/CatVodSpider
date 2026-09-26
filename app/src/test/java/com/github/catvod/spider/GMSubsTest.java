@@ -20,6 +20,7 @@ public class GMSubsTest {
     public void embedTapTargetsOnlyTheRequestedPlayerPage() {
         String descriptor = "{\"name\":\"REAL-795 title\",\"ext\":{\"replace\":{\"pathname\":\"1234\",\"link\":2}}}";
         assertEquals("https://supjav.com/zh/1234#2", GMSubs.embedPageFromDescriptor(descriptor));
+        assertEquals("https://supjav.com/zh/1234.html#2", GMSubs.embedPageFromDescriptor(descriptor.replace("1234", "1234.html")));
         assertEquals("", GMSubs.embedPageFromDescriptor("{\"ext\":{\"replace\":{\"pathname\":\"../evil\",\"link\":2}}}"));
         assertEquals("", GMSubs.embedPageFromDescriptor("https://supjav.com/zh/1234"));
         assertEquals("", GMSubs.embedPageFromDescriptor("invalid"));

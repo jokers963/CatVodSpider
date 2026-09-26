@@ -191,7 +191,7 @@ public class GMSubs extends Spider {
             JSONObject replace = new JSONObject(text).getJSONObject("ext").getJSONObject("replace");
             String page = replace.optString("pathname");
             String line = replace.optString("link");
-            return page.matches("[0-9]+") && line.matches("[0-9]+")
+            return page.matches("[0-9]+(?:\\.html)?") && line.matches("[0-9]+")
                     ? "https://supjav.com/zh/" + page + "#" + line : "";
         } catch (Exception ignored) {
             return "";
@@ -362,7 +362,7 @@ public class GMSubs extends Spider {
         embedTapFlag = flag == null ? "" : flag;
         embedTapUrl = embedPageUrl(id);
         int generation = embedTapGeneration.incrementAndGet();
-        Log.i(TAP, "schedule " + flag + " gen " + generation);
+        Log.i(TAP, "schedule " + flag + " gen " + generation + " targetValid=" + !embedTapUrl.isEmpty());
         Init.post(() -> attemptEmbedTap(generation, 0, 0), 1500);
     }
 
