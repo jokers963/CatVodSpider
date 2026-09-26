@@ -56,8 +56,6 @@ public class GMSubs extends Spider {
     private static final String EMBED_RECT = "(function(){var f=document.getElementById('video');if(!f)return '';"
             + "try{f.scrollIntoView({block:'center'})}catch(e){}"
             + "var r=f.getBoundingClientRect();var x=r.left+r.width/2,y=r.top+r.height/2;"
-            + "for(var i=0;i<8;i++){var t=document.elementFromPoint(x,y);"
-            + "if(!t||t===f||f.contains(t)||t.contains(f))break;t.remove();}"
             + "var top=document.elementFromPoint(x,y);"
             + "var clear=!top||top===f||f.contains(top)||top.contains(f);"
             + "var src=f.src||f.getAttribute('src')||'';"
@@ -252,12 +250,6 @@ public class GMSubs extends Spider {
         return false;
     }
 
-    static String clickFlagScript(String flag) {
-        String name = flag == null ? "" : flag.trim().replaceAll("[^A-Za-z0-9]", "");
-        return "(function(){var n='" + name + "'.toUpperCase();var list=document.querySelectorAll('.video-wrap .btn-server');"
-                + "for(var i=0;i<list.length;i++){if((list[i].textContent||'').trim().toUpperCase()===n){list[i].click();return n;}}return '';})()";
-    }
-
     static String embedSrc(String raw) {
         String json = unwrapJsString(raw);
         if (json.isEmpty()) return "";
@@ -360,7 +352,6 @@ public class GMSubs extends Spider {
         try {
             webView.setVisibility(View.VISIBLE);
             webView.evaluateJavascript("try{GmSpiderInject.ShowWebview()}catch(e){}", null);
-            if (misses == 0) webView.evaluateJavascript(clickFlagScript(embedTapFlag), null);
         } catch (Throwable ignored) {
         }
         if (webView.getWidth() <= 200 || webView.getHeight() <= 200) {

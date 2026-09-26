@@ -35,14 +35,6 @@ public class GMSubsTest {
     }
 
     @Test
-    public void clicksTheNamedServerButtonInsideThePage() {
-        String script = GMSubs.clickFlagScript("ST");
-        assertTrue(script.contains("'ST'"));
-        assertTrue(script.contains("btn-server"));
-        assertFalse(GMSubs.clickFlagScript("ST!; drop").contains("!;"));
-    }
-
-    @Test
     public void waitsForTheRealEmbedHostBeforeTapping() {
         assertTrue(GMSubs.embedSrcReady("ST", "https://streamtape.com/e/abc"));
         assertTrue(GMSubs.embedSrcReady("ST", "https://964695132.tapecontent.net/radosgw/x"));
@@ -62,6 +54,7 @@ public class GMSubsTest {
         assertEquals(100, point[1]);
         assertEquals(null, GMSubs.embedTapPoint("\"{\\\"x\\\":100,\\\"y\\\":200,\\\"w\\\":400,\\\"h\\\":300,\\\"iw\\\":1000}\"", 500, 800));
         assertEquals(null, GMSubs.embedTapPoint("\"{\\\"x\\\":10,\\\"y\\\":10,\\\"w\\\":20,\\\"h\\\":20,\\\"iw\\\":1000,\\\"clear\\\":1}\"", 500, 800));
+        assertEquals(null, GMSubs.embedTapPoint("\"{\\\"x\\\":100,\\\"y\\\":200,\\\"w\\\":400,\\\"h\\\":300,\\\"iw\\\":1000,\\\"clear\\\":0}\"", 500, 800));
     }
 
     @Test
