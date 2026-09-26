@@ -65,6 +65,7 @@ public class GMSubs extends Spider {
     private final AtomicInteger embedTapGeneration = new AtomicInteger();
     private volatile String embedTapFlag = "";
     private volatile String embedTapUrl = "";
+    private volatile WebView embedWebView;
     private static final int TS_PACKET = 188;
     private static final int SNIFF_BYTES = 64 * 1024;
     private static OkHttpClient http;
@@ -341,6 +342,7 @@ public class GMSubs extends Spider {
         try {
             JSONObject play = new JSONObject(result);
             if (play.optString("url").isEmpty()) return result;
+            if (embed) cancelEmbedTap();
             boolean changed = proxyFakePngHls(play) || proxyTokenMaster(play);
             JSONArray subs = subtitles(codeFromPlay(flag, id));
             if (subs.length() > 0) {
@@ -355,10 +357,13 @@ public class GMSubs extends Spider {
 
     private void cancelEmbedTap() {
         embedTapGeneration.incrementAndGet();
-        Init.post(this::hideEmbedWebView, 200);
+        WebView previous = embedWebView;
+        Init.post(() -> hideEmbedWebView(previous), 200);
     }
 
     private void scheduleEmbedTap(String flag, String id) {
+        cancelEmbedTap();
+        embedWebView = null;
         embedTapFlag = flag == null ? "" : flag;
         embedTapUrl = embedPageUrl(id);
         int generation = embedTapGeneration.incrementAndGet();
@@ -389,6 +394,7 @@ public class GMSubs extends Spider {
             return;
         }
         WebView webView = views.get(index);
+        embedWebView = webView;
         try {
             // Temporary USB-only inspection; removed after the embedded-route diagnosis.
             WebView.setWebContentsDebuggingEnabled(true);
@@ -420,15 +426,22 @@ public class GMSubs extends Spider {
             }
             dispatchTap(webView, point[0], point[1]);
             Log.i(TAP, "tap " + (taps + 1) + " at " + point[0] + "," + point[1]);
-            Init.post(this::hideEmbedWebView, 10000);
+            Init.post(() -> {
+                if (generation == embedTapGeneration.get()) hideEmbedWebView(webView);
+            }, 10000);
             Init.post(() -> attemptEmbedTap(generation, misses, taps + 1), 8000);
         });
     }
 
     private void hideEmbedWebView() {
-        WebView webView = supjavWebView();
+        hideEmbedWebView(embedWebView);
+    }
+
+    private static void hideEmbedWebView(WebView webView) {
         if (webView == null) return;
         try {
+            // The same view can navigate to a provider's ad; its URL no longer identifies it.
+            webView.setVisibility(View.INVISIBLE);
             webView.evaluateJavascript("try{GmSpiderInject.HideWebview()}catch(e){}", null);
         } catch (Throwable ignored) {
         }
@@ -437,23 +450,13 @@ public class GMSubs extends Spider {
     private List<WebView> candidateWebViews() {
         List<WebView> all = new ArrayList<>();
         for (View root : windowRoots()) collectWebViews(root, all);
-        List<WebView> preferred = new ArrayList<>();
-        List<WebView> rest = new ArrayList<>();
+        List<WebView> matching = new ArrayList<>();
         for (WebView webView : all) {
             String url = webView.getUrl();
             if (embedTapUrl.isEmpty() || !embedTapUrl.equals(url)) continue;
-            boolean supjav = url != null && url.contains("supjav.com");
-            if (!supjav && (webView.getWidth() <= 200 || webView.getHeight() <= 200)) continue;
-            if (supjav) preferred.add(webView);
-            else rest.add(webView);
+            matching.add(webView);
         }
-        preferred.addAll(rest);
-        return preferred;
-    }
-
-    private WebView supjavWebView() {
-        List<WebView> views = candidateWebViews();
-        return views.isEmpty() ? null : views.get(0);
+        return matching;
     }
 
     private static List<View> windowRoots() {
@@ -485,29 +488,6 @@ public class GMSubs extends Spider {
             return null;
         }
         return null;
-    }
-
-    private static WebView preferWebView(WebView current, WebView candidate) {
-        if (candidate == null) return current;
-        if (current == null || candidate.getWidth() > current.getWidth()) return candidate;
-        return current;
-    }
-
-    private static WebView supjavWebView(View root) {
-        List<WebView> views = new ArrayList<>();
-        collectWebViews(root, views);
-        WebView found = null;
-        WebView fallback = null;
-        for (WebView webView : views) {
-            if (webView.getWidth() <= 200) continue;
-            String url = webView.getUrl();
-            if (url != null && url.contains("supjav.com")) {
-                if (found == null || webView.getWidth() > found.getWidth()) found = webView;
-            } else if (fallback == null || webView.getWidth() > fallback.getWidth()) {
-                fallback = webView;
-            }
-        }
-        return found != null ? found : fallback;
     }
 
     private static void collectWebViews(View view, List<WebView> out) {
