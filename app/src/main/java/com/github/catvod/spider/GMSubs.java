@@ -360,7 +360,7 @@ public class GMSubs extends Spider {
         try {
             webView.setVisibility(View.VISIBLE);
             webView.evaluateJavascript("try{GmSpiderInject.ShowWebview()}catch(e){}", null);
-            if (misses % 3 == 0) webView.evaluateJavascript(clickFlagScript(embedTapFlag), null);
+            if (misses == 0) webView.evaluateJavascript(clickFlagScript(embedTapFlag), null);
         } catch (Throwable ignored) {
         }
         if (webView.getWidth() <= 200 || webView.getHeight() <= 200) {
