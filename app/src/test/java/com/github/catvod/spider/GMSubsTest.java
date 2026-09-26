@@ -17,6 +17,15 @@ import static org.junit.Assert.assertTrue;
 public class GMSubsTest {
 
     @Test
+    public void embedTapTargetsOnlyTheRequestedPlayerPage() {
+        String descriptor = "{\"name\":\"REAL-795 title\",\"ext\":{\"replace\":{\"pathname\":\"1234\",\"link\":2}}}";
+        assertEquals("https://supjav.com/zh/1234#2", GMSubs.embedPageFromDescriptor(descriptor));
+        assertEquals("", GMSubs.embedPageFromDescriptor("{\"ext\":{\"replace\":{\"pathname\":\"../evil\",\"link\":2}}}"));
+        assertEquals("", GMSubs.embedPageFromDescriptor("https://supjav.com/zh/1234"));
+        assertEquals("", GMSubs.embedPageFromDescriptor("invalid"));
+    }
+
+    @Test
     public void onlyStreamtapeAndVoeNeedATapInsideThePlayerFrame() {
         assertTrue(GMSubs.needsEmbedTap("ST"));
         assertTrue(GMSubs.needsEmbedTap("voe"));
