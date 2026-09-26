@@ -70,6 +70,13 @@ public class GMSubsTest {
     }
 
     @Test
+    public void reusesOnlyTheRetainedWebViewAfterItNavigatesAwayFromSupJav() {
+        assertTrue(GMSubs.isEmbedCandidate("https://supjav.com/zh/123#3", "https://ad.example/", true));
+        assertFalse(GMSubs.isEmbedCandidate("https://supjav.com/zh/123#3", "https://ad.example/", false));
+        assertFalse(GMSubs.isEmbedCandidate("", "https://supjav.com/zh/123#3", false));
+    }
+
+    @Test
     public void serverSelectionDoesNotReloadAnAlreadyLoadedActiveFrame() {
         String script = GMSubs.selectFlagScript("ST");
         assertTrue(script.contains("classList.contains('active')"));
