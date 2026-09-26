@@ -45,6 +45,14 @@ public class GMSubsTest {
     }
 
     @Test
+    public void serverSelectionDoesNotReloadAnAlreadyLoadedActiveFrame() {
+        String script = GMSubs.selectFlagScript("ST");
+        assertTrue(script.contains("classList.contains('active')"));
+        assertTrue(script.contains("f.src&&f.src!=='about:blank'"));
+        assertTrue(script.contains("list[i].click()"));
+    }
+
+    @Test
     public void mapsThePlayerFrameCenterIntoTheWebView() {
         String raw = "\"{\\\"x\\\":100,\\\"y\\\":200,\\\"w\\\":400,\\\"h\\\":300,\\\"iw\\\":1000,\\\"clear\\\":1}\"";
         assertEquals("", GMSubs.unwrapJsString("null"));

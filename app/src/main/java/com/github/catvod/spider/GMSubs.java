@@ -250,6 +250,14 @@ public class GMSubs extends Spider {
         return false;
     }
 
+    static String selectFlagScript(String flag) {
+        String name = flag == null ? "" : flag.trim().replaceAll("[^A-Za-z0-9]", "");
+        return "(function(){var n='" + name + "'.toUpperCase(),list=document.querySelectorAll('.video-wrap .btn-server'),"
+                + "f=document.getElementById('video');for(var i=0;i<list.length;i++){if((list[i].textContent||'').trim().toUpperCase()!==n)continue;"
+                + "if(list[i].classList.contains('active')&&f&&f.src&&f.src!=='about:blank')return 'ready';"
+                + "list[i].click();return 'selected';}return '';})()";
+    }
+
     static String embedSrc(String raw) {
         String json = unwrapJsString(raw);
         if (json.isEmpty()) return "";
@@ -352,6 +360,7 @@ public class GMSubs extends Spider {
         try {
             webView.setVisibility(View.VISIBLE);
             webView.evaluateJavascript("try{GmSpiderInject.ShowWebview()}catch(e){}", null);
+            if (misses == 0) webView.evaluateJavascript(selectFlagScript(embedTapFlag), null);
         } catch (Throwable ignored) {
         }
         if (webView.getWidth() <= 200 || webView.getHeight() <= 200) {
@@ -361,9 +370,11 @@ public class GMSubs extends Spider {
         webView.evaluateJavascript(EMBED_RECT, value -> {
             if (generation != embedTapGeneration.get()) return;
             int[] point = embedTapPoint(value, webView.getWidth(), webView.getHeight());
-            if (point == null || !embedSrcReady(embedTapFlag, embedSrc(value))) {
+            boolean hostReady = embedSrcReady(embedTapFlag, embedSrc(value));
+            if (point == null || !hostReady) {
                 if (misses % 3 == 0 && index == 0) {
-                    Log.i(TAP, "waiting frame " + views.size() + " " + webView.getWidth() + "x" + webView.getHeight());
+                    Log.i(TAP, "waiting " + (point == null ? "covered" : "host") + " frame "
+                            + views.size() + " " + webView.getWidth() + "x" + webView.getHeight());
                 }
                 tryEmbedTap(generation, misses, taps, views, index + 1);
                 return;
