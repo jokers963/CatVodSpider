@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MissAV
 // @namespace    luoyuqiuspider
-// @version      1.2.2
+// @version      1.2.3
 // @description  MissAV WebView adapter for the open-source GM spider runtime.
 // @match        https://missav.ws/*
 // @grant        unsafeWindow
@@ -100,22 +100,28 @@
     };
 
     let sent = false;
-    let poller = null;
+    let verificationShown = false;
     function sendResult() {
         if (sent || !spider[method]) return;
-        if (method === "detailContent") {
-            let playUrl = "";
-            try { playUrl = unsafeWindow.hls?.url || ""; } catch (_) {}
-            if (!playUrl && Date.now() - startedAt < 12000) return;
+        const challenged = /just a moment|checking your browser|verify you are human|请稍候/i.test(document.title)
+                || !!document.querySelector("#challenge-form, #challenge-stage, .cf-turnstile");
+        if (challenged && !verificationShown) {
+            verificationShown = true;
+            GmSpiderInject.ShowWebview();
         }
+        const result = challenged ? null : spider[method].apply(spider, args);
+        const ready = result && (method === "detailContent" ? result.list[0].vod_play_url : result.list.length);
+        if (!ready && Date.now() - startedAt < (challenged ? 55000 : 35000)) return;
         sent = true;
-        if (poller) clearInterval(poller);
-        const result = spider[method].apply(spider, args);
+        clearInterval(poller);
         GmSpiderInject.HideWebview();
-        GmSpiderInject.SetSpiderResult(JSON.stringify(result));
+        GmSpiderInject.SetSpiderResult(JSON.stringify(ready ? result : {
+            list: [], msg: challenged ? "站点验证未完成，请在页面完成验证后重试" : "未获取到站点内容或播放地址，请稍后重试"
+        }));
     }
     const startedAt = Date.now();
-    if (document.readyState === "complete") setTimeout(sendResult, 0);
-    else unsafeWindow.addEventListener("load", sendResult, {once: true});
-    if (method === "detailContent") poller = setInterval(sendResult, 250);
+    const poller = setInterval(sendResult, 400);
+    document.addEventListener("DOMContentLoaded", sendResult, {once: true});
+    unsafeWindow.addEventListener("load", sendResult, {once: true});
+    setTimeout(sendResult, 0);
 })();

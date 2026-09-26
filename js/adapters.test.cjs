@@ -57,4 +57,17 @@ vm.runInNewContext(fs.readFileSync(__dirname + '/jable.user.js', 'utf8'), {
 });
 assert.match(jableResult.list[0].vod_play_from, /abf-381/i);
 assert.equal(jableResult.list[0].vod_play_url, '播放$https://cdn.example/test.m3u8');
+let missNow = 0, missTick, missResult, missShows = 0;
+vm.runInNewContext(fs.readFileSync(__dirname + '/missav.user.js', 'utf8'), {
+    document: {title: 'Just a moment', querySelector: () => null, addEventListener() {}},
+    unsafeWindow: {addEventListener() {}}, Date: {now: () => missNow},
+    GmSpiderInject: {
+        GetSpiderArgs: () => '["detailContent",["abf-381"]]', HideWebview() {},
+        ShowWebview: () => missShows++, SetSpiderResult: text => { missResult = JSON.parse(text); }
+    },
+    setInterval: fn => { missTick = fn; return 1; }, clearInterval() {}, setTimeout: fn => fn()
+});
+missTick(); missTick(); assert.equal(missShows, 1); assert.equal(missResult, undefined);
+missNow = 55000; missTick();
+assert.deepEqual(missResult.list, []); assert.match(missResult.msg, /验证/);
 console.log('Adapter checks passed.');

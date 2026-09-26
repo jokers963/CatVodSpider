@@ -69,7 +69,7 @@
       "filterable": 0,
       "timeout": 60,
       "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/missav.user.js?v=5",
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/missav.user.js?v=6",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": true
