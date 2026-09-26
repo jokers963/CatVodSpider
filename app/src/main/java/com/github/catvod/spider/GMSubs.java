@@ -236,7 +236,7 @@ public class GMSubs extends Spider {
         return gm.searchContent(key, quick, pg);
     }
 
-    /** Streamtape and VOE need one real tap in the player frame. Other lines already request a file on their own. */
+    /** Streamtape and VOE need real taps in the player frame. Other lines already request a file on their own. */
     static boolean needsEmbedTap(String flag) {
         if (flag == null) return false;
         String name = flag.trim();
@@ -280,6 +280,10 @@ public class GMSubs extends Spider {
                     || host.endsWith(".cloudwindow-route.com") || host.endsWith(".voe-network.net");
         }
         return false;
+    }
+
+    static boolean isEmbedCandidate(String expectedUrl, String currentUrl, boolean retainedView) {
+        return retainedView || (expectedUrl != null && !expectedUrl.isEmpty() && expectedUrl.equals(currentUrl));
     }
 
     static String selectFlagScript(String flag) {
@@ -366,7 +370,6 @@ public class GMSubs extends Spider {
 
     private int scheduleEmbedTap(String flag, String id) {
         cancelEmbedTap();
-        embedWebView = null;
         embedTapFlag = flag == null ? "" : flag;
         embedTapUrl = embedPageUrl(id);
         int generation = embedTapGeneration.incrementAndGet();
@@ -376,7 +379,7 @@ public class GMSubs extends Spider {
     }
 
     private void attemptEmbedTap(int generation, int misses, int taps) {
-        if (generation != embedTapGeneration.get() || misses > 48 || taps >= 1) return;
+        if (generation != embedTapGeneration.get() || misses > 48 || taps >= 2) return;
         List<WebView> views = candidateWebViews();
         if (views.isEmpty()) {
             if (misses == 0 || misses % 4 == 0) Log.i(TAP, "waiting view " + misses);
@@ -400,9 +403,10 @@ public class GMSubs extends Spider {
         WebView webView = views.get(index);
         embedWebView = webView;
         try {
-            webView.setVisibility(View.VISIBLE);
             // ShowWebview scrolls back to the page top; do not call it during frame scrolling.
-            if (misses == 0) webView.evaluateJavascript(selectFlagScript(embedTapFlag), null);
+            if (misses == 0 && embedTapUrl.equals(webView.getUrl())) {
+                webView.evaluateJavascript(selectFlagScript(embedTapFlag), null);
+            }
         } catch (Throwable ignored) {
         }
         if (webView.getWidth() <= 200 || webView.getHeight() <= 200) {
@@ -421,6 +425,7 @@ public class GMSubs extends Spider {
                 tryEmbedTap(generation, misses, taps, views, index + 1);
                 return;
             }
+            webView.setVisibility(View.VISIBLE);
             if (taps == 0 && misses < 2) {
                 Log.i(TAP, "frame ready " + point[0] + "," + point[1]);
                 Init.post(() -> attemptEmbedTap(generation, 2, 0), 3500);
@@ -455,7 +460,7 @@ public class GMSubs extends Spider {
         List<WebView> matching = new ArrayList<>();
         for (WebView webView : all) {
             String url = webView.getUrl();
-            if (embedTapUrl.isEmpty() || !embedTapUrl.equals(url)) continue;
+            if (!isEmbedCandidate(embedTapUrl, url, webView == embedWebView)) continue;
             matching.add(webView);
         }
         return matching;
