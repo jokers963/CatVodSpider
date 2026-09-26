@@ -314,9 +314,20 @@ public class GMSubs extends Spider {
     }
 
     static String rewritePlaylist(String text, String baseUrl, BiFunction<String, Boolean, String> link, boolean highestOnly) {
+        return rewritePlaylist(text, baseUrl, link, highestOnly, Integer.MAX_VALUE);
+    }
+
+    static String rewritePlaylist(String text, String baseUrl, BiFunction<String, Boolean, String> link, boolean highestOnly, int maxHeight) {
         String[] lines = text.replace("\r", "").split("\n");
         StringBuilder out = new StringBuilder();
         boolean master = text.contains("#EXT-X-STREAM-INF");
+        long lowest = Long.MAX_VALUE;
+        for (String line : lines) if (line.startsWith("#EXT-X-STREAM-INF")) {
+            long height = variantScore(line)[0];
+            if (height > 0) lowest = Math.min(lowest, height);
+        }
+        long allowed = lowest == Long.MAX_VALUE ? maxHeight : Math.max(maxHeight, lowest);
+        boolean skipVariant = false;
         String bestInf = null;
         String bestUri = null;
         long[] bestScore = null;
@@ -324,6 +335,15 @@ public class GMSubs extends Spider {
         for (String raw : lines) {
             String line = raw.trim();
             if (line.isEmpty()) continue;
+            if (master && line.startsWith("#EXT-X-STREAM-INF") && variantScore(line)[0] > allowed) {
+                skipVariant = true;
+                continue;
+            }
+            if (skipVariant && !line.startsWith("#")) {
+                skipVariant = false;
+                continue;
+            }
+            if (master && line.startsWith("#EXT-X-I-FRAME-STREAM-INF") && variantScore(line)[0] > allowed) continue;
             if (master && highestOnly && line.startsWith("#EXT-X-STREAM-INF")) {
                 pendingInf = line;
                 continue;
@@ -407,34 +427,28 @@ public class GMSubs extends Spider {
     public Object[] proxy(Map<String, String> params) throws Exception {
         String type = params.get("type");
         String url = params.get("url");
-        if (url == null || !url.startsWith("http") || !("m3u8".equals(type) || "ts".equals(type) || "master".equals(type) || "media".equals(type))) return gm.proxy(params);
+        if (url == null || !url.startsWith("http") || !("m3u8".equals(type) || "ts".equals(type) || "master".equals(type))) return gm.proxy(params);
         Map<String, String> headers = headers(params.get("h"));
         if ("master".equals(type)) return proxyTokenMaster(url, headers);
-        if ("media".equals(type)) return proxyMedia(url, headers);
         return "m3u8".equals(type) ? proxyPlaylist(url, headers) : proxySegment(url, headers);
     }
 
     private Object[] proxyTokenMaster(String url, Map<String, String> headers) throws IOException {
         HttpUrl parsed = HttpUrl.parse(url);
         String token = parsed == null ? null : parsed.queryParameter("access_token");
+        // Match AV01's web player: cold tokens offer up to 720p, hot tokens up to 1080p.
+        int maxHeight = 720;
+        try {
+            String payload = new String(Base64.decode(token.split("\\.")[1], Base64.URL_SAFE), StandardCharsets.UTF_8);
+            if (new JSONObject(payload).optBoolean("is_hot")) maxHeight = 1080;
+        } catch (Exception ignored) {
+        }
         try (Response res = stream().newCall(request(url, headers)).execute()) {
             if (!res.isSuccessful() || res.body() == null) return status(res.code());
             String body = rewritePlaylist(res.body().string(), res.request().url().toString(), (target, playlist) ->
-                    proxyUrl(proxyBase(), playlist ? "master" : "media",
-                            playlist ? tokenManifestUrl(target, token) : target, headers), false);
+                    playlist ? tokenManifestUrl(target, token) : target, false, maxHeight);
             return new Object[]{200, HLS, new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8))};
         }
-    }
-
-    /** Keep AV01's initialization and media requests on the same client and headers as its manifests. */
-    private Object[] proxyMedia(String url, Map<String, String> headers) throws IOException {
-        Response res = stream().newCall(request(url, headers)).execute();
-        if (!res.isSuccessful() || res.body() == null) {
-            int code = res.code();
-            res.close();
-            return status(code);
-        }
-        return new Object[]{200, res.header("Content-Type", "application/octet-stream"), res.body().byteStream()};
     }
 
     private Object[] proxyPlaylist(String url, Map<String, String> headers) throws IOException {

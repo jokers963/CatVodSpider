@@ -146,13 +146,18 @@ public class GMSubsTest {
     }
 
     @Test
-    public void adaptiveMediaPlaylistRoutesInitializationAndSegmentsWithoutDroppingTokens() {
-        String media = "#EXTM3U\n#EXT-X-MAP:URI=\"https://customers.iw01.xyz/init.mp4?access_token=T\"\n"
-                + "#EXTINF:5,\nhttps://customers.iw01.xyz/seg.m4s?access_token=T\n";
-        String result = GMSubs.rewritePlaylist(media, "https://customers.iw01.xyz/index.m3u8",
-                (url, playlist) -> (playlist ? "manifest:" : "media:") + url, false);
-        assertTrue(result.contains("URI=\"media:https://customers.iw01.xyz/init.mp4?access_token=T\""));
-        assertTrue(result.contains("\nmedia:https://customers.iw01.xyz/seg.m4s?access_token=T\n"));
+    public void coldTokenKeepsOnlySiteSupportedQualitiesAndFallsBackToLowest() {
+        String master = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=300000,RESOLUTION=640x360\nlow.m3u8\n"
+                + "#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=1280x720\nmid.m3u8\n"
+                + "#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1920x1080\nhigh.m3u8\n"
+                + "#EXT-X-I-FRAME-STREAM-INF:RESOLUTION=1920x1080,URI=\"iframe.m3u8\"\n";
+        String out = GMSubs.rewritePlaylist(master, "https://cdn.example/master.m3u8", (url, playlist) -> url, false, 720);
+        assertTrue(out.contains("low.m3u8"));
+        assertTrue(out.contains("mid.m3u8"));
+        assertFalse(out.contains("high.m3u8"));
+        assertFalse(out.contains("iframe.m3u8"));
+        assertTrue(GMSubs.rewritePlaylist("#EXTM3U\n#EXT-X-STREAM-INF:RESOLUTION=1920x1080\nonly.m3u8\n",
+                "https://cdn.example/master.m3u8", (url, playlist) -> url, false, 720).contains("only.m3u8"));
     }
 
     private static byte[] readAll(InputStream in) throws Exception {
