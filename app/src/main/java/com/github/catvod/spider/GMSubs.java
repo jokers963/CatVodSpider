@@ -396,8 +396,6 @@ public class GMSubs extends Spider {
         WebView webView = views.get(index);
         embedWebView = webView;
         try {
-            // Temporary USB-only inspection; removed after the embedded-route diagnosis.
-            WebView.setWebContentsDebuggingEnabled(true);
             webView.setVisibility(View.VISIBLE);
             // ShowWebview scrolls back to the page top; do not call it during frame scrolling.
             if (misses == 0) webView.evaluateJavascript(selectFlagScript(embedTapFlag), null);
