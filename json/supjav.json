@@ -14,6 +14,7 @@
       "ext": {
         "userScript": "https://jokers963.github.io/CatVodSpider/js/javguru.user.js?v=1",
         "debug": false,
+        "webViewSettings": {"blockNetworkImage": true},
         "playUrlMatch": [
           "https://*.cdn-centaurus.com/*/master.m3u8*",
           "https://*.cloudatacdn.com/*",
