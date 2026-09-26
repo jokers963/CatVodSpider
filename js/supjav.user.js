@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      1.0.22
+// @version      1.0.23
 // @description  SupJav WebView adapter for the open-source GM spider runtime.
 // @match        https://supjav.com/*
 // @require      https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.slim.min.js
@@ -76,6 +76,7 @@
                     ? $(".video-wrap .cd-server:first .btn-server")
                     : $(".video-wrap .btn-server");
             buttons.each(function (i) {
+                if (/^(ST|VOE)$/i.test($(this).text().trim())) return;
                 media.push({
                     from: $(this).text().trim() || "播放",
                     media: [{name: name, type: "webview", ext: {replace: {pathname: ids[0], link: i}}}]
@@ -104,14 +105,11 @@
                     }
                 }
             }
-            tappedLine = button ? (button.textContent || "").trim() : "";
             if (button) button.click();
-            if (!/^(ST|VOE)$/i.test(tappedLine)) {
-                document.querySelectorAll('[id^="asg-"]').forEach(function (el) { el.remove(); });
-                document.querySelectorAll("iframe").forEach(function (el) {
-                    if (el.id !== "video") el.remove();
-                });
-            }
+            document.querySelectorAll('[id^="asg-"]').forEach(function (el) { el.remove(); });
+            document.querySelectorAll("iframe").forEach(function (el) {
+                if (el.id !== "video") el.remove();
+            });
             const arm = function () {
                 const frame = document.getElementById("video");
                 if (!frame || frame.getAttribute("data-armed") === "1") return !!frame;
@@ -143,7 +141,6 @@
     }
 
     let sent = false;
-    let tappedLine = "";
     const startedAt = Date.now();
     function sendResult() {
         if (sent) return;
@@ -166,17 +163,8 @@
                 vod_year: ""
             }];
         }
-        const line = tappedLine || ((document.querySelector(".btn-server.active") || {}).textContent || "").trim();
-        const embed = method === "playerContent" && /^(ST|VOE)$/i.test(line);
-        if (!embed) GmSpiderInject.HideWebview();
+        GmSpiderInject.HideWebview();
         GmSpiderInject.SetSpiderResult(JSON.stringify(result));
-        if (embed) {
-            const show = function () { try { GmSpiderInject.ShowWebview(); } catch (e) {} };
-            show();
-            setTimeout(show, 400);
-            setTimeout(show, 1200);
-            setTimeout(function () { try { GmSpiderInject.HideWebview(); } catch (e) {} }, 25000);
-        }
     }
 
     const poller = setInterval(sendResult, 400);

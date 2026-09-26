@@ -1,14 +1,7 @@
 package com.github.catvod.spider;
 
-import android.app.Activity;
 import android.content.Context;
-import android.os.SystemClock;
 import android.util.Base64;
-import android.util.Log;
-import android.view.MotionEvent;
-import android.view.View;
-import android.view.ViewGroup;
-import android.webkit.WebView;
 
 import com.github.catvod.crawler.Spider;
 
@@ -32,7 +25,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -52,20 +44,6 @@ public class GMSubs extends Spider {
     private static final Pattern TOKEN_MASTER = Pattern.compile("(?i)^https://www\\.av01\\.media/api/v1/videos/\\d+/manifest/master\\.m3u8\\?(.*&)?access_token=");
     private static final Pattern URI_ATTR = Pattern.compile("URI=\"([^\"]+)\"");
     private static final String HLS = "application/x-mpegURL";
-    /** ST and VOE only start the file request after a real tap on the play control inside their frame. */
-    private static final String EMBED_RECT = "(function(){var f=document.getElementById('video');if(!f)return '';"
-            + "document.querySelectorAll('[id^=asg-]').forEach(function(el){el.remove()});"
-            + "try{f.scrollIntoView({block:'center'})}catch(e){}"
-            + "var r=f.getBoundingClientRect();var x=r.left+r.width/2,y=r.top+r.height/2;"
-            + "var top=document.elementFromPoint(x,y);"
-            + "var clear=!top||top===f||f.contains(top)||top.contains(f);"
-            + "var src=f.src||f.getAttribute('src')||'';"
-            + "return JSON.stringify({x:x,y:y,w:r.width,h:r.height,iw:window.innerWidth||1,clear:clear?1:0,src:src});})()";
-    private static final String TAP = "GMSubsTap";
-    private final AtomicInteger embedTapGeneration = new AtomicInteger();
-    private volatile String embedTapFlag = "";
-    private volatile String embedTapUrl = "";
-    private volatile WebView embedWebView;
     private static final int TS_PACKET = 188;
     private static final int SNIFF_BYTES = 64 * 1024;
     private static OkHttpClient http;
@@ -177,28 +155,6 @@ public class GMSubs extends Spider {
         }
     }
 
-    /** Target only this playback request, never other hidden GM pages still attached to the window. */
-    static String embedPageUrl(String id) {
-        try {
-            String text = new String(Base64.decode(playIdPayload(id), Base64.DEFAULT), StandardCharsets.UTF_8);
-            return embedPageFromDescriptor(text);
-        } catch (Exception ignored) {
-            return "";
-        }
-    }
-
-    static String embedPageFromDescriptor(String text) {
-        try {
-            JSONObject replace = new JSONObject(text).getJSONObject("ext").getJSONObject("replace");
-            String page = replace.optString("pathname");
-            String line = replace.optString("link");
-            return page.matches("[0-9]+(?:\\.html)?") && line.matches("[0-9]+")
-                    ? "https://supjav.com/zh/" + page + "#" + line : "";
-        } catch (Exception ignored) {
-            return "";
-        }
-    }
-
     @Override
     public void init(Context context, String extend) throws Exception {
         gm = (Spider) Class.forName("com.github.catvod.spider.GM", true, getClass().getClassLoader()).getDeclaredConstructor().newInstance();
@@ -236,111 +192,12 @@ public class GMSubs extends Spider {
         return gm.searchContent(key, quick, pg);
     }
 
-    /** Streamtape and VOE need one real tap in the player frame. Other lines already request a file on their own. */
-    static boolean needsEmbedTap(String flag) {
-        if (flag == null) return false;
-        String name = flag.trim();
-        return name.equalsIgnoreCase("ST") || name.equalsIgnoreCase("VOE");
-    }
-
-    /** Map the player-frame center from CSS pixels into the WebView. Empty when the frame is not on screen yet. */
-    static int[] embedTapPoint(String raw, int viewWidth, int viewHeight) {
-        String json = unwrapJsString(raw);
-        if (json.isEmpty() || viewWidth < 1 || viewHeight < 1) return null;
-        try {
-            JSONObject point = new JSONObject(json);
-            double width = point.optDouble("w");
-            double height = point.optDouble("h");
-            double innerWidth = point.optDouble("iw");
-            if (width < 80 || height < 80 || innerWidth < 1 || point.optInt("clear") != 1) return null;
-            double scale = viewWidth / innerWidth;
-            int x = (int) Math.round(point.optDouble("x") * scale);
-            int y = (int) Math.round(point.optDouble("y") * scale);
-            if (x < 0 || y < 0 || x >= viewWidth || y >= viewHeight) return null;
-            return new int[]{x, y};
-        } catch (Exception ignored) {
-            return null;
-        }
-    }
-
-    /** ST/VOE only tap after the frame points at that host, not the live-ad iframe. */
-    static boolean embedSrcReady(String flag, String src) {
-        HttpUrl url = src == null ? null : HttpUrl.parse(src);
-        if (url == null || !url.isHttps()) return false;
-        String host = url.host();
-        // The site's selected player frame wraps both providers before loading their nested frame.
-        if (needsEmbedTap(flag) && host.equals("lk1.supremejav.com")) return true;
-        if ("ST".equalsIgnoreCase(flag)) {
-            return host.equals("streamtape.com") || host.endsWith(".streamtape.com")
-                    || host.equals("strtape.com") || host.endsWith(".strtape.com")
-                    || host.endsWith(".tapecontent.net");
-        }
-        if ("VOE".equalsIgnoreCase(flag)) {
-            return host.equals("voe.sx") || host.endsWith(".voe.sx")
-                    || host.endsWith(".cloudwindow-route.com") || host.endsWith(".voe-network.net");
-        }
-        return false;
-    }
-
-    static String selectFlagScript(String flag) {
-        String name = flag == null ? "" : flag.trim().replaceAll("[^A-Za-z0-9]", "");
-        return "(function(){var n='" + name + "'.toUpperCase(),list=document.querySelectorAll('.video-wrap .btn-server'),"
-                + "f=document.getElementById('video');for(var i=0;i<list.length;i++){if((list[i].textContent||'').trim().toUpperCase()!==n)continue;"
-                + "if(list[i].classList.contains('active')&&f&&f.src&&f.src!=='about:blank')return 'ready';"
-                + "list[i].click();return 'selected';}return '';})()";
-    }
-
-    static String embedSrc(String raw) {
-        String json = unwrapJsString(raw);
-        if (json.isEmpty()) return "";
-        try {
-            return new JSONObject(json).optString("src");
-        } catch (Exception ignored) {
-            return "";
-        }
-    }
-
-    static String unwrapJsString(String value) {
-        if (value == null || value.equals("null")) return "";
-        try {
-            if (value.startsWith("\"")) return new JSONArray("[" + value + "]").getString(0);
-        } catch (Exception ignored) {
-            return "";
-        }
-        return value;
-    }
-
-    /** The host keeps watching the page after a match result, so the play-control tap must stay armed. */
-    static boolean isMatchResult(String result) {
-        return "match".equalsIgnoreCase(resultType(result));
-    }
-
-    static String resultType(String result) {
-        if (result == null || result.isEmpty()) return "";
-        try {
-            return new JSONObject(result).optString("type");
-        } catch (Exception ignored) {
-            return "";
-        }
-    }
-
     @Override
     public String playerContent(String flag, String id, List<String> vipFlags) throws Exception {
-        boolean embed = needsEmbedTap(flag);
-        int generation = embed ? scheduleEmbedTap(flag, id) : -1;
-        if (!embed) cancelEmbedTap();
         String result = gm.playerContent(flag, id, vipFlags);
-        boolean finished = embed && !isMatchResult(result) && finishEmbedTap(generation);
-        if (embed) Log.i(TAP, "gm returned " + resultType(result));
         try {
             JSONObject play = new JSONObject(result);
             if (play.optString("url").isEmpty()) return result;
-            if (finished) {
-                WebView resolved = embedWebView;
-                Init.post(() -> {
-                    if (embedTapGeneration.get() == generation + 1) hideEmbedWebView(resolved);
-                }, 200);
-            }
             boolean changed = proxyFakePngHls(play) || proxyTokenMaster(play);
             JSONArray subs = subtitles(codeFromPlay(flag, id));
             if (subs.length() > 0) {
@@ -351,162 +208,6 @@ public class GMSubs extends Spider {
         } catch (Exception ignored) {
             return result;
         }
-    }
-
-    private void cancelEmbedTap() {
-        embedTapGeneration.incrementAndGet();
-        WebView previous = embedWebView;
-        Init.post(() -> hideEmbedWebView(previous), 200);
-    }
-
-    /** An older resolver must never cancel a newer request's pending player tap. */
-    boolean finishEmbedTap(int generation) {
-        return embedTapGeneration.compareAndSet(generation, generation + 1);
-    }
-
-    private int scheduleEmbedTap(String flag, String id) {
-        cancelEmbedTap();
-        embedWebView = null;
-        embedTapFlag = flag == null ? "" : flag;
-        embedTapUrl = embedPageUrl(id);
-        int generation = embedTapGeneration.incrementAndGet();
-        Log.i(TAP, "schedule " + flag + " gen " + generation + " targetValid=" + !embedTapUrl.isEmpty());
-        Init.post(() -> attemptEmbedTap(generation, 0, 0), 1500);
-        return generation;
-    }
-
-    private void attemptEmbedTap(int generation, int misses, int taps) {
-        if (generation != embedTapGeneration.get() || misses > 48 || taps >= 1) return;
-        List<WebView> views = candidateWebViews();
-        if (views.isEmpty()) {
-            if (misses == 0 || misses % 4 == 0) Log.i(TAP, "waiting view " + misses);
-            Init.post(() -> attemptEmbedTap(generation, misses + 1, taps), 1200);
-            return;
-        }
-        tryEmbedTap(generation, misses, taps, views, 0);
-    }
-
-    private void tryEmbedTap(int generation, int misses, int taps, List<WebView> views, int index) {
-        if (generation != embedTapGeneration.get()) return;
-        if (index >= views.size()) {
-            if (misses >= 32) {
-                Log.i(TAP, "give up " + misses);
-                hideEmbedWebView();
-                return;
-            }
-            Init.post(() -> attemptEmbedTap(generation, misses + 1, taps), 1200);
-            return;
-        }
-        WebView webView = views.get(index);
-        embedWebView = webView;
-        try {
-            webView.setVisibility(View.VISIBLE);
-            // ShowWebview scrolls back to the page top; do not call it during frame scrolling.
-            if (misses == 0) webView.evaluateJavascript(selectFlagScript(embedTapFlag), null);
-        } catch (Throwable ignored) {
-        }
-        if (webView.getWidth() <= 200 || webView.getHeight() <= 200) {
-            tryEmbedTap(generation, misses, taps, views, index + 1);
-            return;
-        }
-        webView.evaluateJavascript(EMBED_RECT, value -> {
-            if (generation != embedTapGeneration.get()) return;
-            int[] point = embedTapPoint(value, webView.getWidth(), webView.getHeight());
-            boolean hostReady = embedSrcReady(embedTapFlag, embedSrc(value));
-            if (point == null || !hostReady) {
-                if (misses % 3 == 0 && index == 0) {
-                    Log.i(TAP, "waiting " + (point == null ? "covered" : "host") + " frame "
-                            + views.size() + " " + webView.getWidth() + "x" + webView.getHeight());
-                }
-                tryEmbedTap(generation, misses, taps, views, index + 1);
-                return;
-            }
-            if (taps == 0 && misses < 2) {
-                Log.i(TAP, "frame ready " + point[0] + "," + point[1]);
-                Init.post(() -> attemptEmbedTap(generation, 2, 0), 3500);
-                return;
-            }
-            dispatchTap(webView, point[0], point[1]);
-            Log.i(TAP, "tap " + (taps + 1) + " at " + point[0] + "," + point[1]);
-            Init.post(() -> {
-                if (generation == embedTapGeneration.get()) hideEmbedWebView(webView);
-            }, 10000);
-            Init.post(() -> attemptEmbedTap(generation, misses, taps + 1), 8000);
-        });
-    }
-
-    private void hideEmbedWebView() {
-        hideEmbedWebView(embedWebView);
-    }
-
-    private static void hideEmbedWebView(WebView webView) {
-        if (webView == null) return;
-        try {
-            // The same view can navigate to a provider's ad; its URL no longer identifies it.
-            webView.setVisibility(View.INVISIBLE);
-            webView.evaluateJavascript("try{GmSpiderInject.HideWebview()}catch(e){}", null);
-        } catch (Throwable ignored) {
-        }
-    }
-
-    private List<WebView> candidateWebViews() {
-        List<WebView> all = new ArrayList<>();
-        for (View root : windowRoots()) collectWebViews(root, all);
-        List<WebView> matching = new ArrayList<>();
-        for (WebView webView : all) {
-            String url = webView.getUrl();
-            if (embedTapUrl.isEmpty() || !embedTapUrl.equals(url)) continue;
-            matching.add(webView);
-        }
-        return matching;
-    }
-
-    private static List<View> windowRoots() {
-        List<View> roots = new ArrayList<>();
-        try {
-            Class<?> global = Class.forName("android.view.WindowManagerGlobal");
-            Object instance = global.getMethod("getInstance").invoke(null);
-            java.lang.reflect.Field field = global.getDeclaredField("mViews");
-            field.setAccessible(true);
-            Object views = field.get(instance);
-            if (views instanceof List<?> list) {
-                for (Object item : list) {
-                    if (item instanceof View view) roots.add(view);
-                }
-            }
-        } catch (Throwable ignored) {
-            Activity activity = currentActivity();
-            if (activity != null && activity.getWindow() != null) roots.add(activity.getWindow().getDecorView());
-        }
-        return roots;
-    }
-
-    private static Activity currentActivity() {
-        try {
-            Class<?> app = Class.forName("com.fongmi.android.tv.App");
-            Object activity = app.getMethod("activity").invoke(null);
-            if (activity instanceof Activity) return (Activity) activity;
-        } catch (Throwable ignored) {
-            return null;
-        }
-        return null;
-    }
-
-    private static void collectWebViews(View view, List<WebView> out) {
-        if (view instanceof WebView) out.add((WebView) view);
-        if (view instanceof ViewGroup group) {
-            for (int i = 0; i < group.getChildCount(); i++) collectWebViews(group.getChildAt(i), out);
-        }
-    }
-
-    private static void dispatchTap(WebView webView, int x, int y) {
-        long now = SystemClock.uptimeMillis();
-        MotionEvent down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y, 0);
-        MotionEvent up = MotionEvent.obtain(now, now + 40, MotionEvent.ACTION_UP, x, y, 0);
-        webView.dispatchTouchEvent(down);
-        webView.dispatchTouchEvent(up);
-        down.recycle();
-        up.recycle();
     }
 
     private static JSONArray subtitles(String code) {
@@ -780,7 +481,6 @@ public class GMSubs extends Spider {
 
     @Override
     public void destroy() {
-        cancelEmbedTap();
         if (gm != null) gm.destroy();
     }
 }
