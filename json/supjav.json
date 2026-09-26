@@ -12,7 +12,7 @@
       "filterable": 0,
       "timeout": 60,
       "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/javguru.user.js?v=1",
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/javguru.user.js?v=2",
         "debug": false,
         "webViewSettings": {"blockNetworkImage": true},
         "playUrlMatch": [

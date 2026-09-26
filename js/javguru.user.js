@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Jav.Guru
 // @namespace    luoyuqiuspider
-// @version      1.0.0
+// @version      1.0.1
 // @description  Jav.Guru WebView adapter for the open-source GM spider runtime.
 // @match        https://jav.guru/*
 // @grant        unsafeWindow
@@ -24,13 +24,13 @@
     function videos() {
         const list = [];
         const seen = new Set();
-        document.querySelectorAll("a[href]").forEach(function (link) {
+        document.querySelectorAll(".inside-article").forEach(function (card) {
+            const link = card.querySelector("h2 a[href]");
+            if (!link) return;
             const url = new URL(link.href, location.href);
             if (url.hostname !== "jav.guru" || !/^\/\d+\/[^/]+\/?$/.test(url.pathname) || seen.has(url.pathname)) return;
-            const card = link.closest("article, .post, .type-post, li") || link.parentElement;
-            const image = (card && card.querySelector("img")) || link.querySelector("img");
-            const heading = (card && card.querySelector("h2, h3, .entry-title")) || link;
-            const name = heading.getAttribute("title") || heading.textContent.trim() || image?.alt || "";
+            const image = card.querySelector(".imgg img, img");
+            const name = link.title || link.textContent.trim() || image?.alt || "";
             if (!name) return;
             seen.add(url.pathname);
             list.push({
@@ -44,11 +44,22 @@
     }
 
     function streamButtons() {
-        return [...document.querySelectorAll("button, a, [role='button'], input[type='button']")]
+        return [...document.querySelectorAll("a.wp-btn-iframe__shortcode")]
                 .filter(function (el) {
                     const text = (el.textContent || el.value || "").replace(/\s+/g, " ").trim();
                     return /^STREAM\s+[A-Z0-9]+$/i.test(text);
                 });
+    }
+
+    function startEmbeddedPlayer(doc) {
+        const overlay = doc.querySelector("#overlay_layer[onclick]");
+        if (overlay && !overlay.dataset.gmStarted) {
+            overlay.dataset.gmStarted = "1";
+            overlay.click();
+        }
+        doc.querySelectorAll("iframe").forEach(function (frame) {
+            try { if (frame.contentDocument) startEmbeddedPlayer(frame.contentDocument); } catch (_) {}
+        });
     }
 
     function videoCode(title) {
@@ -93,7 +104,10 @@
         playerContent: function () {
             const index = Number((location.hash || "#0").slice(1));
             const buttons = streamButtons();
-            if (Number.isInteger(index) && index >= 0 && index < buttons.length) buttons[index].click();
+            if (!Number.isInteger(index) || index < 0 || index >= buttons.length) return {type: "finalUrl", ext: {url: ""}};
+            buttons[index].click();
+            const playbackPoller = setInterval(function () { startEmbeddedPlayer(document); }, 400);
+            setTimeout(function () { clearInterval(playbackPoller); }, 35000);
             return {type: "match"};
         }
     };
@@ -103,8 +117,8 @@
     const startedAt = Date.now();
     function sendResult() {
         if (sent || !spider[method]) return;
-        const ready = method === "detailContent" ? !!document.querySelector("h1") && streamButtons().length > 0
-                : method === "playerContent" || videos().length > 0;
+        const ready = method === "detailContent" || method === "playerContent"
+                ? streamButtons().length > 0 : videos().length > 0;
         if (!ready && Date.now() - startedAt < 35000) return;
         sent = true;
         if (poller) clearInterval(poller);
