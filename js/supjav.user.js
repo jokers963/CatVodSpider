@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      1.0.24
+// @version      1.0.25
 // @description  SupJav WebView adapter for the open-source GM spider runtime.
 // @match        https://supjav.com/*
+// @match        https://turbovidhls.com/*
 // @require      https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.slim.min.js
 // @grant        GM_cookie
 // @grant        unsafeWindow
@@ -13,6 +14,27 @@
             ? ["homeContent", "true"]
             : JSON.parse(GmSpiderInject.GetSpiderArgs());
     const method = args.shift();
+    if (location.hostname === "turbovidhls.com") {
+        if (method !== "playerContent") return;
+        // This TV player disables autostart. Start it once so GM can capture its media request.
+        let started = false;
+        const start = function () {
+            if (started) return;
+            try {
+                const player = unsafeWindow.jwplayer("video_player");
+                const item = player.getPlaylistItem();
+                if (!item || !(item.file || item.sources?.[0]?.file)) return;
+                started = true;
+                clearInterval(timer);
+                player.setMute(true);
+                player.play(true);
+            } catch (_) {}
+        };
+        const timer = setInterval(start, 400);
+        setTimeout(function () { clearInterval(timer); }, 30000);
+        start();
+        return;
+    }
     const cfCookie = {value: null};
 
     function imageUrl(url) {
@@ -114,6 +136,7 @@
                 const frame = document.getElementById("video");
                 if (!frame || frame.getAttribute("data-armed") === "1") return !!frame;
                 frame.setAttribute("data-armed", "1");
+                frame.setAttribute("allow", "autoplay; fullscreen");
                 const mark = function () { frame.setAttribute("data-ready", "1"); };
                 frame.addEventListener("load", function () { setTimeout(mark, 3500); }, {once: true});
                 setTimeout(mark, 10000);
