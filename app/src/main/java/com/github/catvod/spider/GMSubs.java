@@ -358,6 +358,8 @@ public class GMSubs extends Spider {
         }
         WebView webView = views.get(index);
         try {
+            // Temporary USB-only inspection; removed after the embedded-route diagnosis.
+            WebView.setWebContentsDebuggingEnabled(true);
             webView.setVisibility(View.VISIBLE);
             webView.evaluateJavascript("try{GmSpiderInject.ShowWebview()}catch(e){}", null);
             if (misses == 0) webView.evaluateJavascript(selectFlagScript(embedTapFlag), null);
