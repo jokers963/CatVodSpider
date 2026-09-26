@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      1.0.21
+// @version      1.0.22
 // @description  SupJav WebView adapter for the open-source GM spider runtime.
 // @match        https://supjav.com/*
 // @require      https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.slim.min.js
@@ -150,8 +150,8 @@
         const ready = pageReady();
         const waiting = Date.now() - startedAt;
         const challenged = cloudflareChallenge() || !!document.querySelector(".loading-verifying");
-        const challengeTimeout = !ready && challenged && method === "homeContent" && waiting > 5000;
-        if (!ready && !challengeTimeout && waiting < 35000) return;
+        // Return immediately when content is ready; do not abort a still-loading page after only five seconds.
+        if (!ready && waiting < 35000) return;
         sent = true;
         if (poller) clearInterval(poller);
         const result = spider[method].apply(spider, args);
