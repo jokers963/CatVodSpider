@@ -54,6 +54,7 @@ public class GMSubs extends Spider {
     private static final String HLS = "application/x-mpegURL";
     /** ST and VOE only start the file request after a real tap on the play control inside their frame. */
     private static final String EMBED_RECT = "(function(){var f=document.getElementById('video');if(!f)return '';"
+            + "document.querySelectorAll('[id^=asg-]').forEach(function(el){el.remove()});"
             + "try{f.scrollIntoView({block:'center'})}catch(e){}"
             + "var r=f.getBoundingClientRect();var x=r.left+r.width/2,y=r.top+r.height/2;"
             + "var top=document.elementFromPoint(x,y);"
@@ -240,12 +241,19 @@ public class GMSubs extends Spider {
 
     /** ST/VOE only tap after the frame points at that host, not the live-ad iframe. */
     static boolean embedSrcReady(String flag, String src) {
-        String host = src == null ? "" : src.toLowerCase(Locale.ROOT);
+        HttpUrl url = src == null ? null : HttpUrl.parse(src);
+        if (url == null || !url.isHttps()) return false;
+        String host = url.host();
+        // The site's selected player frame wraps both providers before loading their nested frame.
+        if (needsEmbedTap(flag) && host.equals("lk1.supremejav.com")) return true;
         if ("ST".equalsIgnoreCase(flag)) {
-            return host.contains("streamtape") || host.contains("strtape") || host.contains("tapecontent");
+            return host.equals("streamtape.com") || host.endsWith(".streamtape.com")
+                    || host.equals("strtape.com") || host.endsWith(".strtape.com")
+                    || host.endsWith(".tapecontent.net");
         }
         if ("VOE".equalsIgnoreCase(flag)) {
-            return host.contains("voe") || host.contains("cloudwindow") || host.contains("voe-network");
+            return host.equals("voe.sx") || host.endsWith(".voe.sx")
+                    || host.endsWith(".cloudwindow-route.com") || host.endsWith(".voe-network.net");
         }
         return false;
     }

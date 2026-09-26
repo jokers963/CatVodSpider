@@ -41,6 +41,12 @@ public class GMSubsTest {
         assertFalse(GMSubs.embedSrcReady("ST", "https://live.example/embed"));
         assertTrue(GMSubs.embedSrcReady("VOE", "https://voe.sx/e/abc"));
         assertFalse(GMSubs.embedSrcReady("VOE", "https://streamtape.com/e/abc"));
+        assertTrue(GMSubs.embedSrcReady("ST", "https://lk1.supremejav.com/embed"));
+        assertTrue(GMSubs.embedSrcReady("VOE", "https://lk1.supremejav.com/embed"));
+        assertFalse(GMSubs.embedSrcReady("TV", "https://lk1.supremejav.com/embed"));
+        assertFalse(GMSubs.embedSrcReady("ST", "https://evil.example/?url=streamtape.com"));
+        assertFalse(GMSubs.embedSrcReady("ST", "https://streamtape.com.evil.example/e/abc"));
+        assertFalse(GMSubs.embedSrcReady("ST", "http://streamtape.com/e/abc"));
         assertEquals("https://streamtape.com/e/abc", GMSubs.embedSrc("\"{\\\"src\\\":\\\"https://streamtape.com/e/abc\\\"}\""));
     }
 
