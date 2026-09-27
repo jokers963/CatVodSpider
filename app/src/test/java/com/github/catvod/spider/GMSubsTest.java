@@ -189,6 +189,76 @@ public class GMSubsTest {
     }
 
     @Test
+    public void closesSegmentResponseWhenPrefixReadingFails() throws Exception {
+        boolean[] closed = {false};
+        okio.BufferedSource source = okio.Okio.buffer(new okio.Source() {
+            public long read(okio.Buffer sink, long byteCount) throws java.io.IOException { throw new java.io.IOException("synthetic read failure"); }
+            public okio.Timeout timeout() { return new okio.Timeout(); }
+            public void close() { closed[0] = true; }
+        });
+        okhttp3.ResponseBody body = new okhttp3.ResponseBody() {
+            public okhttp3.MediaType contentType() { return null; }
+            public long contentLength() { return -1; }
+            public okio.BufferedSource source() { return source; }
+        };
+        java.lang.reflect.Field field = GMSubs.class.getDeclaredField("stream");
+        field.setAccessible(true);
+        Object previous = field.get(null);
+        field.set(null, new okhttp3.OkHttpClient.Builder().addInterceptor(chain -> new okhttp3.Response.Builder()
+                .request(chain.request()).protocol(okhttp3.Protocol.HTTP_1_1).code(200).message("OK").body(body).build()).build());
+        try {
+            GMSubs spider = new GMSubs();
+            java.lang.reflect.Method method = GMSubs.class.getDeclaredMethod("proxySegment", String.class, Map.class);
+            method.setAccessible(true);
+            try { method.invoke(spider, "https://cdn.example/test.ts", Map.of()); throw new AssertionError("Expected read failure"); }
+            catch (java.lang.reflect.InvocationTargetException error) { assertTrue(error.getCause() instanceof java.io.IOException); }
+            assertTrue(closed[0]);
+        } finally { field.set(null, previous); }
+    }
+
+    @Test
+    public void closesSegmentStreamAfterMidBodyReadFailure() throws Exception {
+        final boolean[] closed = {false};
+        InputStream source = new InputStream() {
+            int remaining = 65536;
+            @Override public int read() throws java.io.IOException {
+                if (remaining-- > 0) return 0;
+                throw new java.net.SocketTimeoutException("synthetic body failure");
+            }
+            @Override public void close() { closed[0] = true; }
+        };
+        InputStream input = GMSubs.stripFakePng(GMSubs.closeOnReadFailure(source));
+        byte[] buffer = new byte[65536];
+        assertEquals(65536, input.read(buffer));
+        try { input.read(buffer); throw new AssertionError("Expected body timeout"); }
+        catch (java.net.SocketTimeoutException expected) { assertTrue(closed[0]); }
+    }
+
+    @Test
+    public void tvAndFstKeepEveryAdaptiveQuality() {
+        String master = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=500000,RESOLUTION=640x360\nlow.m3u8\n"
+                + "#EXT-X-STREAM-INF:BANDWIDTH=1500000,RESOLUTION=1280x720\nmid.m3u8\n"
+                + "#EXT-X-STREAM-INF:BANDWIDTH=3103220,RESOLUTION=1920x1080\nhigh.m3u8\n";
+        GMSubs spider = new GMSubs();
+        spider.siteKey = "supjav";
+        String fst = spider.rewriteProxyPlaylist(master, "https://fc2stream.tv/sample/master.m3u8", "http://127.0.0.1:9978/proxy", Map.of());
+        assertTrue(fst.contains("RESOLUTION=640x360"));
+        assertTrue(fst.contains("RESOLUTION=1280x720"));
+        assertTrue(fst.contains("RESOLUTION=1920x1080"));
+        assertTrue(spider.rewriteProxyPlaylist(master, "https://cdn3.turboviplay.com/sample/master.m3u8", "http://127.0.0.1:9978/proxy", Map.of()).contains("RESOLUTION=1920x1080"));
+    }
+
+    @Test
+    public void fstPlaylistsReuseThePngProxyWithoutChangingOtherSites() {
+        assertTrue(GMSubs.needsPngProxy("https://fc2stream.tv/video/master.m3u8?token=test"));
+        assertTrue(GMSubs.needsPngProxy("https://cdn3.turboviplay.com/video/master.m3u8"));
+        for (String url : new String[]{null, "https://fc2stream.tv.attacker.example/a.m3u8", "https://user@fc2stream.tv/a.m3u8",
+                "http://fc2stream.tv/a.m3u8", "https://fc2stream.tv/ad.mp4", "https://www.av01.media/master.m3u8"}) {
+            assertFalse(GMSubs.needsPngProxy(url));
+        }
+    }
+
+    @Test
     public void stripsTheFakePngPrefixAndKeepsTheTransportStream() throws Exception {
         byte[] ts = new byte[TS * 6];
         for (int i = 0; i < 6; i++) ts[i * TS] = 0x47;

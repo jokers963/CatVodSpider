@@ -2,6 +2,85 @@
 
 更新日期：2026-09-27。这是两个 fork 共用的工作状态入口；原理说明不在这里重复。以后完成一项任务或交接前，更新此文件的状态与证据。
 
+### 最新正式发布：v35（本节优先于全部历史快照）
+
+**本轮已收尾，状态为部分完成（正式版本已发布，FST 尚未全部稳定）**。用户在正式地址已加载后明确说“不用确认了”，因此停止追加实机验收，不再测试、不自动约定明天运行。手机最后在正式配置的 SNOS-377/SupJav 详情加载流程；没有再确认实际线路或进度，不能称为正式入口发布后回归通过。两个脱敏日志流已 Ctrl-C 停止，未清 Logcat。后续 AI 只有收到新的任务才操作手机。
+
+- 用户最新授权：“先把当前体验最好的转正式接口，剩下明天再说”。不再扩大今晚排查；SSIS-001/FST 用户已明确排除。正式地址仍 `https://jokers963.github.io/CatVodSpider/json/supjav.json`。
+- 正式 JSON 切换提交 `f9ba37b`，新增窄匹配 `https://fc2stream.tv/*.m3u8*`，JAR 指向 `jar/gm_subs-v35.jar?v=35`。四站仍 SupJav/MissAV/Jable/AV01，四份脚本版本不变（33/7/7/4），不恢复 ST/VOE/取消站点。旧 `jar/gm_subs.jar` v34 文件不覆盖，保留回退；只改 JSON 即可回退。
+- 发布 JAR SHA-256 `1BBDC264655677F915438D9A9083B04576D6F8EA16A48D15C369326E107592EB`；DEX 分别：primary `8DD113834DB154C3DD34098F8C05911CCD7D9A02BE872E31715A82C92238DD3C`、wrapper `A29A61FF97A69671C21F3F79C86C967BA13284097A4F57648E2D3CF59395CA61`、quiet helper `7FE7CDE550EBFC0E70C4F0A712AF1D9ED9C1C6C5464BD47C4A28D01E1012D759`。**正式 v35 primary 有意修改**：Sentry SDK 入口改 no-op，原始日志/无参异常输出改静默 sink；不再声称正式 primary 仍为 v34 原始 DEX。类定义不变，非目标条目保持。没有开启 WebView 调试、网络探针或 Diagnostic JS bridge。
+- GMSubs 最小正式改动：FST HTTPS 精确域名清单复用已有 TV PNG/TS 代理；代理读失败关闭连接/流并重新抛原异常；整个代理请求 `callTimeout(30s)`，保留 connect/read 15/30s。总期限同时作用于此共享代理的 TV/FST/AV01 清单，未改变 TV 分流/字幕逻辑。没有新重试/缓存/外部播放器。**不含 HTTP/1.1 强制、不含 FST 720p 临时 cap、不含任何 GM_DIAG 日志/探针**，保留 TV/FST 自适应画质。AV01 原有 token 720/1080 逻辑不动。
+- 发布前 quiet 候选从远程加载，SNOS-377/SupJav 详情和实际线路核对。TV `state=3,23845/380048434 → state=3,67084/380091668`，自然增量 43239/43234 ms；快进后 `state=3,122534/380132653`，比自然时钟多约 14.5 秒，恢复播放。切 FST 后 `state=3,149671/380170730 → state=3,206257/380227325`，自然增量 56586/56595 ms。此候选 JSON 与发布正式 JSON 语义完全相同。发布后裸正式地址只读 GET、v35 JAR HTTP 200/哈希核对成功；手机输入框及配置行逐字确认已加载裸正式地址（无 query），随后用户取消进一步实播确认。
+- 构建：21 项 JUnit、手动 javac/D8/包装结构引用检查、27 项脱敏检查、quiet DEX 无 Android 日志/网络/diagnostic 方法检查、脚本语法/adapter/JSON/diff 检查通过；组合 JAR 逐项核对只有 classes2.dex 相对于 quiet 隐私基底变化。没有成功的完整 Gradle 构建，也没有新 APK/安装。测试平台探测有 JVM Android Log 警告，最终 JUnit 成功，不能伪装为设备编译失败。
+- 可重复构建入口：`scripts/gmRelease/build-check.ps1 -OutputDir <新的临时目录>`，复用 `scripts/gmSubsManual/` 和 `scripts/gmDiagnostic/ -Quiet`；输入保持 v34 的 `jar/gm_subs.jar`。已实际运行通过，第二次产物与发布 JAR 的三个 DEX 逐字节一致（ZIP 时间戳不同使整个 JAR hash 不同）；没有覆盖已发布字节。依赖本机 JDK/SDK/Gradle 缓存以及已有 app 编译 API JAR，不声称全新电脑上无准备可构建。产物在新目录，不覆盖正式/用户工作树。
+- 待明天：ABF-381/FST 间歇慢读/缓冲；部分分片 EOF 字节数与 Content-Length 不一致及进度跳变原因；需要更长、多样本实播。r14 HTTP/1.1 只有短时 SNOS-377 读流对照（多数完整快速 EOF），没有完整双线路/多样本回归，因此不合正式。SNOS-377 r13 已有首次两段自然增长、快进后仍播放、返回重播 70 秒自然增长证据，但首次有慢读及一分片短读，不能称整条线路稳定。质量 cap 是否实际生效未观测，不作为正式选择依据。
+- 已保护原 CatVodSpider 脏工作树与 `交接.md`；TV 严格只读，HEAD `4afc4473e22a7ed3d98ee12233e0c2a490061000`，39 项脏状态摘要仍 `DC3596C468B00BCCE3E645DEC04198E3C11998472A89166E0879A36C023FB9FD`。所有发布操作来自隔离分支正常 push，无强推/重置/清理。此次获正式发布授权后同步 GMSubs、测试、诊断/quiet/组合构建源和本记录，未来可从远程接手，不再只依赖未提交临时源码。
+
+### 最新 FST 排查快照（2026-09-27，覆盖后面的旧快照）
+
+本轮仍在进行，以下新增记录优先于旧收尾文字：
+
+- 当前远程测试 main `200b4ad`，独立 `gm_subs-diagnostic-fst-deadline.jar?v=13` SHA-256 `0BE74D5321EB0D7DE2DE7D2D3B09F5DB208BDF18ACD1B2BB03E01661939C1E50`，远程核对并实机加载。r13 ABF-381/FST 成功响应的分片 id27 `length=4686910`、读到 898022 bytes 后 `outcome=io,ms=30001`；id28/34 同样 30001 ms 中止，证明整个读流期限生效。但仍缓冲，且位置有远大于时钟的跳变，不能算自然播放通过，不确定时间轴/人工操作/流重试哪个因素。TV 构建/初播能运行，不证明完整回归通过。
+- 后续 HTTP/1.1 对照包装源已在本地编译、JUnit 21 项/D8/结构检查通过，临时产物 `luoyu-gm-fst-http1-349d363d229741a397c02d03e1d9e02c/codex-gm_subs.jar`。**未组合隐私候选/未上传/未在手机加载**；源码 stream 的单 HTTP_1_1 配置是这个未发布对照，不要错说当前 r13 实播用了 HTTP/1.1（实际日志 h2）。正式 six 文件不变。质量 cap 仅按最终清单主机判断，尚未观测实际轨道/重定向后是否被应用，不能称已确认手机以 720p 播放。
+- 用户新增要求 SNOS-377/FST。正在用远程 r13（非正式入口，h2/30s 总期限）验证。搜索结果异步到达会改变顺序：曾点到 AV01，随后返回按结果 `site=SupJav` 选择，详情标题/站源/实际 FST selected 全部核对。不可盲点列表第一条。清单/分片 HTTP 200；`state=3,49019/379086286 → state=3,89338/379126605 → state=3,123249/379160514`，自然增量 40319/40319 ms、33911/33909 ms，两段持续增长通过。分片 id12 EOF 1585662 bytes/13292 ms，其余多次 1 秒内；不代表长时稳定。随后 keycode90，快进/返回重播待完成。
+
+- 用户最新明确：SSIS-001 视频的 FST 线路本身有问题，**不用管**。停止该样本排查，不再列为接口修复验收项，也不尝试恢复/替换该视频资源。前面的解析失败仅保留为历史观测，不能继续按待修接口缺陷派任务。
+
+- r12 已远程核对并加载手机。首次 FST 分片 id9 EOF 81830 bytes/28345 ms，id23 1784190 bytes/18573 ms，id27 1931582 bytes/15031 ms；其他多次在 1 秒内完整 EOF。快进后 `state=3,150627/378223973 → state=3,199027/378272554`，自然增量 48400/48581 ms，但只能证明该段恢复。
+- r12 返回 ABF-381 结果后重进并重新选择 FST，matched/result。`state=3,26386/378354191 → state=6,43164/378391992 → state=3,55873/378437642`。同一轮实际分片 id8 前缀就绪 2683 ms，随后 EOF 877646 bytes/100038 ms；id9 1684926 bytes/231 ms。观测明确定位到成功响应后的全体分片读取可拖到 100 秒，非只等待解析。零星数据使 readTimeout(30s) 不触发，总请求此前没有 callTimeout。不能由此确认 ISP/VPN/CDN 哪个环节，未改变网络。
+- 最小边界修复正在验证：复用 OkHttp `callTimeout(30,SECONDS)` 限制整个请求及读流，保留原 connect/read 15/30 秒，无新增重试/缓存/下载线程。这修复本地无总时限的慢读等待，不代表上游吞吐稳定；r13 实机是否按期限失败、播放器是否恢复和 TV 回归尚待记录。
+
+- r10 720p 对照在后续 `state=6,172463/377089574,buffered=172766` 耗尽缓冲；随后恢复并继续增长，但不能宣布降档解决稳定性。
+- 发现并修复独立候选的连接资源缺陷：成功收到分片 Response 后，`stripFakePng` 前缀读取抛 IOException 时此前没有关闭 Response；现失败路径关闭并重新抛出原错误。r11 手动 JUnit 20 项、D8/结构检查通过，只发布独立 JAR/JSON，提交 `9f2ce86`。远程 `gm_subs-diagnostic-fst-io.jar?v=11` SHA-256 `D2F3A56218204DFC9FCEB43A69137C68D8611BB3132FDF4F529301BBFEF65FAA`，已核对并从远程加载手机。
+- r11 ABF-381/FST matched/result、实际代理清单三次 HTTP 200；分片 id7 前缀就绪需 7695 ms，id9 需 3862 ms。`state=3,26870/377733127,buffered=60033 → state=6,63497/377774913,buffered=64300 → state=3,116564/377848274,buffered=170033`。等待期间目标进程出现 SocketTimeoutException，但前缀阶段日志无 timeout；不能只凭异常类确认是哪一请求。仍未稳定。
+- r12 使用标准 FilterInputStream 观测返回流 EOF/close/IOException，固定日志只有请求 id、结果枚举、大小、总耗时，最多 64 请求，不打印媒体、URL、头或正文。读取失败立即关闭源流并保留原异常，新增前缀后的 synthetic timeout 关闭测试。手动 JUnit 21 项、D8/结构检查通过；JVM 的 Android 日志平台探测有警告但最终测试通过。合成隐私基底 JAR，逐项比较只有 classes2.dex 改变。额外 HTTP 探针仍关闭。
+- r12 提交 `7fa34d3` 只独立 `jar/diagnostic/gm_subs-diagnostic-fst-body.jar?v=12` 和测试 JSON 指针；JAR SHA-256 `C0938CFD8C45518915FF61D0AAFD32913073B3DFD507ED6B1C42C2E27E21441C`。实机加载与最终收尾待下面追加；没有新 APK 或正式资源更新。Java/测试/诊断构建源/本 MD 仍仅隔离工作树未提交。
+
+当前继续任务：用户再次要求继续查因、修复并验证。主负责人独占隔离工作树与手机，继续限定独立远程测试资源，正式接口/TV/方向/VPN 不改。新 r6 对照探针比较同地址捕获请求头与移除 Referer/Origin 的请求，最多两组、各三层、媒体最多 256 KiB，仅记录状态、类型、时间、大小及清单档位摘要，不输出地址/头/正文。诊断构建与 27 项脱敏检查通过；`afe6f88` 已推送独立测试 JAR/JSON，手机是否加载及最终恢复状态待本轮收尾记录，下面“已收尾”是上轮状态。
+
+本轮新增证据/候选（收尾前仍属进行中）：
+
+- r6 实机：捕获头主/子清单 HTTP 200，首分片 HTTP 206，256 KiB/736 ms，PNG 类型；移除 Referer/Origin 后主清单成功，但子清单超时，因此不能归因或修复为“去掉 Referer 即可”。主清单 3 档，最高标称带宽 3103220 bps，观测清单未含加密标签。
+- r7 实机：同一 FST 首分片两种请求头均 HTTP 206，PNG 后的 MPEG-TS 同步位置为 70 字节；两次 256 KiB 分别 483/254 ms。复用 GMSubs 已有 `tsOffset` 通过反射确认，不保存/打印字节、URL 或头。说明媒体是 PNG 前缀包裹的 TS，不证明所有超时或缓冲都由此导致。r7 未改播放器输出，手机仍见缓冲。
+- 最小候选修复：`GMSubs.needsPngProxy` 限定 HTTPS `fc2stream.tv` 的 `.m3u8`（拒绝带用户信息/近似域名/其他站点），复用原 TV 清单改写、分片请求和 `stripFakePng`，不改变 TV/AV01/MissAV/Jable 的分流。新增边界测试；手动 JUnit 18 项、D8、结构引用检查通过。Java 源/测试仅在隔离工作树未提交。
+- `88a3862` 只发布独立 `jar/diagnostic/gm_subs-diagnostic-fst-proxy.jar?v=8` 和测试 JSON 指针。候选 SHA-256 `BD9217AD902594A37A5C9C74F1D8015241863CBA812786D4422B1E0C08366FF8`；包装 DEX `86F84B4645D6A09790A58C8C7FF63A0C79DE499137AB9BDCCF688C014D228D66`。额外网络探针在编译时关闭，反汇编 `inspect` 只有 return-void；脱敏阶段日志/遥测关闭保持，实播回归不与额外下载竞争。未生成播放器 APK。
+- 可重复构建/组合：先 `scripts/gmSubsManual/build-check.ps1` 生成新包装 DEX，再以 `NETWORK_PROBE=false` 的 `scripts/gmDiagnostic/build-check.ps1` 构建 v34 隐私候选；复制该候选到新临时产物，用 JDK jar 仅替换 `classes2.dex`（来源为前者 `codex-update`）。组合后逐项比较除 `classes2.dex` 外与隐私候选字节完全一致，包装 DEX 与手动构建哈希一致。旧构建/正式 JAR 未覆盖。
+- r8 关闭额外网络探针后 FST 进入播放，但 `state=3,36904/375890480 → state=6,71886/375946923 → state=6,73710/376025807 → state=3,101368/376127232`，仍有长缓冲。不能把去 PNG 头候选说成已解决加载稳定性。
+- r9 `13421c6` 添加临时限量代理阶段元数据（不含请求地址/头），只改独立 JAR/JSON；SHA-256 `ECC348C366BF6BB8023556E5DF469BED718FA7D0001ADE5476EE9292956CFF31`，包装 DEX `DAB9C9CEECEA5B5F69C4969BCCC533D380841D184C0886E69E60C53656646EFE`。实机先 TV，再 FST：FST 匹配/result 后确实出现代理 playlist start/status=200，证明新代理路由被执行，而非仅编译成功。计数上限 12 包含此前 TV 请求，后面没有新的代理日志不能当作没请求。
+- r9 FST `state=3,27482/376401451 → state=3,84704/376483974 → state=6,110137/376583523`；第一段播放增加 57222 ms、时钟增加 82523 ms，有约 25 秒停顿，第二段同样不足自然增长。正在只对测试 FST 暂限 720p 做对照（不改 TV 或正式配置、不改手机全局轨道/VPN），并新增隔离边界测试，手动 JUnit 19 项通过；尚无该限档候选的实机结论。
+- r10 `a156f34` 仅独立测试 JAR `gm_subs-diagnostic-fst-720.jar?v=10` 与 JSON 指针，远程 SHA-256 `4F40FF49F4FF939E0A6B6E123CA39A2CB8A76293F1077DE94A7A3248279CC973`（与组合产物一致），包装 DEX `475CFC2FDB0F7E368BC85C16416E87F5782CC360231ED04D8FBCF7F5898A0F4E`。额外网络探针关闭，保留最多 12 次固定代理状态观测；cap 只作用于最终主机为 fc2stream.tv 的清单，保留 <=720p 自适应档，测试证明 TV 1080p 不被删除。不是正式降画质/发布。
+- r10 ABF-381/FST 已实际选中并 matched/result。早期 `state=6,61417/376968643`，随后 `state=3,83271/377000376,buffered=140033 → state=3,135026/377052127,buffered=170600`，后段位置/时钟增长 `51755/51751 ms`，该段自然播放通过。后续持续、快进、重播及另一个样本尚待验证，不能据单段归因或宣布稳定。
+
+- 本轮用户要求查明原因并修复，仍限定独立远程测试入口；正式接口六份运行文件和 TV 仓库未修改。原脏工作树、用户 `交接.md` 均保留。主负责人单独操作，没有新增子代理。
+- 远程 `main` 已推进到 `1e6786419f5f4b02f9a584d05f2f25333c10782f`。独立测试入口仍为 `json/diagnostic/supjav-diagnostic-20260927.json`，引用 `gm_subs-diagnostic-network.jar?v=5` 和 `js/diagnostic/supjav-diagnostic.user.js?v=2`。当前候选 JAR SHA-256 为 `011E6121B64801366C042DEBD9F974C542308510D25490E75FA49F12B488788F`，远程 HTTP 200 且字节一致；脚本只增加脱敏阶段观测，保留原选择/返回语义。没有开启 WebView 调试。
+- 已证实第一层缺陷：选择 ABF-381 的 FST 后，按钮、iframe 加载和播放清单请求均出现，但原配置未匹配 `fc2stream.tv`。提交 `3f46b8d` 只在测试 JSON 增加 `https://fc2stream.tv/*.m3u8*`。此后实际出现 matched/result，地址解析层修复通过；这不等于播放已稳定。
+- 第二层证据：同一手机、ABF-381、FST，网络观测版最初在清单 GET 超时，播放器最终“连接超时”；当时未获得 HTTP 状态，不能确定是网络路由、服务端、会话/请求还是其他原因。只读检查发现 VPN 存在，但没有修改 VPN/网络设置，也不能据此归因。
+- 分别从电脑和手机只读请求域名首页均 HTTP 200；手机 curl 约 0.8 秒返回。首页成功不代表签名媒体地址必定可用。阶段版 r5 重试时，实际清单 HTTP 200/HLS、子清单 HTTP 200/HLS、首个资源 HTTP 206；没有输出路径、查询、签名、头、响应体或私有 IP。随后 FST 从缓冲进入内置播放，`state=3,position=34686,updated=374146152,speed=1.0`。这是重试成功，不证明先前超时的最终根因已经解决。
+- 另一个 SSIS-001 FST 样本仍发生解析失败，未见新的匹配清单；不能把 ABF-381 成功推广到所有条目。广告媒体域名在 TV 路径也出现，因此没有将广告请求加入媒体匹配。
+- TV 切回恢复的两次 state=3 样本为 `24999/373838741 → 48819/373862556`，自然增量 `23820/23815 ms`；快进输入后 `75804/373874545` 为缓冲状态，该段不能作为持续播放通过。返回结果后重播 state=3 样本为 `14977/373925109 → 38680/373948822`，增量 `23703/23713 ms`。
+- 本轮手动诊断 JAR 构建/隐私检查、诊断脚本语义检查、四站 adapter 检查和 node 语法检查通过。没有 Gradle/APK 构建或播放器 APK 安装，不能声称新 APK 成功。源文件 `scripts/gmDiagnostic/`、JS 自检和本文仍只在隔离工作树，未远程同步；远程提交仅含独立测试资源。
+- 本轮已收尾：手机停在设置页，点播配置行逐字确认已恢复 `https://jokers963.github.io/CatVodSpider/json/supjav.json`；未补做正式入口恢复后的实播，因此恢复配置不代表该实播验收通过。结束时无 WebView 调试 socket、无 tcp:9223 转发，方向设置仍 `1/0`。没有清应用数据、Logcat，改变方向/VPN、自动点击验证码或使用外部播放器。
+- 最终状态为部分完成：FST 缺失匹配规则只在独立测试 JSON 修好；ABF-381 曾内置播放，但反复缓冲且重播超时，SSIS-001 解析仍失败。没有将 FST 规则或诊断 JAR/JS 合入正式接口，也不宣称媒体加载不稳定的最终根因已解决。源/自检/本文仅本地保存，下一 AI 应从当前隔离工作树接续，不能只拿远程测试 JAR 当作完整源码交接。
+
+#### 本轮后续观测（尚不等于全部验收通过）
+
+- FST 重试播放后进度推进，但反复缓冲：`state=3,34686/374146152 → state=6,69986/374205027 → state=6,91194/374238321`。位置增加不是持续 state=3 的证明，不能将缓冲频繁的样本称为稳定播放。
+- FST 快进前为 `state=3,91216/374273883`；输入 keycode 90 后 `state=6,106842/374274509`，随后 `state=6,109867/374288120`，只能证明跳转并有限推进，未通过快进后持续播放验收。
+- FST 返回结果再重播，重新确认 ABF-381/SupJav/FST 选中，并出现 matched/result；随后探针 `phase=manifest,step=headers,error=timeout`，手机 `state=6,position=4890,updated=374365656`。`connect()` 已返回，超时发生在等待 HTTP 响应阶段，不是探针连接阶段；未取得状态码，不能再细分服务端、路径、会话或网络中间环节。该重播没有通过。现有播放器/接口不足以证明或修复媒体服务的间歇性响应问题，禁止靠无限重试/盲目延长超时或修改 VPN 掩盖。
+- 正式六份运行资源在本轮末再次逐一远程 GET/哈希核对，全部与 v34 基线一致。TV 本地 HEAD 仍 `4afc4473e22a7ed3d98ee12233e0c2a490061000`，39 项脏状态的 SHA-256 仍 `DC3596C468B00BCCE3E645DEC04198E3C11998472A89166E0879A36C023FB9FD`。
+- r5 下 FST 重播失败后切回 TV：`state=3,19833/374426476 → state=3,53676/374460321`，自然增长 `33843/33845 ms`；快进后 `state=6,69323/374460968`，随后恢复为 `state=3,109649/374501619`。TV 有连续增长、切换恢复与快进恢复证据，但仍只代表 ABF-381 样本。两个脱敏日志读流已 Ctrl-C 停止，未清 Logcat。
+
+### 上一轮执行快照（历史记录，结束状态已过期）
+
+- 用户已批准独立 GitHub 诊断测试入口及手机加载验收，随后明确要求安装测试辅助工具。主负责人是唯一文件、设备与发布操作者；子对话已停止。正式接口与 TV 仓库仍不允许修改。
+- 已仅提交/正常推送两个新增文件，提交 `5d3e28157d00acbf436b3c49431a38f9fd32a1e6`：`jar/diagnostic/gm_subs-diagnostic-20260927.jar` 与 `json/diagnostic/supjav-diagnostic-20260927.json`。GitHub Pages 两者 HTTP 200，JAR SHA-256 为 `7FC343D8DABF0A661EB8702BABA6A9DB16CED984B3B7BBA5ABF83CBD47B46956`，JSON SHA-256 为 `2DCB3A7E835657B71AF7BE5E21231D221FC15385212F2D47AB8321D6692F704A`，与提交文件字节一致。测试 JSON 仅替换 spider JAR 地址，其余字段与正式配置一致。正式 JSON/JAR/四份脚本的远程 SHA-256 全部与发布前一致。
+- 手机先核对当前配置为正式地址，再完整替换为 `https://jokers963.github.io/CatVodSpider/json/diagnostic/supjav-diagnostic-20260927.json`，确认输入逐字一致后加载。输入框有输入首个 `h` 自动追加 `ttp://` 的逻辑，不能直接把逐字输入结果当作正确地址；本次错误草稿均未确认加载。`GM_DIAG` 脱敏日志实际出现，证明候选日志出口已执行；仍未直接读取手机端 JAR 哈希。
+- Maestro 最初报告 `INSTALL_FAILED_USER_RESTRICTED`。复用本机 `maestro-client.jar` 内的辅助 APK，经普通 `adb install -r` 成功安装 `dev.mobile.maestro`，随后界面检查成功；未 root、关闭系统安全检查或改方向设置，安装命令未使用 `-g`，未单独设置权限，不能声称逐项核验了全部默认权限。已存在 `dev.mobile.maestro.test`。没有编译或替换播放器 APK，播放器仍为 5.6.6。方向设置只读复核仍 `accelerometer_rotation=1,user_rotation=0`。
+- 测试入口 SupJav 首页曾提示“站点验证未完成”，随后正常搜索 `ABF-381` 自然返回结果，未点击验证码。确认选中 TV，日志为 `matched host=cdn3.turboviplay.com kind=playlist` 后 result。三次 `state=3,speed=1.0` 样本为 `2937/updated=370959157 → 18599/370974817 → 48712/371004930`，两段位置/时钟增长为 `15662/15660 ms`、`30113/30113 ms`。快进后 `66225/371007773`，额外跳转约 14.7 秒。
+- 确认切到 FST 后出现“播放地址加载失败”，`state=0,position=83579,updated=371025298` 不增长。脱敏摘要曾见 `static.javhdhello.com` 的 other 请求及 `cdn.storagexhd.com` 的 media 请求，但不能证明该媒体是正片而非广告，也没有 HTTP 状态/console/响应体证据；不得据此添加域名匹配或宣称根因已找到。切回 TV 后再次命中 playlist 并恢复 `state=3`，`104018/371137158 → 138895/371172035`，位置/时钟均增长 34877 ms。第二次 FST 同样失败，`state=0,position=139728,updated=371172870`；提前启动的连续 GM_DIAG 读流只见本次 load，缺少新的 matched/result，allowed 摘要按 loader 去重/限量，不能把没有新 allowed 当作未发生请求。流已停止，未清 Logcat。
+- 本轮结束时已逐字核对并恢复正式点播地址，手机停在设置页，配置行再次确认等于 `https://jokers963.github.io/CatVodSpider/json/supjav.json`，不再播放或操作设备。正式配置/JAR/四脚本没有修改，TV 对照证据来自独立诊断入口；没有补做恢复正式地址后的 TV 重播，也没有完成诊断入口的返回重播测试，不能把恢复配置行当作这些测试通过。正式 GM 的既有遥测风险没有被这两个独立资源修复，下一步扩大观测应继续使用关闭遥测的候选，不能直接拿正式 GM 的完整 URL 日志调查。
+- 当前仅本文为未提交改动，`scripts/gmDiagnostic/` 四份源文件未跟踪；两份远程测试资源已提交。原脏工作树与旧 `交接.md` 保持不动。诊断源文件/本文未获单独远程同步授权，未混入两个测试资源提交。FST 仍未修复，本轮不宣称全站稳定。
+
 ## 1. 新 AI 先做这些，不必重新研究全仓库
 
 1. 读取正在工作的仓库根目录 `AGENTS.md`，再读本文。
@@ -27,15 +106,16 @@ git remote -v
 | --- | --- |
 | 接口 fork | [jokers963/CatVodSpider](https://github.com/jokers963/CatVodSpider)，默认分支 `main` |
 | 播放器 fork | [jokers963/TV](https://github.com/jokers963/TV)，默认分支 `fongmi`，不是 `main` |
-| 接口正式远程 `main` | `ee3637dc250c3a945f97cd3a7c9e7f579ae2f838`；只读 `ls-remote` 于 2026-09-27 复核 |
+| 接口正式远程 `main`（源码/独立测试资源） | 正式 v35 JSON 切换提交 `f9ba37b`；随后同步本轮源码/构建/交接记录，接手时重新核对 HEAD；顶部 v35 快照优先 |
+| 接口运行资源发布基线 | v35 JAR 新增提交 `c466b6a`、正式 JSON `f9ba37b`；旧 `ee3637dc250c3a945f97cd3a7c9e7f579ae2f838` / v34 文件保留，四份脚本未改变 |
 | TV 远程 `fongmi` | `91b8c9a698922a2f8f4a11b24736f1ddab264441`；只读 `ls-remote` 于 2026-09-27 复核 |
 | 接口原工作树 | `D:\CodexWorkspace\Android\影视\CatVodSpider`，`main` / `1d97a24cab319345218cc58b80091b9b1c1af879`，含用户未提交改动 |
-| 源码同步工作树 | `C:\Users\Administrator\AppData\Local\Temp\catvodspider-release-v34-20260927`，分支 `publish/gm-subs-v34-20260927` 基于运行资源基线 `ee3637d`；源码同步状态以该分支/Git 提交记录核对，不代表运行资源发布 |
+| 源码同步工作树 | `C:\Users\Administrator\AppData\Local\Temp\catvodspider-release-v34-20260927`，分支 `publish/gm-subs-v34-20260927`；八文件源码同步提交 `574e2aa6eead6b4ed54d59ae899e32b3a8d4d3ec` 已推送到接口 `origin/main`（只读 `git ls-remote` 复核），与运行资源基线 `ee3637d` / v34 分开；本轮新增实测记录仅留在工作树 |
 | 手机播放器 | `com.fongmi.android.tv`，实装 `5.6.6` / versionCode `566`，2026-09-27 只读复核 |
 
 维护者电脑上的路径：`D:\CodexWorkspace\Android\影视\CatVodSpider` 与 `D:\CodexWorkspace\Android\影视\TV`。换电脑后自行定位，不能假定这些目录存在。
 
-原工作树的未提交文件保留且不覆盖：`GMSubs.java`、`GMSubsTest.java`、`build.gradle`、`jar/checkJar.ps1`、`js/adapters.test.cjs`、四份 `js/*.user.js`、未跟踪 `scripts/` 与 `AI_HANDOFF.md`，以及用户原有未跟踪 `交接.md`。手机已退出视频详情并回到 `ABF-381` 搜索结果，实机操作者已释放。TV 只做过加载/缓存链只读检查，无代码修改；TV 本地定制/源码与实装 APK/AAR 的精确映射未全面确认。TV 源码基线 `4afc447…` 与 39 项脏状态是 2026-09-27 日期快照，不代表此后状态。
+原工作树的未提交文件保留且未覆盖：`GMSubs.java`、`GMSubsTest.java`、`build.gradle`、`jar/checkJar.ps1`、`js/adapters.test.cjs`、四份 `js/*.user.js`、未跟踪 `scripts/` 与 `AI_HANDOFF.md`，以及用户原有未跟踪 `交接.md`。2026-09-27 本轮实机复核结束时，手机停留在 SupJav `ABF-381` 详情页，TV 线路暂停于 `position=150621 ms`，外部字幕开启；没有改配置或应用数据。当前不再操作手机。TV 只做过加载/缓存链只读检查，无代码修改；TV 本地定制/源码与实装 APK/AAR 的精确映射未全面确认。TV 源码基线 `4afc447…` 与 39 项脏状态是 2026-09-27 日期快照，不代表此后状态。
 
 ## 3. 正式发布状态与验收缺口
 
@@ -55,31 +135,51 @@ https://jokers963.github.io/CatVodSpider/json/supjav.json
 | Jable | `jable.user.js?v=7` |
 | AV01 | `av01.user.js?v=4` |
 
-正式发布提交为 `ee3637dc250c3a945f97cd3a7c9e7f579ae2f838`。四站均为 `type: 3` / `csp_GMSubs`，调试关闭；站点集合只有 SupJav、MissAV、Jable、AV01。ST、VOE 及已取消站点不得恢复。运行手机入口始终是上面的 GitHub Pages URL，不以电脑本地 JSON 代替。
+运行资源正式发布基线为 `ee3637dc250c3a945f97cd3a7c9e7f579ae2f838`。其后源码同步提交 `574e2aa6eead6b4ed54d59ae899e32b3a8d4d3ec` 已更新远程 `main`，但不包含运行资源发布。四站均为 `type: 3` / `csp_GMSubs`，调试关闭；站点集合只有 SupJav、MissAV、Jable、AV01。ST、VOE 及已取消站点不得恢复。运行手机入口始终是上面的 GitHub Pages URL，不以电脑本地 JSON 代替。
 
 ### 已验证结果
 
-- SupJav `ABF-381` TV 线路有实播证据；字幕面板出现并选中了独立的迅雷 SRT 候选，选择后 position `463781→503768 ms`，约 39.993 秒实质增长。候选选中不证明下载、渲染或同步。`SSIS-001` 是成功空结果样本：桌面端字幕 API 返回 0 条，手机面板无外部轨道且视频继续播放；手机 API 响应没有直接抓包。
+- SupJav `ABF-381` TV 线路有实播证据。字幕选择器显示 `迅雷 · ABF-381.srt，SRT`，轨道行可用播放器正常方式开关。只读读取同名公开 SRT 时仅保留时间戳与“含汉字”标记（共 312 cues，不保存/输出字幕文本或签名 URL）。在手机暂停的同一帧 `position=120621 ms`，该 SRT cue 为 `00:02:00.360–00:02:03.600` 且含汉字：关闭外轨时画面只见原生日文行，打开外轨后中文行出现，再关闭即消失，再打开又恢复；TV 原生视频位置、帧和日文行保持不变。另快进到 `position=150621 ms`，落在含汉字 cue `00:02:25.700–00:02:32.119` 内，日文原生行与中文外轨同时显示。该样本足以确认外挂 SRT 的来源区分、两处 cue 渲染及快进后显示；不替代手机端 HTTP 字节/请求计数或整片同步验收。
+- ABF-381 TV 连续播放原始 MediaSession 样本（均 `state=3,speed=1.0,error=null`）：`position=373885, updated=363920075 → position=389072, updated=363935268`，增量 `+15187 ms / +15193 ms`；下一段 `position=389072, updated=363935268 → position=411138, updated=363942677`，增量 `+22066 ms / +7409 ms`，其中确有一次 Remote Media Fast Forward 输入，因此不是纯自然播放对照。另一次 FF 证据为 `473927/updated=363991300 → 490797/updated=363993385`，`+16870 ms / +2085 ms`，超出自然速率约 14.8 秒。
+- ABF-381 返回结果后重播的三次原始 MediaSession 样本：`state=3,speed=1.0,position=5949,updated=364051328 → state=3,speed=1.0,position=28748,updated=364074135 → state=3,speed=1.0,position=304187,updated=364349569`，各相邻差值为 `+22799/+22807 ms`、`+275439/+275434 ms`。先前“约 12 秒”是对墙钟间隔的估计错误；设备 `updated` 与 position 证明这两段按 `speed=1.0` 连续推进，没有恢复位置跳跃。其后另做的进度拖动/FF 已与这三条样本分开记录。
+- `SSIS-001` 是成功空结果样本：桌面端字幕 API 返回 0 条，手机面板无外部轨道且 TV 视频继续播放；手机 API 响应没有直接抓包。它能证明无字幕结果没有阻止该样本播放，不能替代实际字幕请求失败隔离测试。
 - Jable `ABF-381` 自然访问成功。媒体快进键 keycode 90 前后由 `44770→65709 ms`，updated 只增加 `6140 ms`，额外跳转约 `14799 ms`；随后两次均 `state=3` 的实质增长为 `18036 ms` 和 `20132 ms`。回到搜索结果重播后 `13880→29848→53166 ms`，两次增长 `15968 ms`、`23318 ms`。
 - AV01 `ABF-381` 自然访问成功。快进前后 `28980→53800 ms`，updated 增加 `10323 ms`，额外跳转约 `14497 ms`；随后两次 `state=3` 的实质增长为 `20276 ms` 和 `18436 ms`。回到搜索结果重播后 `16889→38253→61782 ms`，两次增长 `21364 ms`、`23529 ms`。
 - MissAV `ABF-381` 有既有正常播放/重播记录；本轮没有补做新线路测试。以上是指定样本证据，不代表整站稳定。
 
 ### 尚未验证或未确诊
 
-- SupJav FST 的 `SSIS-001`、`ABF-381` 均选中线路后出现“播放地址加载失败”，播放状态为 0、无实质进度增长。只读代码确认详情按钮原始索引经 `link` 放入 `pathname#link`，播放器按索引点击按钮并返回 `type:match`；正式 `playUrlMatch` 为通用域名规则，无 FST 专属规则。没有实际 iframe 主机、匹配媒体请求或可归因异常的安全日志；`MediaSession error=null` 不能排除 GM/网页解析异常。无法确认失败在哪一层，不放宽匹配、不猜主机、不改代码。
+- SupJav FST 的 `SSIS-001`、`ABF-381` 均选中线路后出现“播放地址加载失败”，播放状态为 0、无实质进度增长；相同样本 TV 能播放。本轮安全观测只做了正式入口实机 UI、只读 MediaSession、已存在 logcat 过滤（相关候选仅有无关 `ContentCatcherManager` 系统错误）、已存在 `/proc/net/unix` WebView DevTools socket 检查（无 socket），没有启用任何调试。普通电脑 GET 同站两条文章路径均返回 HTTP 403；未读取/执行挑战页或尝试绕过，因此没有可核对的 SupJav 文章 DOM、按钮集合、iframe 或脚本响应。静态核对 [supjav.user.js](js/supjav.user.js)：详情的 selector 在行 97–99 建立同一按钮集合，行 100 迭代的 `i` 是原始集合序号（被跳过的 ST/VOE 不重新编号），行 104 把 `link:i` 写入 `pathname#link`；播放器行 119 用相同的 `.cd-server:first .btn-server` / fallback selector，行 120 以 `buttons[index]` 读取该原始序号，行 130 点击，行 149 返回 `type:match`。静态 selector/index 未见错位，但不证明手机运行时 DOM 的按钮集合仍完全相同。正式匹配规则只有通用域名 pattern，无 FST 专属规则。
+
+  已用仓库现有 `jar/3rd/apktool_2.11.0.jar` 对 `jar/gm.jar` 做静态反汇编（只读输入，保留输出目录 `C:\Users\Administrator\AppData\Local\Temp\catvod-gm-dex-readonly-236f691eca9447349b0340f9ff71a660\decoded`；未运行会删除临时目录的 `checkJar.ps1`）。[GM.smali](C:\Users\Administrator\AppData\Local\Temp\catvod-gm-dex-readonly-236f691eca9447349b0340f9ff71a660\decoded\smali\com\github\catvod\spider\GM.smali) 中 `playerContent`（约 1658 行）解码播放描述，按 `webview` 分支组装并调用 player WebView 请求；共用请求函数 `GM.b`（约 193–376 行）记录 `LOAD_URL_BY_CLIENT`，安排 40 秒后触发 `webViewDestroyAfterTimeOut`，经 [a.smali](C:\Users\Administrator\AppData\Local\Temp\catvod-gm-dex-readonly-236f691eca9447349b0340f9ff71a660\decoded\smali\com\github\catvod\spider\merge\f2\a.smali) 的 `h(CompletableFuture)`（约 156–169 行）调用 `CompletableFuture.get()` 等待；仅对 `ExecutionException` / `InterruptedException` 记录 `ERROR_CLIENT` 并返回 null。`GM.smali` 的超时任务把 load URL 与 payload 传给 `WebViewFactory.webViewDestroyAfterTimeOut`；debug=false 时该方法调用 `SentryLog.captureEvent` 后销毁 WebView。这个 40 秒销毁调度不是 `waitMatched()` 的超时通知，静态代码未显示其唤醒等待线程。
+
+  更正：`WebViewFactory.smali` 与 `webmonkey/WebViewClientGmHook.smali` 均在该 JAR 的 `classes.dex` 反汇编结果中。`WebViewFactory.configWebViewClient`（约 477–683 行）将配置中的 blockList、playUrlMatch 装到 Hook；`WebViewClientGmHook.shouldInterceptRequest`（约 404 行）先对完整请求 URL 执行 CriterionMatcher，命中时记 `MATCHED_BY_CLIENT` 并 `SetSpiderResult`（存下 WebResourceRequest 后 notify），再跑 blockList；未 block 则记 `ALLOWED_BY_CLIENT`，命中 block 则记 `BLOCKED_BY_CLIENT` 并返回空文本响应。这些 `Log.i` 带完整 URL，不受 debug 开关控制。`waitMatched`（约 440 行）只做一次无期限 `Object.wait()`，无超时/循环条件；被中断会抛 RuntimeException。GM 的 `type:match` 回调有两个调用路径（`spider/a.smali` 约 244、594 行），之后直接读取返回请求的 headers/URL，没有 null 保护。GM/WebView 客户端未实现 `onReceivedError`、`onReceivedHttpError` 或 `onConsoleMessage`；现存这些日志可证明请求被允许/阻止/匹配及其 URL，但不提供 HTTP 状态或网页 console 错误；仍不能证明本次手机实际走到这里或 FST 的具体失败层。
+
+  已按 PID 只读检查当前 Logcat 环形缓冲，未清缓冲、未重播或切线路。缓冲覆盖 `09-26 17:40:55.212` 至 `09-27 18:17:45.664`，共 230,889 行；当前应用进程为 `com.fongmi.android.tv` PID `14184`，其中 73 行。按上述目标 GM/Hook 标签对整个现有缓冲检索为 0 行；当前应用 PID 中 `ABF-381` / `SSIS-001` 标记也为 0。故既有缓冲无可回溯的 GM/Hook/FST 记录，无法区分该时段 FST 与 TV 线路；不能据此说这些请求未发生。
+
+  静态核实了 debug=false 的第三方遥测边界：40 秒 runnable 将 load URL 与 play payload 传给 `webViewDestroyAfterTimeOut`；该分支解析 payload 后初始化遥测 SDK、配置第三方遥测端点并调用 `captureEvent`，事件数据类别包括加载地址与播放参数。代码确实将事件交给 SDK；静态证据不能确认设备当时联网、SDK 是否成功排队/发出或远端是否收到，所以不能写成已确认外发，但应按可能产生外发处理。更重要的是，`GM.b` 丢弃 `schedule()` 返回的 `ScheduledFuture`，之后只 `shutdown()` executor，没有 `cancel()`；正常 `GM.b` 完成时的 `webViewDestroy()` 也不改 `webviewDestroyed`。反汇编中该 flag 只在 timeout 回调末尾置 true，因此未发现正常返回可撤销 watchdog 的路径：即使调用在 40 秒前正常结束，保留的定时任务仍可能在 40 秒后进入遥测 SDK 分支。当前不存在能从静态链保证“正常短窗口 FST 复测不会触发遥测”的窗口。不要手动或长等待触发该定时任务；先暂停新复测，交主负责人复核风险/决定下一步。未修改配置/debug、未抓网络、未发起复测、未猜 FST host，FST 跨层根因仍未知。
 - Jable/AV01 的验证码与网络失败分支有本地模拟测试覆盖，但本轮未在手机制造网络故障或点击验证。TV 弱网下多档清晰度的实际切换/卡顿改善没有验证；TV 仅检查加载/缓存链，未修改代码。
-- 字幕手机端请求计数、字幕真实下载/渲染/同步，以及字幕请求失败时手机播放隔离未直接验证。已有 JVM 调用计数测试验证缓存/异常不缓存，但不替代手机证据。
+- 字幕手机端 HTTP 响应字节/请求计数、网络超时/HTTP/解析失败时播放隔离仍未直接验证；`SSIS-001` 无结果时继续播放只覆盖正常空结果。已有 JVM 调用计数测试验证缓存/异常不缓存，但不替代手机失败注入证据。
 - 手机通过正式入口加载的配置/实播有证据，但没有设备端 JAR 响应体或哈希，不能声称手机已直接确认下载 v34 字节。
 
 ### 本地候选与构建状态
 
 - 远程 v34 JAR SHA-256 为 `907BD6C189C2DF4C24F0434EE8B6BC151EC02B15E37912666764350ADCAC9104`；其 `classes.dex` SHA-256 为 `3126F4FD736073F8A47DDB7844CC00BCC6EF68EDF2D63DF3863493060D380D09`，`classes2.dex` 为 `E3BD12C6DDC2B67F839E38AE20AE09203D2AFA6F5143F2DA0BA08409D9E4F231`。远程 JAR 与先前本地构建候选整包哈希一致；不代表手机端直接哈希。
-- 本地候选范围：`GMSubs.java`、`GMSubsTest.java`、`js/adapters.test.cjs`、`build.gradle`、`jar/checkJar.ps1`、`scripts/gmSubsManual/build-check.ps1`、本文与 `AGENTS.md`，共八项；只在隔离候选工作树中整理，不自动并入远程。四份运行 JS 与远程已发布内容在换行规范化后完全相同，不重复修改。原工作树本地 JSON/JAR 仍 v33，禁止拿来覆盖已发布 v34。
+- 已推送的源码同步提交 `574e2aa6eead6b4ed54d59ae899e32b3a8d4d3ec` 包含八项：`GMSubs.java`、`GMSubsTest.java`、`js/adapters.test.cjs`、`build.gradle`、`jar/checkJar.ps1`、`scripts/gmSubsManual/build-check.ps1`、本文与 `AGENTS.md`；本次只读 `git ls-remote origin refs/heads/main` 确认 `origin/main` 指向该 SHA。四份运行 JS 与 v34 发布内容在换行规范化后相同，无运行资源发布。原脏工作树本地 JSON/JAR 仍 v33，禁止拿来覆盖已发布 v34。
 - 本轮候选复验（2026-09-27）：`node js/adapters.test.cjs` 通过；`jable.user.js`、`av01.user.js`、`missav.user.js`、`supjav.user.js` 的 `node --check` 通过；Groovy 4.0.32 `FileSystemCompiler` 对 `build.gradle` 语法编译通过；手动脚本 JUnit 17 项、D8、DEX 引用及临时 JAR 结构校验均通过，原始 `classes.dex` SHA-256 保持为 `3126F4FD...D380D09`。新生成 `classes2.dex` SHA-256 为 `E3BD12C6...D9E4F231`，与正式 v34 JAR 记录值一致。`git diff --check` 无空白错误（只有 Windows 行尾提示）。正式 Gradle 构建仍在项目配置前因本机 JDK 21 loopback selector 初始化失败，不能记作构建通过。手动脚本使用当前主机的 `E:\DevTools\...` 固定路径，不是新机器开箱即用。
 - 手动脚本还依赖 `app/build/intermediates/compile_app_classes_jar/debug/bundleDebugClassesToCompileJar/classes.jar`。本次候选目录起初没有此忽略的生成文件；实际从原脏工作树中已存在的生成产物复制复用，未在候选中重建，不能称为本轮完整新构建。新 clone 缺此文件时须先用 Wrapper 生成匹配的宿主 compile 产物，或调整明确的编译 classpath；当前脚本不是独立开箱即用的完整构建。标准 Gradle 的本机限制尚未解决，不能保证新环境无需构建条件即可重建。
-- 本批八文件是与线上 v34 对齐的源码、测试、构建与文档同步；运行资源基线为 `ee3637d`，源码同步提交与运行资源发布分开记录。提交状态/哈希以 Git 历史为准，本文不自引用其提交号。此批不改变任何 JAR、JSON 或四份运行 JS；推送后应核对正式运行资源版本/内容仍与 v34 基准一致。源码/文档同步不使既有局部实机验收失效，也不代表新增手机证据；若以后运行产物变化，再另行取得发布授权并按风险回归。设备端仍无 JAR 响应体/哈希。未安装 APK。
+- 八文件源码/测试/构建/文档同步已在 `574e2aa` 推送；核对的 `origin/main` 与该提交相同。运行资源基线仍为 `ee3637d` / v34；同步不改变任何 JAR、JSON 或四份运行 JS，属于源码提交，不是正式接口运行资源发布。本文本轮补充的实机记录仍是唯一未提交改动；没有设备端 JAR 响应体/哈希。未安装 APK。
 
 ## 4. 从任务直接找到代码
+
+### 隐私诊断候选（2026-09-27，已发布独立测试入口）
+
+- 用户批准“关闭遥测、仅记录脱敏信息的本地诊断候选”，并指定由原对话主负责人接手；子对话已停止，文件与手机操作权已移交。随后批准两个独立远程测试资源的提交/推送与手机验证，最新状态见本文开头；正式运行入口文件保持不变。
+- 新增 `scripts/gmDiagnostic/` 四个文件：构建检查脚本、`SafeDiagnosticLog.java`、无框架 JVM 测试及仅供 JVM 的 Android Log 测试替身。复用现有 APKtool/JDK/D8，不安装依赖，不使用原脏工作树的宿主生成产物。脚本只接受已核对的正式 v34 JAR 哈希，要求独立新建/空输出目录，不删除目录，不覆盖任何仓库 JAR。
+- 独立候选为 `C:\Users\Administrator\AppData\Local\Temp\luoyu-gm-diagnostic-final-01959112e9144c84a150843ada529b88\gm_subs-diagnostic.jar`，SHA-256 `7FC343D8DABF0A661EB8702BABA6A9DB16CED984B3B7BBA5ABF83CBD47B46956`。主 `classes.dex` **有意改动**：遥测 capture/config 回调变成空操作；Android 日志写调用改为安全日志出口，无参数的异常堆栈打印禁用。这不符合正式 JAR“原始 DEX 不变”的历史记录，只是单独本地诊断产物，不可混入旧手动发布流程。原 JAR 中除主 DEX 外的所有条目保持逐字节相同，尤其已发布字幕/代理包装层 `classes2.dex`；新增 `classes3.dex` 仅包含安全日志帮助类，不含 JVM 测试替身。解析、匹配、看门狗和字幕处理逻辑未改，FST 仍未确诊/修复。
+- 诊断输出固定标签 `GM_DIAG`，仅允许列出的加载/结果/错误/匹配/允许/阻止事件，必要时输出 HTTP(S) 主机与 playlist/media/other 分类，不输出路径、查询参数、片段、用户信息、请求头、payload、异常原文或堆栈。无关标签丢弃；IP、本地/内部或非法地址隐藏。允许/阻止请求按安全摘要去重并限制每 loader 最多 64 项，匹配/结果不受该限量阻断。该出口控制此插件 DEX 的日志，不承诺控制宿主或 Android 系统自己的日志。
+- 验证：21 项脱敏等值检查通过，另有未知标签丢弃、请求去重/限量、限量后仍可记录匹配事件的 JVM 检查；D8、修补 DEX 重新组装/反汇编通过；102 个生成 smali 文件只做遥测或日志机械改写；主 DEX 类定义集合未变，所有安全日志调用签名可解析，主 DEX 无原 Android 日志写调用，SDK 外无遥测 init/capture 入口调用；候选中无 JVM Android Log 替身。正式 JAR 输入哈希与非主 DEX 条目均核对未变，现有 Node adapter 检查通过。没有手机加载/播放此候选，没有生成或安装新 APK，不声称完整 Gradle 构建通过。
+- 重建：在隔离源码工作树执行 `scripts/gmDiagnostic/build-check.ps1 -OutputDir <新建或空目录>`；当前 JDK/SDK 是脚本参数默认值，需要时明确指定本机已安装路径。独立 GitHub 测试资源及手机验收现已获批准并执行，不能用电脑本地 JSON 代替，也不能覆盖正式 JSON/JAR。
 
 | 任务 | 先看 |
 | --- | --- |
@@ -99,9 +199,9 @@ https://jokers963.github.io/CatVodSpider/json/supjav.json
 
 ## 5. 权限与实机验证底线
 
-- 权限以用户当次明确授权为准。文档不授予额外权限；本次用户明确授权仅覆盖八文件源码同步提交及正常推送，不包括正式 JSON/JAR/四运行脚本发布、回退或安装 APK。TV 代码、工作树与运行文件保持只读。
+- 权限以用户当次明确授权为准。此前八文件源码同步已完成；本轮批准由主负责人制作隐私诊断候选、发布两个独立远程测试资源并实机验收，另批准测试辅助组件安装。不包括正式 JSON/JAR/四运行脚本修改发布、回退、替换播放器 APK 或新增源码/文档远程同步。TV 代码、工作树与运行文件保持只读。
 - 保留未提交文件；不 reset/clean/强推、不自动同步上游、不把用户定制或旧交接混进提交。必要的独立工作分支/工作树也应按所在工具的要求建立。
-- 手机继续使用正式远程 JSON；本地 `127.0.0.1` 可用于手机媒体代理，不能替代远程配置入口。
+- 手机日常使用正式远程 JSON；获准诊断期间可以使用独立远程测试入口，结束后恢复正式入口。本地 `127.0.0.1` 可用于手机媒体代理，不能替代远程配置入口。
 - 不清应用数据、不盲填配置地址、不切错配置历史、不改变方向锁定、不用外部播放器、不自动点击验证或伪造通过；正式包不留临时 WebView 调试。
 - 回归需确认实际站点/线路，覆盖首次播放、切换、持续播放、快进、返回重播。至少两次记录状态与进度增长，区分缓冲、解析、HTTP/授权、容器与解码错误；不给固定几秒的统一失败判定。
 - 只保存脱敏的必要证据。不公开 Cookie、凭据、设备序列号、签名播放地址或完整私人日志。
@@ -120,11 +220,13 @@ https://jokers963.github.io/CatVodSpider/json/supjav.json
 
 ### 当前任务登记
 
-截至 2026-09-27：稳定性实机子任务已完成并交回原对话；用户已明确授权八文件源码同步提交及正常推送，运行资源仍以 `ee3637d` / v34 为基线，不在本次运行发布。源码同步提交状态由 Git 分支/历史核验，本文不自引用提交号。手机操作者 Codex 已释放设备，界面留在 `ABF-381` 搜索结果；TV 只做加载/缓存链只读检查，未改代码。以下登记只描述本任务，不代表其它会话资源空闲。
+截至 2026-09-27：八文件源码同步已由 `574e2aa6eead6b4ed54d59ae899e32b3a8d4d3ec` 推送至 `origin/main`，只读远程核对吻合；运行资源发布基线仍为 `ee3637d` / v34，未发布新运行资源。其后本轮只读诊断/实机记录仅修改本文，未提交/推送。手机实测使用正式入口 `https://jokers963.github.io/CatVodSpider/json/supjav.json`；结束时停在 SupJav `ABF-381` 详情页，TV 线路暂停于 `150621 ms`，外部字幕开启。当前不再操作设备。TV 仓库仍只读、无代码改动。以下登记只描述本任务，不代表其它会话资源空闲。
 
 | 任务 | 负责人/发布人 | 仓库与基线 | 文件/共享资源范围 | 状态与下一步 | 验证证据 |
 | --- | --- | --- | --- | --- | --- |
-| 四站稳定性复核/源码同步 | Codex 子任务；原对话主负责人复核 | CatVodSpider；运行基线 `ee3637d`；源码同步独立提交由 Git 历史记录 | 八文件白名单；原脏工作树 `main` / `1d97a24` 保留；手机已释放；TV 只读 | 只同步源码/测试/构建/文档，不发布运行资源；FST 根因未确诊 | 正式 JSON v34/v33/v7/v7/v4；候选 JAR 哈希和测试见第 3 节；未验证项见第 3 节 |
+| 四站稳定性复核/源码同步 | Codex 子任务；原对话主负责人复核 | CatVodSpider；源码同步 `574e2aa` 已推送；运行基线 `ee3637d` | 本轮仅 `AI_HANDOFF.md` 未提交实机记录；原脏工作树 `main` / `1d97a24` 保留；手机当前暂停于 ABF-381 TV `150621 ms` 并开启外挂字幕；TV 只读 | 不发布运行资源；字幕两时间点/同帧开关已实机验证；FST 跨层根因与字幕 HTTP 失败隔离仍未知；交回主负责人复核 | 正式 JSON v34/v33/v7/v7/v4；进度原始字段、cue 时间和未验证项见第 3 节 |
+| 独立隐私诊断验收 | 原对话主负责人，子对话已停止 | CatVodSpider；诊断资源 `5d3e281`，正式运行仍 `ee3637d` / v34 | 两份独立测试资源已推送；`scripts/gmDiagnostic/` 与本文仅本地；TV 只读；手机已恢复正式地址并释放 | TV 对照/持续播放/快进/切回恢复通过；FST 两次失败，媒体摘要不足以定位根因；返回重播及恢复后的 TV 重播未做；辅助工具正常安装成功 | 最新授权、远程哈希、日志出口实机证明、进度和未完成项见本文开头 |
+| FST 媒体请求继续排查 | 主负责人单独实现/发布/实机验证 | CatVodSpider 隔离分支，r6 `afe6f88`；正式基线 v34 不变 | 独立诊断资源、`scripts/gmDiagnostic/`、本地记录；手机本轮由主负责人占用；TV 只读 | 正在比较请求头/响应/分片吞吐，证据充分才做测试入口修复，结束恢复正式地址 | 本轮最新证据与收尾状态见开头 |
 
 阶段结束、失败或移交都要更新这一表及必要的当前状态。不需要每个 AI 再维护一份复制的状态文档。
 

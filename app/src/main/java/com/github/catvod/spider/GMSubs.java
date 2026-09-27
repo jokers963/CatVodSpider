@@ -9,6 +9,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayInputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.SequenceInputStream;
@@ -71,6 +72,7 @@ public class GMSubs extends Spider {
         if (stream == null) stream = new OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
+                .callTimeout(30, TimeUnit.SECONDS)
                 .build();
         return stream;
     }
@@ -307,9 +309,17 @@ public class GMSubs extends Spider {
         }
     }
 
+    static boolean needsPngProxy(String url) {
+        if (url == null) return false;
+        HttpUrl parsed = HttpUrl.parse(url);
+        return FAKE_PNG_HLS.matcher(url).find() || parsed != null && parsed.isHttps()
+                && parsed.host().equals("fc2stream.tv") && parsed.username().isEmpty() && parsed.password().isEmpty()
+                && parsed.encodedPath().endsWith(".m3u8");
+    }
+
     private boolean proxyFakePngHls(JSONObject play) throws Exception {
         String url = play.optString("url");
-        if (!FAKE_PNG_HLS.matcher(url).find()) return false;
+        if (!needsPngProxy(url)) return false;
         String base = proxyBase();
         if (base.isEmpty()) return false;
         play.put("url", proxyUrl(base, "m3u8", url, headers(play.opt("header"))));
@@ -559,7 +569,32 @@ public class GMSubs extends Spider {
             res.close();
             return status(code);
         }
-        return new Object[]{200, "video/mp2t", stripFakePng(res.body().byteStream())};
+        try {
+            InputStream input = stripFakePng(closeOnReadFailure(res.body().byteStream()));
+            return new Object[]{200, "video/mp2t", input};
+        } catch (IOException error) {
+            res.close();
+            throw error;
+        }
+    }
+
+    static InputStream closeOnReadFailure(InputStream input) {
+        return new FilterInputStream(input) {
+            private IOException closeAfter(IOException error) {
+                try { in.close(); } catch (IOException closeError) { error.addSuppressed(closeError); }
+                return error;
+            }
+            @Override public int read() throws IOException {
+                try { return in.read(); } catch (IOException error) { throw closeAfter(error); }
+            }
+            @Override public int read(byte[] buffer, int offset, int length) throws IOException {
+                try {
+                    return in.read(buffer, offset, length);
+                } catch (IOException error) {
+                    throw closeAfter(error);
+                }
+            }
+        };
     }
 
     static InputStream stripFakePng(InputStream in) throws IOException {
