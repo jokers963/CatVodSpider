@@ -40,6 +40,7 @@
           ]
         },
         "playUrlMatch": [
+          "https://fc2stream.tv/*.m3u8*",
           "https://*.cdn-centaurus.com/*/master.m3u8*",
           "https://*.cloudatacdn.com/*",
           "https://*.cloudflarestorage.com/*",
