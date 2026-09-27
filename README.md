@@ -1,5 +1,9 @@
 # CatVodSpider
 
+## 落雨秋项目原理
+
+[播放器、配置与维护说明](LUOYUQIU_ARCHITECTURE.md) · [配套播放器原理](https://github.com/jokers963/TV/blob/fongmi/LUOYUQIU_ARCHITECTURE.md)
+
 ## 落雨秋点播接口
 
 复制下面的完整地址，粘贴到手机「落雨秋 → 设置 → 点播配置地址」，然后点击「确定」。
