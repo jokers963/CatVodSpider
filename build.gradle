@@ -95,26 +95,52 @@ tasks.register('spiderJar') {
 
 def gmSubsDex = layout.buildDirectory.file('gmSubsDex/classes.dex')
 def gmSubsClass = project(':app').layout.buildDirectory.file('intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/github/catvod/spider/GMSubs.class')
+def gmSubsClassDir = gmSubsClass.map { it.asFile.parentFile }
+def gmSubsClassFiles = files(gmSubsClassDir.map { dir -> fileTree(dir) { include 'GMSubs*.class' } })
 
 def compileGmSubsDex = tasks.register('compileGmSubsDex', Exec) {
     dependsOn ':app:compileDebugJavaWithJavac'
-    inputs.file(gmSubsClass)
+    inputs.files(gmSubsClassFiles)
     outputs.file(gmSubsDex)
     doFirst {
         gmSubsDex.get().asFile.parentFile.mkdirs()
+        def classFiles = gmSubsClassFiles.files.sort { it.name }
+        if (!classFiles.any { it.name == 'GMSubs.class' }) throw new IllegalStateException('GMSubs.class is missing')
         def sdk = System.getenv('ANDROID_HOME') ?: System.getenv('ANDROID_SDK_ROOT')
-        if (!sdk) throw new GradleException('ANDROID_HOME or ANDROID_SDK_ROOT is required')
-        commandLine "${sdk}/build-tools/36.0.0/d8.bat", '--min-api', '23', '--lib', "${sdk}/platforms/android-${libs.versions.compileSdk.get()}/android.jar", '--classpath', gmSubsClass.get().asFile.parentFile.parentFile.parentFile.parentFile.parentFile.absolutePath, '--output', gmSubsDex.get().asFile.parentFile.absolutePath, gmSubsClass.get().asFile.absolutePath
+        if (!sdk) throw new IllegalStateException('ANDROID_HOME or ANDROID_SDK_ROOT is required')
+        commandLine(["${sdk}/build-tools/36.0.0/d8.bat", '--min-api', '23', '--lib', "${sdk}/platforms/android-${libs.versions.compileSdk.get()}/android.jar", '--classpath', gmSubsClass.get().asFile.parentFile.parentFile.parentFile.parentFile.parentFile.absolutePath, '--output', gmSubsDex.get().asFile.parentFile.absolutePath] + classFiles.collect { it.absolutePath })
     }
 }
 
-tasks.register('gmSubsJar', Zip) {
+def gmSubsJarCandidate = layout.buildDirectory.file('gmSubsJar/gm_subs.jar')
+def packageGmSubsJar = tasks.register('packageGmSubsJar', Zip) {
     dependsOn compileGmSubsDex
     archiveFileName = 'gm_subs.jar'
-    destinationDirectory = layout.projectDirectory.dir('jar')
+    destinationDirectory = layout.buildDirectory.dir('gmSubsJar')
     from(zipTree('jar/gm.jar'))
     from(gmSubsDex.map { it.asFile.parentFile }) {
         include 'classes.dex'
         rename 'classes.dex', 'classes2.dex'
+    }
+}
+
+def verifyGmSubsJar = tasks.register('verifyGmSubsJar', Exec) {
+    dependsOn packageGmSubsJar
+    inputs.files(gmSubsJarCandidate, layout.projectDirectory.file('jar/gm.jar'), layout.projectDirectory.file('jar/checkJar.ps1'), apktoolJar)
+    outputs.upToDateWhen { false }
+    doFirst {
+        def candidate = gmSubsJarCandidate.get().asFile
+        ant.checksum(file: candidate, algorithm: 'MD5', fileext: '.md5', forceOverwrite: true)
+        commandLine 'powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', spiderCheckScript.asFile.absolutePath,
+                '-Jar', candidate.absolutePath, '-BaseJar', layout.projectDirectory.file('jar/gm.jar').asFile.absolutePath, '-AllowBundledRuntime'
+    }
+}
+
+tasks.register('gmSubsJar') {
+    group = 'build'
+    description = 'Tests, builds, and verifies an isolated GM spider JAR candidate without replacing the checked-in JAR.'
+    dependsOn ':app:testDebugUnitTest', verifyGmSubsJar
+    doLast {
+        logger.lifecycle("Verified release candidate: ${gmSubsJarCandidate.get().asFile.absolutePath}")
     }
 }

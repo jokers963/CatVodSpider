@@ -27,17 +27,15 @@ git remote -v
 | --- | --- |
 | 接口 fork | [jokers963/CatVodSpider](https://github.com/jokers963/CatVodSpider)，默认分支 `main` |
 | 播放器 fork | [jokers963/TV](https://github.com/jokers963/TV)，默认分支 `fongmi`，不是 `main` |
-| 接口运行源码基线 | `1d97a24cab319345218cc58b80091b9b1c1af879` |
-| TV 已提交源码基线 | `4afc4473e22a7ed3d98ee12233e0c2a490061000` |
-| 本次更新前接口远程 HEAD | `4e7aed9650744fbc679a1bcc18f2c3bd7ec72663`，比运行源码基线多文档提交 |
-| 本次更新前 TV 远程 HEAD | `deb8c6b503ca94e2496f6349bce0d0f9090c56c8`，比源码基线多文档提交 |
-| 研究时手机 APK | `com.fongmi.android.tv`，5.6.5；下一次连接须重新核对 |
+| 接口正式远程 `main` | `ee3637dc250c3a945f97cd3a7c9e7f579ae2f838`；只读 `ls-remote` 于 2026-09-27 复核 |
+| TV 远程 `fongmi` | `91b8c9a698922a2f8f4a11b24736f1ddab264441`；只读 `ls-remote` 于 2026-09-27 复核 |
+| 接口原工作树 | `D:\CodexWorkspace\Android\影视\CatVodSpider`，`main` / `1d97a24cab319345218cc58b80091b9b1c1af879`，含用户未提交改动 |
+| 源码同步工作树 | `C:\Users\Administrator\AppData\Local\Temp\catvodspider-release-v34-20260927`，分支 `publish/gm-subs-v34-20260927` 基于运行资源基线 `ee3637d`；源码同步状态以该分支/Git 提交记录核对，不代表运行资源发布 |
+| 手机播放器 | `com.fongmi.android.tv`，实装 `5.6.6` / versionCode `566`，2026-09-27 只读复核 |
 
 维护者电脑上的路径：`D:\CodexWorkspace\Android\影视\CatVodSpider` 与 `D:\CodexWorkspace\Android\影视\TV`。换电脑后自行定位，不能假定这些目录存在。
 
-2026-09-27 检查时，接口本地 HEAD 仍为上述运行基线，仅有用户未跟踪的 `交接.md`；TV 本地 HEAD 仍为上述源码基线，有 39 项未提交状态。远程文档提交没有自动同步到本地。旧 `交接.md` 已落后，必须保留，但不能把其中 v29、旧 generation 修复和旧站点状态直接当成现状。
-
-TV 的已安装 APK、本地定制、远程源码和 AAR 的精确对应关系尚未证明。本地构建标注 5.6.3，不能据此覆盖手机已装版本，也不能把最新上游能力当作 fork 已有能力。
+原工作树的未提交文件保留且不覆盖：`GMSubs.java`、`GMSubsTest.java`、`build.gradle`、`jar/checkJar.ps1`、`js/adapters.test.cjs`、四份 `js/*.user.js`、未跟踪 `scripts/` 与 `AI_HANDOFF.md`，以及用户原有未跟踪 `交接.md`。手机已退出视频详情并回到 `ABF-381` 搜索结果，实机操作者已释放。TV 只做过加载/缓存链只读检查，无代码修改；TV 本地定制/源码与实装 APK/AAR 的精确映射未全面确认。TV 源码基线 `4afc447…` 与 39 项脏状态是 2026-09-27 日期快照，不代表此后状态。
 
 ## 3. 正式发布状态与验收缺口
 
@@ -47,23 +45,39 @@ TV 的已安装 APK、本地定制、远程源码和 AAR 的精确对应关系�
 https://jokers963.github.io/CatVodSpider/json/supjav.json
 ```
 
-[查看实际远程配置](https://jokers963.github.io/CatVodSpider/json/supjav.json)。2026-09-27 本轮重新读取的结果：
+[查看实际远程配置](https://jokers963.github.io/CatVodSpider/json/supjav.json)。2026-09-27 只读 GET 结果：
 
 | 项目 | 正式配置快照 |
 | --- | --- |
-| JAR | `gm_subs.jar?v=33` |
-| SupJav | `supjav.user.js?v=32` |
-| MissAV | `missav.user.js?v=6` |
-| Jable | `jable.user.js?v=6` |
-| AV01 | `av01.user.js?v=3` |
+| JAR | `gm_subs.jar?v=34` |
+| SupJav | `supjav.user.js?v=33` |
+| MissAV | `missav.user.js?v=7` |
+| Jable | `jable.user.js?v=7` |
+| AV01 | `av01.user.js?v=4` |
 
-四站均为 `type: 3` / `csp_GMSubs`，调试关闭。ST、VOE 已从 SupJav 当前线路中移除；freepornvideos、jav.guru 不在正式站点清单。不要依据最早交接继续修复或恢复这些已取消来源。
+正式发布提交为 `ee3637dc250c3a945f97cd3a7c9e7f579ae2f838`。四站均为 `type: 3` / `csp_GMSubs`，调试关闭；站点集合只有 SupJav、MissAV、Jable、AV01。ST、VOE 及已取消站点不得恢复。运行手机入口始终是上面的 GitHub Pages URL，不以电脑本地 JSON 代替。
 
-当前任务是改善 AI 接手文档，不是播放修复。本轮没有改 JSON/JAR/JS/APK，没有构建、安装或重跑手机播放；完整播放验收仍不能宣布完成。
+### 已验证结果
 
-历史有四站样本播放记录，但本轮未复测，单样本不代表整站稳定。后续具体修复由用户指定；若回归 SupJav，使用用户最新指定的 `ABF-381`，不要沿用旧 `IPX-343`。
+- SupJav `ABF-381` TV 线路有实播证据；字幕面板出现并选中了独立的迅雷 SRT 候选，选择后 position `463781→503768 ms`，约 39.993 秒实质增长。候选选中不证明下载、渲染或同步。`SSIS-001` 是成功空结果样本：桌面端字幕 API 返回 0 条，手机面板无外部轨道且视频继续播放；手机 API 响应没有直接抓包。
+- Jable `ABF-381` 自然访问成功。媒体快进键 keycode 90 前后由 `44770→65709 ms`，updated 只增加 `6140 ms`，额外跳转约 `14799 ms`；随后两次均 `state=3` 的实质增长为 `18036 ms` 和 `20132 ms`。回到搜索结果重播后 `13880→29848→53166 ms`，两次增长 `15968 ms`、`23318 ms`。
+- AV01 `ABF-381` 自然访问成功。快进前后 `28980→53800 ms`，updated 增加 `10323 ms`，额外跳转约 `14497 ms`；随后两次 `state=3` 的实质增长为 `20276 ms` 和 `18436 ms`。回到搜索结果重播后 `16889→38253→61782 ms`，两次增长 `21364 ms`、`23529 ms`。
+- MissAV `ABF-381` 有既有正常播放/重播记录；本轮没有补做新线路测试。以上是指定样本证据，不代表整站稳定。
 
-待查证而非已确诊的问题：外层任务限时与网页等待可能冲突；首页/分类速度与访问验证不确定；APK/源码/依赖映射未确认。未经实机证据，不能把静态风险写成失败根因。
+### 尚未验证或未确诊
+
+- SupJav FST 的 `SSIS-001`、`ABF-381` 均选中线路后出现“播放地址加载失败”，播放状态为 0、无实质进度增长。只读代码确认详情按钮原始索引经 `link` 放入 `pathname#link`，播放器按索引点击按钮并返回 `type:match`；正式 `playUrlMatch` 为通用域名规则，无 FST 专属规则。没有实际 iframe 主机、匹配媒体请求或可归因异常的安全日志；`MediaSession error=null` 不能排除 GM/网页解析异常。无法确认失败在哪一层，不放宽匹配、不猜主机、不改代码。
+- Jable/AV01 的验证码与网络失败分支有本地模拟测试覆盖，但本轮未在手机制造网络故障或点击验证。TV 弱网下多档清晰度的实际切换/卡顿改善没有验证；TV 仅检查加载/缓存链，未修改代码。
+- 字幕手机端请求计数、字幕真实下载/渲染/同步，以及字幕请求失败时手机播放隔离未直接验证。已有 JVM 调用计数测试验证缓存/异常不缓存，但不替代手机证据。
+- 手机通过正式入口加载的配置/实播有证据，但没有设备端 JAR 响应体或哈希，不能声称手机已直接确认下载 v34 字节。
+
+### 本地候选与构建状态
+
+- 远程 v34 JAR SHA-256 为 `907BD6C189C2DF4C24F0434EE8B6BC151EC02B15E37912666764350ADCAC9104`；其 `classes.dex` SHA-256 为 `3126F4FD736073F8A47DDB7844CC00BCC6EF68EDF2D63DF3863493060D380D09`，`classes2.dex` 为 `E3BD12C6DDC2B67F839E38AE20AE09203D2AFA6F5143F2DA0BA08409D9E4F231`。远程 JAR 与先前本地构建候选整包哈希一致；不代表手机端直接哈希。
+- 本地候选范围：`GMSubs.java`、`GMSubsTest.java`、`js/adapters.test.cjs`、`build.gradle`、`jar/checkJar.ps1`、`scripts/gmSubsManual/build-check.ps1`、本文与 `AGENTS.md`，共八项；只在隔离候选工作树中整理，不自动并入远程。四份运行 JS 与远程已发布内容在换行规范化后完全相同，不重复修改。原工作树本地 JSON/JAR 仍 v33，禁止拿来覆盖已发布 v34。
+- 本轮候选复验（2026-09-27）：`node js/adapters.test.cjs` 通过；`jable.user.js`、`av01.user.js`、`missav.user.js`、`supjav.user.js` 的 `node --check` 通过；Groovy 4.0.32 `FileSystemCompiler` 对 `build.gradle` 语法编译通过；手动脚本 JUnit 17 项、D8、DEX 引用及临时 JAR 结构校验均通过，原始 `classes.dex` SHA-256 保持为 `3126F4FD...D380D09`。新生成 `classes2.dex` SHA-256 为 `E3BD12C6...D9E4F231`，与正式 v34 JAR 记录值一致。`git diff --check` 无空白错误（只有 Windows 行尾提示）。正式 Gradle 构建仍在项目配置前因本机 JDK 21 loopback selector 初始化失败，不能记作构建通过。手动脚本使用当前主机的 `E:\DevTools\...` 固定路径，不是新机器开箱即用。
+- 手动脚本还依赖 `app/build/intermediates/compile_app_classes_jar/debug/bundleDebugClassesToCompileJar/classes.jar`。本次候选目录起初没有此忽略的生成文件；实际从原脏工作树中已存在的生成产物复制复用，未在候选中重建，不能称为本轮完整新构建。新 clone 缺此文件时须先用 Wrapper 生成匹配的宿主 compile 产物，或调整明确的编译 classpath；当前脚本不是独立开箱即用的完整构建。标准 Gradle 的本机限制尚未解决，不能保证新环境无需构建条件即可重建。
+- 本批八文件是与线上 v34 对齐的源码、测试、构建与文档同步；运行资源基线为 `ee3637d`，源码同步提交与运行资源发布分开记录。提交状态/哈希以 Git 历史为准，本文不自引用其提交号。此批不改变任何 JAR、JSON 或四份运行 JS；推送后应核对正式运行资源版本/内容仍与 v34 基准一致。源码/文档同步不使既有局部实机验收失效，也不代表新增手机证据；若以后运行产物变化，再另行取得发布授权并按风险回归。设备端仍无 JAR 响应体/哈希。未安装 APK。
 
 ## 4. 从任务直接找到代码
 
@@ -81,11 +95,11 @@ https://jokers963.github.io/CatVodSpider/json/supjav.json
 
 关键约束：GM 返回 `type: match` 后仍可能等待媒体请求；MissAV 不改回带 `name` 的 `finalUrl`；SupJav 的“TV 线路”不是直播功能；WebView、宿主网络、插件网络和播放引擎并非自动共享 Cookie/请求头。
 
-构建入口见 `build.gradle`。维护者本地曾有忽略目录脚本 `build/gmSubsManual/build-check.ps1`；使用前检查存在和全文，它会更新 JAR，不是只读检查。历史 Gradle daemon 失败不能写成构建成功，历史单元测试数量不能冒充本次测试结果。检查脚本语法、JSON、匹配的单元测试及 DEX 完整性，再做实机回归；编译成功不等于播放成功。
+构建入口见 `build.gradle`。受控手动构建/检查入口为 `scripts/gmSubsManual/build-check.ps1 -OutputDir <新建或空临时目录>`；它使用当前主机固定 SDK/JDK/缓存路径及现成的 `app/build/intermediates/compile_app_classes_jar/debug/bundleDebugClassesToCompileJar/classes.jar`，输出独立临时 JAR，不覆盖正式 `jar/gm_subs.jar`。本次该 `classes.jar` 从原脏工作树的已有生成产物复制到候选目录并复用，未由候选脚本重建。新 clone 缺失时须先用 Wrapper 生成匹配的宿主 compile 产物，或明确调整编译 classpath；该脚本不是独立完整构建。使用前核对路径及完整脚本。标准 Gradle 未通过不能写成构建成功；手动 D8/JAR 检查也不等于完整 Gradle 构建或实机播放。
 
 ## 5. 权限与实机验证底线
 
-- 文档不会扩大用户授权。当前仅授权远程 Markdown 更新；TV 本地工作树及运行文件保持只读。以后需要改 TV 代码、安装 APK、发布运行文件或改变接口时，先确认用户已经授权该动作。
+- 权限以用户当次明确授权为准。文档不授予额外权限；本次用户明确授权仅覆盖八文件源码同步提交及正常推送，不包括正式 JSON/JAR/四运行脚本发布、回退或安装 APK。TV 代码、工作树与运行文件保持只读。
 - 保留未提交文件；不 reset/clean/强推、不自动同步上游、不把用户定制或旧交接混进提交。必要的独立工作分支/工作树也应按所在工具的要求建立。
 - 手机继续使用正式远程 JSON；本地 `127.0.0.1` 可用于手机媒体代理，不能替代远程配置入口。
 - 不清应用数据、不盲填配置地址、不切错配置历史、不改变方向锁定、不用外部播放器、不自动点击验证或伪造通过；正式包不留临时 WebView 调试。
@@ -106,11 +120,11 @@ https://jokers963.github.io/CatVodSpider/json/supjav.json
 
 ### 当前任务登记
 
-截至本文更新：未登记新的运行开发任务；本轮只有文档整理。以下空表不证明其他会话或手机空闲。
+截至 2026-09-27：稳定性实机子任务已完成并交回原对话；用户已明确授权八文件源码同步提交及正常推送，运行资源仍以 `ee3637d` / v34 为基线，不在本次运行发布。源码同步提交状态由 Git 分支/历史核验，本文不自引用提交号。手机操作者 Codex 已释放设备，界面留在 `ABF-381` 搜索结果；TV 只做加载/缓存链只读检查，未改代码。以下登记只描述本任务，不代表其它会话资源空闲。
 
 | 任务 | 负责人/发布人 | 仓库与基线 | 文件/共享资源范围 | 状态与下一步 | 验证证据 |
 | --- | --- | --- | --- | --- | --- |
-| 待用户指定 | 未认领 | 开工时填写 | 开工时填写 | 未开始 | 无 |
+| 四站稳定性复核/源码同步 | Codex 子任务；原对话主负责人复核 | CatVodSpider；运行基线 `ee3637d`；源码同步独立提交由 Git 历史记录 | 八文件白名单；原脏工作树 `main` / `1d97a24` 保留；手机已释放；TV 只读 | 只同步源码/测试/构建/文档，不发布运行资源；FST 根因未确诊 | 正式 JSON v34/v33/v7/v7/v4；候选 JAR 哈希和测试见第 3 节；未验证项见第 3 节 |
 
 阶段结束、失败或移交都要更新这一表及必要的当前状态。不需要每个 AI 再维护一份复制的状态文档。
 

@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
@@ -46,12 +47,23 @@ public class GMSubs extends Spider {
     private static final String HLS = "application/x-mpegURL";
     private static final int TS_PACKET = 188;
     private static final int SNIFF_BYTES = 64 * 1024;
+    static final long SUBTITLE_CACHE_TTL_MS = TimeUnit.MINUTES.toMillis(5);
+    static final int SUBTITLE_CACHE_SIZE = 100;
+    private static final long PLAYER_CONTENT_TIMEOUT_MS = 30000;
+    private static final long SUBTITLE_HTTP_TIMEOUT_MS = 1000;
+    private static final long PLAYER_RETURN_RESERVE_MS = 2000;
+    private static final Map<String, SubtitleCacheEntry> subtitleCache = new LinkedHashMap<String, SubtitleCacheEntry>(16, .75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, SubtitleCacheEntry> eldest) {
+            return size() > SUBTITLE_CACHE_SIZE;
+        }
+    };
     private static OkHttpClient http;
     private static OkHttpClient stream;
     private Spider gm;
 
     private static OkHttpClient http() {
-        if (http == null) http = new OkHttpClient.Builder().callTimeout(3, TimeUnit.SECONDS).build();
+        if (http == null) http = new OkHttpClient.Builder().callTimeout(SUBTITLE_HTTP_TIMEOUT_MS, TimeUnit.MILLISECONDS).build();
         return http;
     }
 
@@ -194,12 +206,18 @@ public class GMSubs extends Spider {
 
     @Override
     public String playerContent(String flag, String id, List<String> vipFlags) throws Exception {
+        long startedAt = System.nanoTime();
         String result = gm.playerContent(flag, id, vipFlags);
         try {
             JSONObject play = new JSONObject(result);
             if (play.optString("url").isEmpty()) return result;
             boolean changed = proxyFakePngHls(play) || proxyTokenMaster(play);
-            JSONArray subs = subtitles(codeFromPlay(flag, id));
+            String code = codeFromPlay(flag, id);
+            JSONArray subs = cachedSubtitles(code);
+            if (subs == null && hasSubtitleLookupBudget(startedAt, System.nanoTime())) {
+                subs = cachedOrLookupSubtitles(code, () -> search(code));
+            }
+            if (subs == null) subs = new JSONArray();
             if (subs.length() > 0) {
                 play.put("subs", subs);
                 changed = true;
@@ -210,12 +228,82 @@ public class GMSubs extends Spider {
         }
     }
 
-    private static JSONArray subtitles(String code) {
-        if (code.isEmpty()) return new JSONArray();
+    static boolean hasSubtitleLookupBudget(long startedAtNanos, long nowNanos) {
+        long elapsed = Math.max(0, TimeUnit.NANOSECONDS.toMillis(nowNanos - startedAtNanos));
+        return elapsed < PLAYER_CONTENT_TIMEOUT_MS - SUBTITLE_HTTP_TIMEOUT_MS - PLAYER_RETURN_RESERVE_MS;
+    }
+
+    static JSONArray cachedOrLookupSubtitles(String code, Callable<JSONArray> lookup) {
+        if (code == null || code.isEmpty()) return new JSONArray();
         try {
-            return search(code);
+            JSONArray cached = cachedSubtitles(code);
+            if (cached != null) return cached;
+            JSONArray found = lookup.call();
+            cacheSubtitles(code, found);
+            return found;
         } catch (Exception ignored) {
+            // Subtitle lookup is optional; a failure must never prevent GM playback.
             return new JSONArray();
+        }
+    }
+
+    static JSONArray cachedSubtitles(String code) {
+        return cachedSubtitles(code, System.currentTimeMillis());
+    }
+
+    static JSONArray cachedSubtitles(String code, long now) {
+        String key = normalizeCode(code);
+        if (key.isEmpty()) return null;
+        String data;
+        synchronized (subtitleCache) {
+            SubtitleCacheEntry entry = subtitleCache.get(key);
+            if (entry == null) return null;
+            if (entry.expiresAt <= now) {
+                subtitleCache.remove(key);
+                return null;
+            }
+            data = entry.data;
+        }
+        try {
+            return new JSONArray(data);
+        } catch (Exception ignored) {
+            synchronized (subtitleCache) {
+                subtitleCache.remove(key);
+            }
+            return null;
+        }
+    }
+
+    static void cacheSubtitles(String code, JSONArray subtitles) {
+        cacheSubtitles(code, subtitles, System.currentTimeMillis());
+    }
+
+    static void cacheSubtitles(String code, JSONArray subtitles, long now) {
+        String key = normalizeCode(code);
+        if (key.isEmpty()) return;
+        SubtitleCacheEntry entry = new SubtitleCacheEntry(subtitles.toString(), now + SUBTITLE_CACHE_TTL_MS);
+        synchronized (subtitleCache) {
+            subtitleCache.put(key, entry);
+        }
+    }
+
+    private static final class SubtitleCacheEntry {
+        final String data;
+        final long expiresAt;
+
+        SubtitleCacheEntry(String data, long expiresAt) {
+            this.data = data;
+            this.expiresAt = expiresAt;
+        }
+    }
+
+    private static JSONArray search(String code) throws Exception {
+        Request request = new Request.Builder().url("https://api-shoulei-ssl.xunlei.com/oracle/subtitle?name=" + code).build();
+        try (Response response = http().newCall(request).execute()) {
+            if (!response.isSuccessful() || response.body() == null) throw new IOException("Subtitle lookup failed");
+            JSONObject json = new JSONObject(response.body().string());
+            if (json.optInt("code", -1) != 0) throw new IOException("Subtitle lookup failed");
+            return rankSubtitles(code, json.optJSONArray("data"));
         }
     }
 
@@ -305,10 +393,7 @@ public class GMSubs extends Spider {
         return map;
     }
 
-    /**
-     * Rewrites every URI through {@code link.apply(absoluteUri, isPlaylist)}.
-     * A master playlist keeps only its highest resolution (then bandwidth) variant.
-     */
+    /** Rewrites every URI and, by default, keeps only the highest master variant. */
     static String rewritePlaylist(String text, String baseUrl, BiFunction<String, Boolean, String> link) {
         return rewritePlaylist(text, baseUrl, link, true);
     }
@@ -456,11 +541,15 @@ public class GMSubs extends Spider {
         try (Response res = stream().newCall(request(url, headers)).execute()) {
             if (!res.isSuccessful() || res.body() == null) return status(res.code());
             String finalUrl = res.request().url().toString();
-            Map<String, String> segment = segmentHeaders(headers);
-            String body = rewritePlaylist(res.body().string(), finalUrl, (target, playlist) ->
-                    playlist ? proxyUrl(base, "m3u8", target, headers) : proxyUrl(base, "ts", target, segment));
+            String body = rewriteProxyPlaylist(res.body().string(), finalUrl, base, headers);
             return new Object[]{200, HLS, new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8))};
         }
+    }
+
+    String rewriteProxyPlaylist(String text, String finalUrl, String base, Map<String, String> headers) {
+        Map<String, String> segment = segmentHeaders(headers);
+        return rewritePlaylist(text, finalUrl, (target, playlist) ->
+                playlist ? proxyUrl(base, "m3u8", target, headers) : proxyUrl(base, "ts", target, segment), false);
     }
 
     private Object[] proxySegment(String url, Map<String, String> headers) throws IOException {
@@ -497,16 +586,6 @@ public class GMSubs extends Spider {
 
     private static Object[] status(int code) {
         return new Object[]{code, "text/plain", new ByteArrayInputStream(new byte[0])};
-    }
-
-    private static JSONArray search(String code) throws Exception {
-        Request request = new Request.Builder().url("https://api-shoulei-ssl.xunlei.com/oracle/subtitle?name=" + code).build();
-        try (Response response = http().newCall(request).execute()) {
-            if (!response.isSuccessful() || response.body() == null) return new JSONArray();
-            JSONObject json = new JSONObject(response.body().string());
-            if (json.optInt("code", -1) != 0) return new JSONArray();
-            return rankSubtitles(code, json.optJSONArray("data"));
-        }
     }
 
     @Override

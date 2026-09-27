@@ -7,7 +7,11 @@ import org.junit.Test;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.Map;
+
+import okhttp3.HttpUrl;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -69,13 +73,111 @@ public class GMSubsTest {
     }
 
     @Test
-    public void masterPlaylistKeepsOnlyTheHighestResolutionThroughTheProxy() {
+    public void cachesSubtitleResultsByNormalizedCodeWithoutSharingMutableArrays() throws Exception {
+        JSONArray original = new JSONArray().put(item("IPX-343.srt", "https://a.example/cache.srt", "srt"));
+        GMSubs.cacheSubtitles("CACHE-101", original);
+        original.put(item("mutated.srt", "https://a.example/mutated.srt", "srt"));
+
+        JSONArray first = GMSubs.cachedSubtitles("cache101");
+        assertEquals(1, first.length());
+        first.put(item("local-change.srt", "https://a.example/local.srt", "srt"));
+        assertEquals(1, GMSubs.cachedSubtitles("CACHE-101").length());
+        assertEquals(null, GMSubs.cachedSubtitles("missing-102"));
+    }
+
+    @Test
+    public void cachesSuccessfulEmptyResultsAndExpiresEntries() {
+        long now = 1_000_000L;
+        GMSubs.cacheSubtitles("EMPTY-201", new JSONArray(), now);
+        assertEquals(0, GMSubs.cachedSubtitles("empty201", now + GMSubs.SUBTITLE_CACHE_TTL_MS - 1).length());
+        assertEquals(null, GMSubs.cachedSubtitles("EMPTY-201", now + GMSubs.SUBTITLE_CACHE_TTL_MS));
+    }
+
+    @Test
+    public void evictsOldestSubtitleEntryAtCapacity() {
+        for (int i = 0; i <= GMSubs.SUBTITLE_CACHE_SIZE; i++) {
+            GMSubs.cacheSubtitles("CAPACITY-" + i, new JSONArray());
+        }
+        assertEquals(null, GMSubs.cachedSubtitles("CAPACITY-0"));
+        assertEquals(0, GMSubs.cachedSubtitles("CAPACITY-" + GMSubs.SUBTITLE_CACHE_SIZE).length());
+    }
+
+    @Test
+    public void failedSubtitleLookupIsNotCachedAndReturnsNoSubtitles() throws Exception {
+        final int[] attempts = {0};
+        JSONArray failed = GMSubs.cachedOrLookupSubtitles("FAIL-301", () -> {
+            attempts[0]++;
+            throw new java.io.IOException("offline");
+        });
+        assertEquals(0, failed.length());
+        assertEquals(null, GMSubs.cachedSubtitles("FAIL-301"));
+
+        JSONArray empty = GMSubs.cachedOrLookupSubtitles("FAIL-301", () -> {
+            attempts[0]++;
+            return new JSONArray();
+        });
+        assertEquals(0, empty.length());
+        assertEquals(0, GMSubs.cachedOrLookupSubtitles("FAIL-301", () -> {
+            attempts[0]++;
+            return new JSONArray().put(new JSONObject());
+        }).length());
+        assertEquals(2, attempts[0]);
+    }
+
+    @Test
+    public void subtitleLookupIsSkippedNearTheInstalledPlayerDeadline() {
+        long start = 4_000_000_000L;
+        assertTrue(GMSubs.hasSubtitleLookupBudget(start, start));
+        assertFalse(GMSubs.hasSubtitleLookupBudget(start, start + java.util.concurrent.TimeUnit.SECONDS.toNanos(27)));
+    }
+
+    @Test
+    public void supJavTvProxyPreservesMasterVariantsHeadersRelativeUrisAndSeekTags() throws Exception {
         String master = "#EXTM3U\n#EXT-X-VERSION:6\n"
-                + "#EXT-X-STREAM-INF:BANDWIDTH=105600,RESOLUTION=1280x720\nhttps://gs07.example/a/720.m3u8\n"
-                + "#EXT-X-STREAM-INF:BANDWIDTH=1205600,RESOLUTION=1920x1080\nhttps://gs16.example/a/1080.m3u8\n"
-                + "#EXT-X-STREAM-INF:BANDWIDTH=52800,RESOLUTION=854x480\nhttps://gs18.example/a/480.m3u8\n";
-        String out = GMSubs.rewritePlaylist(master, "https://cdn3.example/data/x.m3u8", (url, playlist) -> (playlist ? "P:" : "S:") + url);
-        assertEquals("#EXTM3U\n#EXT-X-VERSION:6\n#EXT-X-STREAM-INF:BANDWIDTH=1205600,RESOLUTION=1920x1080\nP:https://gs16.example/a/1080.m3u8\n", out);
+                + "#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"audio\",NAME=\"Audio\",URI=\"audio/index.m3u8\"\n"
+                + "#EXT-X-STREAM-INF:BANDWIDTH=52800,RESOLUTION=854x480\n480.m3u8\n"
+                + "#EXT-X-STREAM-INF:BANDWIDTH=105600,RESOLUTION=1280x720\n720.m3u8\n"
+                + "#EXT-X-STREAM-INF:BANDWIDTH=1205600,RESOLUTION=1920x1080\n1080.m3u8\n"
+                + "#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=12000,RESOLUTION=320x180,URI=\"iframe.m3u8\"\n";
+        String media = "#EXTM3U\n#EXT-X-TARGETDURATION:4\n#EXT-X-MEDIA-SEQUENCE:120\n"
+                + "#EXTINF:4.0,\nsegments/001.ts\n#EXT-X-BYTERANGE:512@0\n"
+                + "shared.ts\n#EXTINF:4.0,\nsegments/003.ts\n#EXT-X-ENDLIST\n";
+        Map<String, String> headers = new LinkedHashMap<>();
+        headers.put("User-Agent", "TV-UA");
+        headers.put("Referer", "https://turbovidhls.com/");
+        headers.put("Cookie", "session=tv");
+        GMSubs spider = new GMSubs();
+        spider.siteKey = "SupJav";
+        String proxyBase = "http://127.0.0.1:9978/proxy";
+
+        String proxiedMaster = spider.rewriteProxyPlaylist(master,
+                "https://cdn.example/hls/master.m3u8", proxyBase, headers);
+        assertTrue(proxiedMaster.contains("RESOLUTION=854x480\n"));
+        assertTrue(proxiedMaster.contains("RESOLUTION=1280x720\n"));
+        assertTrue(proxiedMaster.contains("RESOLUTION=1920x1080\n"));
+        assertEquals(3, proxiedMaster.lines().filter(line -> !line.startsWith("#")).count());
+        assertTrue(proxiedMaster.contains("URI=\"" + proxyBase + "?do=csp&siteKey=SupJav&type=m3u8"));
+        String audioLink = proxiedMaster.substring(proxiedMaster.indexOf("URI=\"") + 5).split("\"", 2)[0];
+        assertEquals("https://cdn.example/hls/audio/index.m3u8", HttpUrl.parse(audioLink).queryParameter("url"));
+        HttpUrl variant = HttpUrl.parse(proxiedMaster.lines().filter(line -> !line.startsWith("#")).findFirst().orElseThrow());
+        assertEquals("https://cdn.example/hls/480.m3u8", variant.queryParameter("url"));
+        JSONObject variantHeaders = new JSONObject(variant.queryParameter("h"));
+        assertEquals("TV-UA", variantHeaders.getString("User-Agent"));
+        assertEquals("https://turbovidhls.com/", variantHeaders.getString("Referer"));
+        assertEquals("session=tv", variantHeaders.getString("Cookie"));
+
+        String proxiedMedia = spider.rewriteProxyPlaylist(media,
+                "https://cdn.example/hls/720/index.m3u8", proxyBase, headers);
+        assertTrue(proxiedMedia.contains("#EXT-X-MEDIA-SEQUENCE:120\n"));
+        assertTrue(proxiedMedia.contains("#EXTINF:4.0,\n"));
+        assertTrue(proxiedMedia.contains("#EXT-X-BYTERANGE:512@0\n"));
+        HttpUrl segment = HttpUrl.parse(proxiedMedia.lines().filter(line -> line.contains("type=ts") && line.contains("url=")).findFirst().orElseThrow());
+        assertEquals("https://cdn.example/hls/720/segments/001.ts", segment.queryParameter("url"));
+        JSONObject segmentHeaders = new JSONObject(segment.queryParameter("h"));
+        assertEquals("TV-UA", segmentHeaders.getString("User-Agent"));
+        assertFalse(segmentHeaders.has("Referer"));
+        assertFalse(segmentHeaders.has("Cookie"));
+        assertTrue("media segments stay on the same proxy route needed for seeking", proxiedMedia.contains("type=ts"));
     }
 
     @Test
@@ -158,6 +260,17 @@ public class GMSubsTest {
         assertFalse(out.contains("iframe.m3u8"));
         assertTrue(GMSubs.rewritePlaylist("#EXTM3U\n#EXT-X-STREAM-INF:RESOLUTION=1920x1080\nonly.m3u8\n",
                 "https://cdn.example/master.m3u8", (url, playlist) -> url, false, 720).contains("only.m3u8"));
+    }
+
+    @Test
+    public void hotTokenRetainsEveryAuthorizedQualityForAdaptivePlayback() {
+        String master = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=300000,RESOLUTION=640x360\nlow.m3u8\n"
+                + "#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=1280x720\nmid.m3u8\n"
+                + "#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1920x1080\nhigh.m3u8\n";
+        String out = GMSubs.rewritePlaylist(master, "https://cdn.example/master.m3u8", (url, playlist) -> url, false, 1080);
+        assertTrue(out, out.contains("RESOLUTION=640x360\nhttps://cdn.example/low.m3u8"));
+        assertTrue(out, out.contains("RESOLUTION=1280x720\nhttps://cdn.example/mid.m3u8"));
+        assertTrue(out, out.contains("RESOLUTION=1920x1080\nhttps://cdn.example/high.m3u8"));
     }
 
     private static byte[] readAll(InputStream in) throws Exception {
