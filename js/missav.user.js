@@ -99,6 +99,14 @@
         }
     };
 
+    function navigationStartedAt() {
+        if (typeof performance !== "undefined") {
+            if (Number.isFinite(performance.timeOrigin)) return performance.timeOrigin;
+            if (performance.timing && Number.isFinite(performance.timing.navigationStart)) return performance.timing.navigationStart;
+        }
+        return Date.now();
+    }
+
     let sent = false;
     let verificationShown = false;
     function sendResult() {
@@ -111,7 +119,7 @@
         }
         const result = challenged ? null : spider[method].apply(spider, args);
         const ready = result && (method === "detailContent" ? result.list[0].vod_play_url : result.list.length);
-        if (!ready && Date.now() - startedAt < (challenged ? 55000 : 35000)) return;
+        if (!ready && Date.now() - startedAt < 25000) return;
         sent = true;
         clearInterval(poller);
         GmSpiderInject.HideWebview();
@@ -119,7 +127,7 @@
             list: [], msg: challenged ? "站点验证未完成，请在页面完成验证后重试" : "未获取到站点内容或播放地址，请稍后重试"
         }));
     }
-    const startedAt = Date.now();
+    const startedAt = navigationStartedAt();
     const poller = setInterval(sendResult, 400);
     document.addEventListener("DOMContentLoaded", sendResult, {once: true});
     unsafeWindow.addEventListener("load", sendResult, {once: true});

@@ -13,20 +13,51 @@
     const method = args.shift();
     const api = location.origin + "/api/v1/";
     const limit = 24;
+    const REQUEST_TIMEOUT_MS = 8000;
     const fixedClasses = [
         {type_id: "latest", type_name: "最新"},
         {type_id: "hottest", type_name: "热门"}
     ];
 
+    function errorMessage(error) {
+        if (error && error.name === "AbortError") return "AV01 网络请求超时，请稍后重试";
+        if (error && error.kind === "invalid") return "AV01 请求参数无效";
+        if (error && Number.isInteger(error.status)) return "AV01 请求失败（HTTP " + error.status + "）";
+        return "AV01 网络请求失败，请检查网络后重试";
+    }
+
+    function validId(value) {
+        return /^\d+$/.test(String(value || ""));
+    }
+
     async function json(path, options) {
-        const response = await fetch(path.startsWith("http") ? path : api + path, options);
-        if (!response.ok) throw new Error(path + " " + response.status);
-        return response.json();
+        const controller = new AbortController();
+        const timer = setTimeout(function () { controller.abort(); }, REQUEST_TIMEOUT_MS);
+        try {
+            const response = await fetch(path.startsWith("http") ? path : api + path,
+                    Object.assign({}, options, {signal: controller.signal}));
+            if (!response.ok) {
+                const error = new Error();
+                error.status = response.status;
+                throw error;
+            }
+            return await response.json();
+        } finally {
+            clearTimeout(timer);
+        }
     }
 
     let geoPromise = null;
+    let requestWarning = "";
+    function rememberError(error) {
+        if (!requestWarning) requestWarning = errorMessage(error);
+    }
+
     function geo() {
-        if (!geoPromise) geoPromise = json("https://files.iw01.xyz/edge/geo.js?json").catch(function () { return null; });
+        if (!geoPromise) geoPromise = json("https://files.iw01.xyz/edge/geo.js?json").catch(function (error) {
+            rememberError(error);
+            return null;
+        });
         return geoPromise;
     }
 
@@ -71,6 +102,11 @@
     function listPath(tid, pg) {
         const query = "?page=" + (parseInt(pg, 10) || 1) + "&limit=" + limit;
         if (tid === "latest" || tid === "hottest") return "videos/types/" + tid + query;
+        if (!/^tag\/\d+$/.test(tid)) {
+            const error = new Error();
+            error.kind = "invalid";
+            throw error;
+        }
         return "videos/" + tid + query;
     }
 
@@ -81,6 +117,7 @@
                 return {type_id: "tag/" + tag.id, type_name: cn(tag.name, tag.name_translations)};
             });
         } catch (_) {
+            rememberError(_);
             return [];
         }
     }
@@ -102,6 +139,11 @@
             }));
         },
         detailContent: async function (ids) {
+            if (!ids || !validId(ids[0])) {
+                const error = new Error();
+                error.kind = "invalid";
+                throw error;
+            }
             const video = await json("videos/" + ids[0]);
             const g = await geo();
             const name = title(video);
@@ -126,6 +168,11 @@
         playerContent: async function () {
             const header = {"User-Agent": navigator.userAgent, "Referer": location.origin + "/"};
             const id = location.pathname.split("/")[3];
+            if (!validId(id)) {
+                const error = new Error();
+                error.kind = "invalid";
+                throw error;
+            }
             const g = await geo();
             let token = "";
             if (id && g) {
@@ -146,10 +193,12 @@
         try {
             result = await spider[method].apply(spider, args);
         } catch (error) {
+            const message = errorMessage(error);
             result = method === "playerContent"
                     ? {type: "url", ext: {url: "", header: {}}}
-                    : {list: [], error: String(error && error.message || error)};
+                    : {list: [], msg: message};
         }
+        if (method !== "playerContent" && requestWarning && !result.msg) result.msg = requestWarning;
         GmSpiderInject.HideWebview();
         GmSpiderInject.SetSpiderResult(JSON.stringify(result));
     }

@@ -86,19 +86,45 @@
         }
     };
 
+    function navigationStartedAt() {
+        if (typeof performance !== "undefined") {
+            if (Number.isFinite(performance.timeOrigin)) return performance.timeOrigin;
+            if (performance.timing && Number.isFinite(performance.timing.navigationStart)) return performance.timing.navigationStart;
+        }
+        return Date.now();
+    }
+
     let sent = false;
-    const startedAt = Date.now();
+    let verificationShown = false;
+    const startedAt = navigationStartedAt();
     function sendResult() {
         if (sent || !spider[method]) return;
-        if (document.querySelector("#challenge-stage, #challenge-form, #cf-challenge-running, input[name='cf-turnstile-response']")
-                || /just a moment|checking your browser|verify you are human|请稍候|验证您是否为真人/i.test(document.title)) return;
+        const challenged = document.querySelector("#challenge-stage, #challenge-form, #cf-challenge-running, input[name='cf-turnstile-response']")
+                || /just a moment|checking your browser|verify you are human|请稍候|验证您是否为真人/i.test(document.title);
+        const waiting = Date.now() - startedAt;
+        if (challenged) {
+            if (!verificationShown) {
+                verificationShown = true;
+                GmSpiderInject.ShowWebview();
+            }
+            if (waiting < 25000) return;
+            sent = true;
+            clearInterval(poller);
+            GmSpiderInject.HideWebview();
+            GmSpiderInject.SetSpiderResult(JSON.stringify({list: [], msg: "站点验证未完成，请在页面完成验证后重试"}));
+            return;
+        }
         const result = spider[method].apply(spider, args);
-        if (method === "detailContent" && !result.list[0].vod_play_url && Date.now() - startedAt < 12000) return;
+        if (method === "detailContent" && !result.list[0].vod_play_url && waiting < 12000) return;
         if ((method === "homeContent" || method === "categoryContent" || method === "searchContent")
-                && !result.list.length && Date.now() - startedAt < 30000) return;
+                && !result.list.length && waiting < 25000) return;
+        const ready = method === "detailContent" ? !!result.list[0].vod_play_url : result.list.length > 0;
         sent = true;
         clearInterval(poller);
         GmSpiderInject.HideWebview();
+        if (!ready) result.msg = document.readyState === "complete"
+                ? method === "detailContent" ? "页面已加载，但未获取到播放地址" : "当前页面没有匹配内容"
+                : "页面加载超时，请检查网络后重试";
         GmSpiderInject.SetSpiderResult(JSON.stringify(result));
     }
 

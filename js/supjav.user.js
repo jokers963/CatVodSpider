@@ -163,9 +163,17 @@
         return !!document.querySelector(".post");
     }
 
+    function navigationStartedAt() {
+        if (typeof performance !== "undefined") {
+            if (Number.isFinite(performance.timeOrigin)) return performance.timeOrigin;
+            if (performance.timing && Number.isFinite(performance.timing.navigationStart)) return performance.timing.navigationStart;
+        }
+        return Date.now();
+    }
+
     let sent = false;
     let verificationShown = false;
-    const startedAt = Date.now();
+    const startedAt = navigationStartedAt();
     function sendResult() {
         if (sent) return;
         const ready = pageReady();
@@ -176,7 +184,7 @@
             GmSpiderInject.ShowWebview();
         }
         // Return immediately when content is ready; do not abort a still-loading page after only five seconds.
-        if (!ready && waiting < (challenged ? 55000 : 35000)) return;
+        if (!ready && waiting < 25000) return;
         sent = true;
         if (poller) clearInterval(poller);
         const message = challenged ? "站点验证未完成，请在页面完成验证后重试" : "页面内容未返回，请稍后重试";
