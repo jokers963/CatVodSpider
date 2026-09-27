@@ -1,0 +1,157 @@
+{
+  "spider": "https://jokers963.github.io/CatVodSpider/jar/diagnostic/gm_subs-diagnostic-20260927.jar",
+  "sites": [
+    {
+      "key": "supjav",
+      "name": "SupJav",
+      "type": 3,
+      "api": "csp_GMSubs",
+      "searchable": 1,
+      "quickSearch": 1,
+      "changeable": 0,
+      "filterable": 1,
+      "timeout": 60,
+      "ext": {
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/supjav.user.js?v=33",
+        "debug": false,
+        "webViewSettings": {
+          "blockNetworkImage": true,
+          "blockList": [
+            "*.ico*",
+            "https://*.adforcast.com/*",
+            "https://*.adxadserv.com/*",
+            "https://*.bbrdbr.com/*",
+            "https://*.fanza.cc/*",
+            "https://*.googletagmanager.com/*",
+            "https://*.google-analytics.com/*",
+            "https://*.mnaspm.com/*",
+            "https://*.recombee.com/*",
+            "https://*.sacdnssedge.com/*",
+            "https://*.tapioni.com/*",
+            "https://*.yandex.ru/*",
+            "https://*/prebid.min.js",
+            "https://divisiondrearilyunfiled.com/*",
+            "https://endowmentoverhangutmost.com/*",
+            "https://imasdk.googleapis.com/*",
+            "https://psoroumukr.com/*",
+            "https://static.ads-twitter.com/*",
+            "https://streamhg.com/*",
+            "https://*.tsyndicate.com/*"
+          ]
+        },
+        "playUrlMatch": [
+          "https://*.cdn-centaurus.com/*/master.m3u8*",
+          "https://*.cloudatacdn.com/*",
+          "https://*.cloudflarestorage.com/*",
+          "https://*.linkofnyz.com/*.m3u8*",
+          "https://*.turboviplay.com/*.m3u8*",
+          "https://*.turbosplayer.com/*m3u8*",
+          "https://*.turbovidhls.com/*m3u8*",
+          "https://dood.la/pass_md5/*"
+        ],
+        "spider": {
+          "homeContent": {"loadUrl": "https://supjav.com/zh/popular"},
+          "categoryContent": {"loadUrl": "https://supjav.com/zh/${tid}/page/${pg:-1}?sort=${sort:-quantity}"},
+          "detailContent": {"loadUrl": "https://supjav.com/zh/${id}"},
+          "playerContent": {"loadUrl": "https://supjav.com/zh/${pathname}#${link}"},
+          "searchContent": {"loadUrl": "https://supjav.com/zh/page/${pg:-1}?s=${key}"}
+        }
+      }
+    },
+    {
+      "key": "missav",
+      "name": "MissAV",
+      "type": 3,
+      "api": "csp_GMSubs",
+      "searchable": 1,
+      "quickSearch": 1,
+      "changeable": 0,
+      "filterable": 0,
+      "timeout": 60,
+      "ext": {
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/missav.user.js?v=7",
+        "debug": false,
+        "webViewSettings": {
+          "blockNetworkImage": true
+        },
+        "spider": {
+          "homeContent": {"loadUrl": "https://missav.ws/cn/new"},
+          "categoryContent": {"loadUrl": "https://missav.ws/cn/${tid}?page=${pg:-1}"},
+          "detailContent": {"loadUrl": "https://missav.ws/cn/${id}"},
+          "searchContent": {"loadUrl": "https://missav.ws/cn/search/${key}?page=${pg:-1}"}
+        }
+      }
+    },
+    {
+      "key": "jable",
+      "name": "Jable",
+      "type": 3,
+      "api": "csp_GMSubs",
+      "searchable": 1,
+      "quickSearch": 1,
+      "changeable": 0,
+      "filterable": 0,
+      "timeout": 60,
+      "ext": {
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/jable.user.js?v=7",
+        "debug": false,
+        "webViewSettings": {
+          "blockNetworkImage": false,
+          "blockList": [
+            "https://*.mnaspm.com/*",
+            "https://*.greentrafsa.com/*",
+            "https://*.magsrv.com/*",
+            "https://*.snaptrckr.fun/*",
+            "https://*.storagexhd.com/*",
+            "https://*.doppiocdn.com/*",
+            "https://adsco.re/*",
+            "https://*.adsco.re/*",
+            "https://*.tsyndicate.com/*",
+            "https://*.google-analytics.com/*"
+          ]
+        },
+        "spider": {
+          "homeContent": {"loadUrl": "https://jable.tv/"},
+          "categoryContent": {"loadUrl": "https://jable.tv/categories/${tid}/?mode=async&function=get_block&block_id=list_videos_common_videos_list&sort_by=post_date&from=${pg:-01}"},
+          "detailContent": {"loadUrl": "https://jable.tv/videos/${id}/"},
+          "searchContent": {"loadUrl": "https://jable.tv/search/${key}/"}
+        }
+      }
+    },
+    {
+      "key": "av01",
+      "name": "AV01",
+      "type": 3,
+      "api": "csp_GMSubs",
+      "searchable": 1,
+      "quickSearch": 1,
+      "changeable": 0,
+      "filterable": 0,
+      "timeout": 60,
+      "ext": {
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/av01.user.js?v=4",
+        "debug": false,
+        "webViewSettings": {
+          "blockNetworkImage": true,
+          "blockList": [
+            "https://*.google-analytics.com/*",
+            "https://*.googletagmanager.com/*",
+            "https://www.av01.media/api/v1/videos/*/manifest/*",
+            "https://customers.iw01.xyz/api/v1/videos/*/manifest/*"
+          ]
+        },
+        "spider": {
+          "homeContent": {"loadUrl": "https://www.av01.media/cn"},
+          "categoryContent": {"loadUrl": "https://www.av01.media/cn"},
+          "detailContent": {"loadUrl": "https://www.av01.media/cn/video/${id}"},
+          "playerContent": {"loadUrl": "https://www.av01.media/cn/video/${id}/${slug}"},
+          "searchContent": {"loadUrl": "https://www.av01.media/cn"}
+        }
+      }
+    }
+  ],
+  "parses": [],
+  "lives": [],
+  "rules": [],
+  "ads": []
+}
