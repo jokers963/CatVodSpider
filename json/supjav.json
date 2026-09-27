@@ -1,5 +1,5 @@
 {
-  "spider": "https://jokers963.github.io/CatVodSpider/jar/gm_subs.jar?v=34",
+  "spider": "https://jokers963.github.io/CatVodSpider/jar/gm_subs-v35.jar?v=35",
   "sites": [
     {
       "key": "supjav",
@@ -40,6 +40,7 @@
           ]
         },
         "playUrlMatch": [
+          "https://fc2stream.tv/*.m3u8*",
           "https://*.cdn-centaurus.com/*/master.m3u8*",
           "https://*.cloudatacdn.com/*",
           "https://*.cloudflarestorage.com/*",
