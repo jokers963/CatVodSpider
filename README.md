@@ -1,5 +1,9 @@
 # CatVodSpider
 
+## AI 接手与协作
+
+[先读 AGENTS.md](AGENTS.md) → [当前状态、任务登记与交接提示](AI_HANDOFF.md)。原理文档按任务阅读，不必重新研究全仓。
+
 ## 落雨秋项目原理
 
 [播放器、配置与维护说明](LUOYUQIU_ARCHITECTURE.md) · [配套播放器原理](https://github.com/jokers963/TV/blob/fongmi/LUOYUQIU_ARCHITECTURE.md)
