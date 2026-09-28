@@ -9,6 +9,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -30,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.InflaterInputStream;
 
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
@@ -48,6 +50,8 @@ public class GMSubs extends Spider {
     private static final String HLS = "application/x-mpegURL";
     private static final int TS_PACKET = 188;
     private static final int SNIFF_BYTES = 64 * 1024;
+    private static final int MAX_PLAYLIST_BYTES = 8 * 1024 * 1024;
+    private static final long MAX_INFLATED_BYTES = 64L * 1024 * 1024;
     static final long SUBTITLE_CACHE_TTL_MS = TimeUnit.MINUTES.toMillis(5);
     static final int SUBTITLE_CACHE_SIZE = 100;
     private static final long PLAYER_CONTENT_TIMEOUT_MS = 30000;
@@ -313,8 +317,9 @@ public class GMSubs extends Spider {
         if (url == null) return false;
         HttpUrl parsed = HttpUrl.parse(url);
         return FAKE_PNG_HLS.matcher(url).find() || parsed != null && parsed.isHttps()
-                && parsed.host().equals("fc2stream.tv") && parsed.username().isEmpty() && parsed.password().isEmpty()
-                && parsed.encodedPath().endsWith(".m3u8");
+                && parsed.username().isEmpty() && parsed.password().isEmpty()
+                && (parsed.host().equals("fc2stream.tv") && parsed.encodedPath().endsWith(".m3u8")
+                || parsed.host().equals("rou.video") && parsed.encodedPath().startsWith("/api/hls/"));
     }
 
     private boolean proxyFakePngHls(JSONObject play) throws Exception {
@@ -551,7 +556,8 @@ public class GMSubs extends Spider {
         try (Response res = stream().newCall(request(url, headers)).execute()) {
             if (!res.isSuccessful() || res.body() == null) return status(res.code());
             String finalUrl = res.request().url().toString();
-            String body = rewriteProxyPlaylist(res.body().string(), finalUrl, base, headers);
+            String text = new String(readAll(stripFakePng(res.body().byteStream()), MAX_PLAYLIST_BYTES), StandardCharsets.UTF_8);
+            String body = rewriteProxyPlaylist(text, finalUrl, base, headers);
             return new Object[]{200, HLS, new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8))};
         }
     }
@@ -607,10 +613,71 @@ public class GMSubs extends Spider {
         }
         int offset = 0;
         if (isPng(head, length)) {
+            InputStream payload = pngPayload(head, length, in);
+            if (payload != null) return payload;
             int ts = tsOffset(head, length);
             if (ts > 0) offset = ts;
         }
         return new SequenceInputStream(new ByteArrayInputStream(head, offset, length - offset), in);
+    }
+
+    /** Rou stores the real HLS bytes in a PNG roUd chunk; bit 0 means zlib-compressed. */
+    private static InputStream pngPayload(byte[] head, int length, InputStream tail) {
+        if (length < 8 || (head[0] & 0xff) != 0x89 || head[1] != 'P' || head[2] != 'N' || head[3] != 'G'
+                || head[4] != 13 || head[5] != 10 || head[6] != 26 || head[7] != 10) return null;
+        int offset = 8;
+        while (offset + 12 <= length) {
+            long size = ((head[offset] & 0xffL) << 24) | ((head[offset + 1] & 0xffL) << 16)
+                    | ((head[offset + 2] & 0xffL) << 8) | (head[offset + 3] & 0xffL);
+            int data = offset + 8;
+            boolean rou = head[offset + 4] == 'r' && head[offset + 5] == 'o'
+                    && head[offset + 6] == 'U' && head[offset + 7] == 'd';
+            if (rou) {
+                if (size < 1 || data >= length) return null;
+                InputStream source = new SequenceInputStream(new ByteArrayInputStream(head, data + 1, length - data - 1), tail);
+                source = new LimitedInputStream(source, size - 1);
+                return (head[data] & 1) == 0 ? source : new LimitedInputStream(new InflaterInputStream(source), MAX_INFLATED_BYTES);
+            }
+            long next = (long) offset + 12 + size;
+            if (next > length) return null; // ponytail: current Rou wrapper puts roUd within 64 KiB; stream-scan if that changes.
+            offset = (int) next;
+        }
+        return null;
+    }
+
+    static byte[] readAll(InputStream input, int maxBytes) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        int total = 0;
+        for (int read; (read = input.read(buffer)) >= 0; ) {
+            total += read;
+            if (total > maxBytes) throw new IOException("HLS playlist is too large");
+            out.write(buffer, 0, read);
+        }
+        return out.toByteArray();
+    }
+
+    private static final class LimitedInputStream extends FilterInputStream {
+        private long remaining;
+
+        LimitedInputStream(InputStream input, long remaining) {
+            super(input);
+            this.remaining = remaining;
+        }
+
+        @Override public int read() throws IOException {
+            if (remaining <= 0) return -1;
+            int value = super.read();
+            if (value >= 0) remaining--;
+            return value;
+        }
+
+        @Override public int read(byte[] buffer, int offset, int length) throws IOException {
+            if (remaining <= 0) return -1;
+            int read = super.read(buffer, offset, (int) Math.min(length, remaining));
+            if (read > 0) remaining -= read;
+            return read;
+        }
     }
 
     private static Request request(String url, Map<String, String> headers) {

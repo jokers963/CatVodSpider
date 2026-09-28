@@ -6,10 +6,12 @@ import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.zip.DeflaterOutputStream;
 
 import okhttp3.HttpUrl;
 
@@ -252,10 +254,21 @@ public class GMSubsTest {
     public void fstPlaylistsReuseThePngProxyWithoutChangingOtherSites() {
         assertTrue(GMSubs.needsPngProxy("https://fc2stream.tv/video/master.m3u8?token=test"));
         assertTrue(GMSubs.needsPngProxy("https://cdn3.turboviplay.com/video/master.m3u8"));
+        assertTrue(GMSubs.needsPngProxy("https://rou.video/api/hls/video-id"));
         for (String url : new String[]{null, "https://fc2stream.tv.attacker.example/a.m3u8", "https://user@fc2stream.tv/a.m3u8",
-                "http://fc2stream.tv/a.m3u8", "https://fc2stream.tv/ad.mp4", "https://www.av01.media/master.m3u8"}) {
+                "http://fc2stream.tv/a.m3u8", "https://fc2stream.tv/ad.mp4", "https://www.av01.media/master.m3u8",
+                "http://rou.video/api/hls/id", "https://user@rou.video/api/hls/id", "https://rou.video.evil.example/api/hls/id"}) {
             assertFalse(GMSubs.needsPngProxy(url));
         }
+    }
+
+    @Test
+    public void unwrapsRouPngPayloadsAndStopsBeforePngTrailer() throws Exception {
+        byte[] playlist = "#EXTM3U\n#EXT-X-ENDLIST\n".getBytes(StandardCharsets.UTF_8);
+        assertArrayEquals(playlist, readAll(GMSubs.stripFakePng(new ByteArrayInputStream(rouPng(playlist, true)))));
+        byte[] segment = new byte[TS * 6];
+        for (int i = 0; i < 6; i++) segment[i * TS] = 0x47;
+        assertArrayEquals(segment, readAll(GMSubs.stripFakePng(new ByteArrayInputStream(rouPng(segment, false)))));
     }
 
     @Test
@@ -301,6 +314,28 @@ public class GMSubsTest {
     }
 
     private static final int TS = 188;
+
+    private static byte[] rouPng(byte[] payload, boolean compressed) throws Exception {
+        ByteArrayOutputStream encoded = new ByteArrayOutputStream();
+        if (compressed) {
+            try (DeflaterOutputStream deflate = new DeflaterOutputStream(encoded)) { deflate.write(payload); }
+        } else {
+            encoded.write(payload);
+        }
+        ByteArrayOutputStream png = new ByteArrayOutputStream();
+        try (DataOutputStream out = new DataOutputStream(png)) {
+            out.write(new byte[]{(byte) 0x89, 'P', 'N', 'G', 13, 10, 26, 10});
+            out.writeInt(encoded.size() + 1);
+            out.writeBytes("roUd");
+            out.writeByte(compressed ? 1 : 0);
+            encoded.writeTo(out);
+            out.writeInt(0);
+            out.writeInt(0);
+            out.writeBytes("IEND");
+            out.writeInt(0);
+        }
+        return png.toByteArray();
+    }
 
     @Test
     public void tokenMastersKeepAdaptiveVariantsOnTheAuthorizedApiHost() {
