@@ -51,6 +51,7 @@ assert.equal(home.list.length, 30);
 assert.equal(home.filters[home.class[0].type_id].length, 3);
 assert.equal(site.filterable, 1);
 assert.equal(site.ext.userScript.endsWith('diagnostic/hanime1-home-v3.user.js?v=2'), true);
+assert.match(site.ext.spider.homeContent.loadUrl, /search\?page=1&sort=/);
 assert.match(site.ext.spider.categoryContent.loadUrl, /genre=\$\{tid\}.*page=\$\{pg:-1\}/);
 const route = new URL(site.ext.spider.categoryContent.loadUrl
     .replace('${tid}', home.class[3].type_id)
