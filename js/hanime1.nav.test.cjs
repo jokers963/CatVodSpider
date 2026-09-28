@@ -5,6 +5,9 @@ const vm = require('node:vm');
 const source = fs.readFileSync(__dirname + '/diagnostic/hanime1-home-v3.user.js', 'utf8');
 const config = JSON.parse(fs.readFileSync(__dirname + '/../json/new-sites-test.json', 'utf8'));
 const site = config.sites.find(item => item.key === 'hanime1');
+const formalSource = fs.readFileSync(__dirname + '/hanime1.user.js', 'utf8');
+const formalConfig = JSON.parse(fs.readFileSync(__dirname + '/../json/supjav.json', 'utf8'));
+const formalSite = formalConfig.sites.find(item => item.key === 'hanime1');
 let result;
 const link = {
     href: 'https://hanime1.me/watch?v=sample',
@@ -52,6 +55,12 @@ assert.equal(site.ext.userScript.endsWith('diagnostic/hanime1-home-v3.user.js?v=
 assert.equal(site.ext.webViewSettings.blockList.includes('https://*.googletagmanager.com/*'), true);
 assert.match(site.ext.spider.homeContent.loadUrl, /search\?page=1&sort=/);
 assert.match(site.ext.spider.categoryContent.loadUrl, /genre=\$\{tid\}.*page=\$\{pg:-1\}/);
+assert.equal(formalSource.slice(formalSource.indexOf('(function')).replaceAll('\r\n', '\n'),
+    source.slice(source.indexOf('(function')).replaceAll('\r\n', '\n'));
+assert.equal(formalSite.filterable, 1);
+assert.equal(formalSite.ext.userScript.endsWith('/js/hanime1.user.js?v=3'), true);
+assert.deepEqual(formalSite.ext.webViewSettings, site.ext.webViewSettings);
+assert.deepEqual(formalSite.ext.spider, site.ext.spider);
 const route = new URL(site.ext.spider.categoryContent.loadUrl
     .replace('${tid}', home.class[3].type_id)
     .replace('${pg:-1}', '2')

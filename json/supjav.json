@@ -158,14 +158,27 @@
       "searchable": 1,
       "quickSearch": 0,
       "changeable": 0,
-      "filterable": 0,
+      "filterable": 1,
       "timeout": 60,
       "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/hanime1.user.js?v=2",
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/hanime1.user.js?v=3",
         "debug": false,
-        "webViewSettings": {"blockNetworkImage": true},
+        "webViewSettings": {
+          "blockNetworkImage": true,
+          "blockList": [
+            "*.css*",
+            "*.woff*",
+            "*.ttf*",
+            "https://*.google-analytics.com/*",
+            "https://*.googletagmanager.com/*",
+            "https://*.impactserving.com/*",
+            "https://*.jads.co/*",
+            "https://vdownload.hembed.com/*"
+          ]
+        },
         "spider": {
-          "homeContent": {"loadUrl": "https://hanime1.me/"},
+          "homeContent": {"loadUrl": "https://hanime1.me/search?page=1&sort=%E6%9C%80%E6%96%B0%E4%B8%8A%E5%B8%82"},
+          "categoryContent": {"loadUrl": "https://hanime1.me/search?genre=${tid}&page=${pg:-1}&sort=${sort:-%E6%9C%80%E6%96%B0%E4%B8%8A%E5%B8%82}&date=${date:-}&duration=${duration:-}"},
           "detailContent": {"loadUrl": "https://hanime1.me/watch?v=${id}"},
           "searchContent": {"loadUrl": "https://hanime1.me/search?query=${key}"}
         }
