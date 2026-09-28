@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hanime1
 // @namespace    luoyuqiuspider
-// @version      1.0.0
+// @version      1.0.1
 // @match        https://hanime1.me/*
 // @grant        unsafeWindow
 // ==/UserScript==
@@ -10,6 +10,10 @@
     const method = args.shift();
     const started = performance.timeOrigin || Date.now();
     let sent = false, shown = false;
+    // ponytail: display the site's navigation only; category loading needs a separate request.
+    const categories = ['里番', '泡面番', 'Motion Anime', '3DCG', '2.5D', '2D动画',
+        'AI生成', 'MMD', 'Cosplay', '新番预告']
+        .map((type_name, index) => ({type_id: `nav-${index + 1}`, type_name}));
 
     function videos() {
         const seen = new Set();
@@ -40,7 +44,7 @@
                 || !!document.querySelector('#challenge-stage, #challenge-form, input[name="cf-turnstile-response"]');
         if (challenged && !shown) { shown = true; GmSpiderInject.ShowWebview(); }
         let result = method === 'detailContent' ? detail(args[0]) : {list: videos()};
-        if (method === 'homeContent') result.class = [];
+        if (method === 'homeContent') result.class = categories;
         const ready = method === 'detailContent' ? !!result.list[0].vod_play_url : result.list.length > 0;
         if (!ready && waiting < 25000) return;
         if (!ready) result = {list: [], msg: challenged ? '站点验证未完成，请手动完成后重试' : '页面未获取到可播放内容'};
