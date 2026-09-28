@@ -39,7 +39,7 @@
         return Object.fromEntries(categories.map(({type_id}) => [type_id, list]));
     }
 
-    function videos(limit) {
+    function videos() {
         const seen = new Set();
         return [...document.querySelectorAll('a[href*="/watch?v="]')].map(function (link) {
             const id = new URL(link.href).searchParams.get('v');
@@ -49,7 +49,7 @@
             seen.add(id);
             return {vod_id: id, vod_name: name, vod_pic: link.querySelector('img')?.src || '',
                 vod_remarks: link.querySelector('.duration')?.textContent.trim() || ''};
-        }).filter(Boolean).slice(0, limit);
+        }).filter(Boolean);
     }
 
     function pageCount() {
@@ -78,11 +78,11 @@
         const challenged = /just a moment|checking your browser|安全验证|驗證/i.test(document.title)
                 || !!document.querySelector('#challenge-stage, #challenge-form, input[name="cf-turnstile-response"]');
         if (challenged && !shown) { shown = true; GmSpiderInject.ShowWebview(); }
-        let result = method === 'detailContent' ? detail(args[0])
-            : {list: videos(method === 'homeContent' ? 30 : Infinity)};
-        if (method === 'homeContent') Object.assign(result, {class: categories, filters: filters()});
+        let result = method === 'homeContent' ? {list: [], class: categories, filters: filters()}
+            : method === 'detailContent' ? detail(args[0]) : {list: videos()};
         if (method === 'categoryContent' || method === 'searchContent') result.pagecount = pageCount();
-        const ready = method === 'detailContent' ? !!result.list[0].vod_play_url : result.list.length > 0;
+        const ready = method === 'homeContent' || (method === 'detailContent'
+            ? !!result.list[0].vod_play_url : result.list.length > 0);
         if (!ready && waiting < 25000) return;
         if (!ready) result = {list: [], msg: challenged ? '站点验证未完成，请手动完成后重试' : '页面未获取到可播放内容'};
         sent = true;

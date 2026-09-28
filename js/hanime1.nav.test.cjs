@@ -45,12 +45,11 @@ assert.deepEqual(home.class.map(item => decodeURIComponent(item.type_id)), [
     '裏番', '泡麵番', 'Motion Anime', '3DCG', '2.5D', '2D動畫',
     'AI生成', 'MMD', 'Cosplay', '新番預告'
 ]);
-assert.equal(home.list[0].vod_id, 'sample');
-assert.equal(home.list[0].vod_remarks, '12:34');
-assert.equal(home.list.length, 30);
+assert.equal(home.list.length, 0);
 assert.equal(home.filters[home.class[0].type_id].length, 3);
 assert.equal(site.filterable, 1);
-assert.equal(site.ext.userScript.endsWith('diagnostic/hanime1-home-v3.user.js?v=2'), true);
+assert.equal(site.ext.userScript.endsWith('diagnostic/hanime1-home-v3.user.js?v=3'), true);
+assert.equal(site.ext.webViewSettings.blockList.includes('https://*.googletagmanager.com/*'), true);
 assert.match(site.ext.spider.homeContent.loadUrl, /search\?page=1&sort=/);
 assert.match(site.ext.spider.categoryContent.loadUrl, /genre=\$\{tid\}.*page=\$\{pg:-1\}/);
 const route = new URL(site.ext.spider.categoryContent.loadUrl
@@ -65,6 +64,7 @@ assert.deepEqual(Object.fromEntries(route.searchParams), {
 
 const category = run('categoryContent', [home.class[3].type_id, '2', true, {}], 52);
 assert.equal(category.list[0].vod_id, 'sample');
+assert.equal(category.list[0].vod_remarks, '12:34');
 assert.equal(category.list.length, 31);
 assert.equal(category.pagecount, 52);
 console.log('Hanime1 home and category checks passed.');
