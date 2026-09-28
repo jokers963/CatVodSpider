@@ -4,19 +4,27 @@
 
 这是 Android 播放器“落雨秋”及其远程点播接口。用户不是开发人员，希望新 AI 能直接接手开发、自己构建和验证；不要让用户重复解释架构，也不要把单条视频成功写成整站稳定。本文下方多处“最新”“当前”是写入时的历史快照，**与本节冲突时以重新核对的远程状态和本节为准**。交接只记录事实，不替代用户对下一项改动的授权。
 
+### 本轮：Hanime1 完整首页候选（2026-09-28）
+
+用户要求把 Hanime1 首页补完整，并在完成后加载到手机由用户验收。提交 `ec0263f` 已正常推送到 `main`，但本轮严格停留在独立测试入口：`json/new-sites-test.json` 的 Hanime1 指向 `js/diagnostic/hanime1-home-v3.user.js?v=1`，正式 `json/supjav.json`、正式 `js/hanime1.user.js?v=2`、JAR、APK 和 TV 源码均未修改。手机点播配置已切到 `https://jokers963.github.io/CatVodSpider/json/new-sites-test.json`，并停在“Hanime1（测试）”首页交给用户验证；之后是否转正式必须等待用户明确验收结果。
+
+已验证：接手前 `origin/main` 与干净隔离工作树同为 `23e7941`，原接口工作树和旧候选工作树的未提交改动只读保留；远程测试脚本 HTTP 200 且 SHA-256 与本地一致，Pages 测试 JSON 已指向 v3 候选，正式 JSON 仍指向 v2。候选使用站点真实的 10 个分类 ID，补入排序、日期、时长三组筛选和分类分页；桌面网页只读核对首页卡片、分类分页及组合查询有结果。`node --check js/diagnostic/hanime1-home-v3.user.js`、`node js/hanime1.nav.test.cjs`、`node js/new-sites.test.cjs`、`node js/adapters.test.cjs`、测试 JSON 解析及差异检查通过。手机已成功加载测试配置并显示“Hanime1（测试）”和首页分类名称。
+
+未验证 / 未完成：用户尚未反馈手机实机验收结果；分类点击、三组筛选、搜索、详情、多清晰度、播放、快进和返回重播均不能写成已通过，正式入口也未回归。标签是网站多选能力，而 TV 现有筛选协议为单选，本轮未把它伪装成不等价的标签筛选；首页在 TV 原生列表中为扁平呈现，不是网页像素级复刻。用户验收前不要合入正式配置、提升正式脚本缓存版本或声称功能已修好。
+
 ### 1. 仓库、正式入口与当前版本
 
 | 对象 | 当前核对结果 |
 | --- | --- |
-| 接口 fork | [jokers963/CatVodSpider](https://github.com/jokers963/CatVodSpider)；本交接写入前的运行资源基线为 `4c828c2df5a0f45c6526008fa6f1951e8ee193f7`，交接提交只改 Markdown；接手时核对实际 `main` HEAD |
+| 接口 fork | [jokers963/CatVodSpider](https://github.com/jokers963/CatVodSpider)；本轮测试候选提交为 `ec0263f`，后续交接提交只改 Markdown；接手时核对实际 `main` HEAD |
 | 播放器 fork | [jokers963/TV](https://github.com/jokers963/TV)，本地 `fongmi` 为 `4afc4473e22a7ed3d98ee12233e0c2a490061000`；**本地 TV 仓库严格只读** |
 | 正式手机配置 | `https://jokers963.github.io/CatVodSpider/json/supjav.json`，不是 GitHub `blob` 页面、本地文件或根目录 |
 | 正式 Spider | `jar/gm_subs-v35.jar?v=35`；此次交接未重新构建或替换 |
 | 正式站点 | SupJav、MissAV、Jable、AV01、Hanime1，共 5 站；2026-09-28 从 Pages 直接读取确认 |
 | 正式脚本缓存版本 | SupJav `v=33`、MissAV `v=7`、Jable `v=7`、AV01 `v=4`、Hanime1 `v=2` |
-| 手机 | 2026-09-28 ADB 显示已连接；已安装 `com.fongmi.android.tv` 版本 `5.6.6`。**本次未操作播放、未重载配置**，设备状态会变化 |
+| 手机 | 2026-09-28 ADB 显示已连接；已安装 `com.fongmi.android.tv` 版本 `5.6.6`。已加载独立测试配置并停在“Hanime1（测试）”首页，等待用户操作验收；本轮未操作播放，设备状态会变化 |
 
-源码位置：接口 `D:\CodexWorkspace\Android\影视\CatVodSpider`；播放器 `D:\CodexWorkspace\Android\影视\TV`。原接口 `main` 工作树停在旧提交 `1d97a24`，落后远程且有用户改动和未跟踪的 `交接.md`，**不要重置、清理、覆盖或直接从它发布**。本次可用的干净隔离工作树为 `C:\Users\Administrator\AppData\Local\Temp\catvodspider-hanime-nav-only-20260928`，分支 `publish/hanime-nav-only-20260928`；另一隔离工作树 `C:\Users\Administrator\AppData\Local\Temp\catvodspider-release-v34-20260927` 含未提交候选，**不得误当正式代码或覆盖**。接手时重新查看 `git status`、`origin/main` 和 Pages，不假定上述快照仍然新。
+源码位置：接口 `D:\CodexWorkspace\Android\影视\CatVodSpider`；播放器 `D:\CodexWorkspace\Android\影视\TV`。原接口 `main` 工作树停在旧提交 `1d97a24`，落后远程且有用户改动和未跟踪的 `交接.md`，**不要重置、清理、覆盖或直接从它发布**。本轮发布来自新的隔离克隆 `C:\Users\Administrator\Documents\Codex\2026-09-28\https-github-com-jokers963-catvodspider-blob\work\CatVodSpider`；旧候选工作树 `C:\Users\Administrator\AppData\Local\Temp\catvodspider-release-v34-20260927` 含未提交改动，**不得误当正式代码或覆盖**。接手时重新查看 `git status`、`origin/main` 和 Pages，不假定上述快照仍然新。
 
 ### 2. 一分钟理解调用链
 
