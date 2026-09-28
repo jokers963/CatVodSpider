@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Rou
 // @namespace    luoyuqiuspider
-// @version      1.0.1
+// @version      1.0.2
 // @match        https://rou.video/*
 // @grant        unsafeWindow
 // ==/UserScript==
@@ -9,7 +9,7 @@
     const args = JSON.parse(GmSpiderInject.GetSpiderArgs());
     const method = args.shift();
     const started = performance.timeOrigin || Date.now();
-    let sent = false;
+    let sent = false, busy = false, htmlPromise;
 
     function videos() {
         const seen = new Set();
@@ -23,8 +23,13 @@
         }).filter(Boolean);
     }
 
-    function playUrl() {
-        const match = [...document.scripts].map(script => script.textContent.match(/\bev:\$R\[\d+\]=\{d:"([A-Za-z0-9+/=]+)",k:(\d+)\}/)).find(Boolean);
+    async function playUrl() {
+        const pattern = /\bev:\$R\[\d+\]=\{d:"([A-Za-z0-9+/=]+)",k:(\d+)\}/;
+        let match = [...document.scripts].map(script => script.textContent.match(pattern)).find(Boolean);
+        if (!match) {
+            htmlPromise ||= fetch(location.href, {credentials: 'same-origin'}).then(response => response.ok ? response.text() : '').catch(() => '');
+            match = (await htmlPromise).match(pattern);
+        }
         if (!match) return '';
         try {
             const decoded = [...atob(match[1])].map(char => String.fromCharCode(char.charCodeAt(0) - Number(match[2]))).join('');
@@ -34,21 +39,22 @@
         } catch (_) { return ''; }
     }
 
-    function detail(ids) {
+    async function detail(ids) {
         const name = document.querySelector('meta[property="og:title"]')?.content || document.title;
-        const url = playUrl();
+        const url = await playUrl();
         return {list: [{vod_id: ids[0], vod_name: name,
             vod_pic: document.querySelector('meta[property="og:image"]')?.content || '',
             vod_play_from: 'Rou', vod_play_url: url ? '播放$' + url : ''}]};
     }
 
-    function tick() {
-        if (sent) return;
+    async function tick() {
+        if (sent || busy) return;
+        busy = true;
         const waiting = Date.now() - started;
-        let result = method === 'detailContent' ? detail(args[0]) : {list: videos()};
+        let result = method === 'detailContent' ? await detail(args[0]) : {list: videos()};
         if (method === 'homeContent') result.class = [];
         const ready = method === 'detailContent' ? !!result.list[0].vod_play_url : result.list.length > 0;
-        if (!ready && waiting < 25000) return;
+        if (!ready && waiting < 25000) { busy = false; return; }
         if (!ready) result = {list: [], msg: '页面未获取到可播放内容'};
         sent = true;
         clearInterval(timer);
