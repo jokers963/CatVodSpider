@@ -6,23 +6,23 @@
 
 ### 本轮：Hanime1 完整首页候选（2026-09-28）
 
-用户要求把 Hanime1 首页补完整，并在完成后加载到手机由用户验收。初版候选 `ec0263f` 后，用户反馈首页和分类慢、部分分类不出结果；修正提交 `221f3a5` 补齐另一套分类卡片 DOM 并限制首页返回 30 条，`fe354b8` 再把首页数据源改为较轻的同站“最新上市”列表。当前仍严格停留在独立测试入口：`json/new-sites-test.json` 的 Hanime1 指向 `js/diagnostic/hanime1-home-v3.user.js?v=2`；正式 `json/supjav.json`、正式 `js/hanime1.user.js?v=2`、JAR、APK 和 TV 源码均未修改。手机点播配置仍为 `https://jokers963.github.io/CatVodSpider/json/new-sites-test.json`，并已重新加载到“Hanime1（测试）”首页；之后是否转正式必须等待用户明确验收结果。
+用户要求把 Hanime1 首页补完整，并在完成后加载到手机由用户验收。初版候选 `ec0263f` 后，用户反馈首页和分类慢、部分分类不出结果；`221f3a5` 补齐另一套分类卡片 DOM，`fe354b8` 改用较轻的首页数据源。用户随后要求删除播放器自动插入的“推荐”页并继续提速，`0971d80` 让首页只返回分类元数据、无影片列表，从而不触发 TV 的“推荐”伪分类，并使用 GM 已支持的 `blockList` 屏蔽页面样式、字体、广告和统计请求。当前仍严格停留在独立测试入口：Hanime1 指向 `js/diagnostic/hanime1-home-v3.user.js?v=3`；正式 `json/supjav.json`、正式 `js/hanime1.user.js?v=2`、JAR、APK 和 TV 源码均未修改。手机点播配置仍为 `https://jokers963.github.io/CatVodSpider/json/new-sites-test.json`；之后是否转正式必须等待用户明确验收结果。
 
-已验证：接手前 `origin/main` 与干净隔离工作树同为 `23e7941`，原接口工作树和旧候选工作树的未提交改动只读保留；远程 v2 测试脚本和轻量首页配置已从 Pages 读取确认，正式 JSON 仍指向正式 v2。候选使用站点真实的 10 个分类 ID，补入排序、日期、时长三组筛选和分类分页。用户所说的“部分分类不出结果”根因是三类页面使用无 `video-link` 类名的旧卡片结构；桌面实页按新选择器分别取得 41、41、20 条有效卡片，其余七类各 59 条。自动测试、脚本语法、测试 JSON 解析和差异检查通过。轻量首页在手机本轮一次 ADB 粗测约 7.8 秒出现分类和可见卡片，先前完整网页一次约 13 秒；这只是两次观察、不是性能基准，也不代表用户已认可速度。
+已验证：接手前 `origin/main` 与干净隔离工作树同为 `23e7941`，原接口工作树和旧候选工作树的未提交改动只读保留；远程 v3 测试脚本和带资源拦截的测试配置已从 Pages 读取确认，正式 JSON 仍指向正式 v2。候选使用站点真实的 10 个分类 ID，补入排序、日期、时长三组筛选和分类分页。用户所说的“部分分类不出结果”根因是三类页面使用无 `video-link` 类名的旧卡片结构；桌面实页按新选择器分别取得 41、41、20 条有效卡片，其余七类各 59 条。自动测试、脚本语法、测试 JSON 解析和差异检查通过。手机重载 v3 后未显示“推荐”，首个真实分类与可见卡片在一次 ADB 粗测约 3.8 秒出现；另抽测 3DCG 约 3.9 秒出现 9 个可见卡片。UI dump 本身约占数秒，因此这些只是上限粗测、不是精确性能基准，也不代表用户已认可速度。
 
-未验证 / 未完成：修正版加载后用户尚未重新反馈，不能声称速度或分类问题已修好；分类点击、三组筛选、搜索、详情、多清晰度、播放、快进和返回重播均未实机复验，正式入口也未回归。分类页保留站点每页全部结果，没有为速度截断；首页只展示最新 30 条并保留全部分类入口，不再展开网页全部分组。标签是网站多选能力，而 TV 现有筛选协议为单选，本轮未把它伪装成不等价的标签筛选；TV 首页是扁平列表，不是网页像素级复刻。用户验收前不要合入正式配置、提升正式脚本缓存版本或声称功能已修好。
+未验证 / 未完成：v3 加载后用户尚未重新反馈，不能声称速度或分类问题已修好；除首类和 3DCG 列表出现外，三组筛选、搜索、详情、多清晰度、播放、快进和返回重播均未实机复验，正式入口也未回归。分类页保留站点每页全部结果，没有为速度截断；站点进入后直接选择首个真实分类，不再展示独立首页影片页。标签是网站多选能力，而 TV 现有筛选协议为单选，本轮未把它伪装成不等价的标签筛选。用户验收前不要合入正式配置、提升正式脚本缓存版本或声称功能已修好。
 
 ### 1. 仓库、正式入口与当前版本
 
 | 对象 | 当前核对结果 |
 | --- | --- |
-| 接口 fork | [jokers963/CatVodSpider](https://github.com/jokers963/CatVodSpider)；本轮最新功能候选为 `fe354b8`，后续交接提交只改 Markdown；接手时核对实际 `main` HEAD |
+| 接口 fork | [jokers963/CatVodSpider](https://github.com/jokers963/CatVodSpider)；本轮最新功能候选为 `0971d80`，后续交接提交只改 Markdown；接手时核对实际 `main` HEAD |
 | 播放器 fork | [jokers963/TV](https://github.com/jokers963/TV)，本地 `fongmi` 为 `4afc4473e22a7ed3d98ee12233e0c2a490061000`；**本地 TV 仓库严格只读** |
 | 正式手机配置 | `https://jokers963.github.io/CatVodSpider/json/supjav.json`，不是 GitHub `blob` 页面、本地文件或根目录 |
 | 正式 Spider | `jar/gm_subs-v35.jar?v=35`；此次交接未重新构建或替换 |
 | 正式站点 | SupJav、MissAV、Jable、AV01、Hanime1，共 5 站；2026-09-28 从 Pages 直接读取确认 |
 | 正式脚本缓存版本 | SupJav `v=33`、MissAV `v=7`、Jable `v=7`、AV01 `v=4`、Hanime1 `v=2` |
-| 手机 | 2026-09-28 ADB 显示已连接；已安装 `com.fongmi.android.tv` 版本 `5.6.6`。已加载独立测试配置并停在“Hanime1（测试）”首页，等待用户操作验收；本轮未操作播放，设备状态会变化 |
+| 手机 | 2026-09-28 ADB 显示已连接；已安装 `com.fongmi.android.tv` 版本 `5.6.6`。已加载 v3 独立测试配置，当前停在“Hanime1（测试）”的 3DCG 分类，等待用户操作验收；本轮未操作播放，设备状态会变化 |
 
 源码位置：接口 `D:\CodexWorkspace\Android\影视\CatVodSpider`；播放器 `D:\CodexWorkspace\Android\影视\TV`。原接口 `main` 工作树停在旧提交 `1d97a24`，落后远程且有用户改动和未跟踪的 `交接.md`，**不要重置、清理、覆盖或直接从它发布**。本轮发布来自新的隔离克隆 `C:\Users\Administrator\Documents\Codex\2026-09-28\https-github-com-jokers963-catvodspider-blob\work\CatVodSpider`；旧候选工作树 `C:\Users\Administrator\AppData\Local\Temp\catvodspider-release-v34-20260927` 含未提交改动，**不得误当正式代码或覆盖**。接手时重新查看 `git status`、`origin/main` 和 Pages，不假定上述快照仍然新。
 
