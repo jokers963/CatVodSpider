@@ -6,17 +6,17 @@
 
 ### 本轮：Hanime1 完整首页候选（2026-09-28）
 
-用户要求把 Hanime1 首页补完整，并在完成后加载到手机由用户验收。提交 `ec0263f` 已正常推送到 `main`，但本轮严格停留在独立测试入口：`json/new-sites-test.json` 的 Hanime1 指向 `js/diagnostic/hanime1-home-v3.user.js?v=1`，正式 `json/supjav.json`、正式 `js/hanime1.user.js?v=2`、JAR、APK 和 TV 源码均未修改。手机点播配置已切到 `https://jokers963.github.io/CatVodSpider/json/new-sites-test.json`，并停在“Hanime1（测试）”首页交给用户验证；之后是否转正式必须等待用户明确验收结果。
+用户要求把 Hanime1 首页补完整，并在完成后加载到手机由用户验收。初版候选 `ec0263f` 后，用户反馈首页和分类慢、部分分类不出结果；修正提交 `221f3a5` 补齐另一套分类卡片 DOM 并限制首页返回 30 条，`fe354b8` 再把首页数据源改为较轻的同站“最新上市”列表。当前仍严格停留在独立测试入口：`json/new-sites-test.json` 的 Hanime1 指向 `js/diagnostic/hanime1-home-v3.user.js?v=2`；正式 `json/supjav.json`、正式 `js/hanime1.user.js?v=2`、JAR、APK 和 TV 源码均未修改。手机点播配置仍为 `https://jokers963.github.io/CatVodSpider/json/new-sites-test.json`，并已重新加载到“Hanime1（测试）”首页；之后是否转正式必须等待用户明确验收结果。
 
-已验证：接手前 `origin/main` 与干净隔离工作树同为 `23e7941`，原接口工作树和旧候选工作树的未提交改动只读保留；远程测试脚本 HTTP 200 且 SHA-256 与本地一致，Pages 测试 JSON 已指向 v3 候选，正式 JSON 仍指向 v2。候选使用站点真实的 10 个分类 ID，补入排序、日期、时长三组筛选和分类分页；桌面网页只读核对首页卡片、分类分页及组合查询有结果。`node --check js/diagnostic/hanime1-home-v3.user.js`、`node js/hanime1.nav.test.cjs`、`node js/new-sites.test.cjs`、`node js/adapters.test.cjs`、测试 JSON 解析及差异检查通过。手机已成功加载测试配置并显示“Hanime1（测试）”和首页分类名称。
+已验证：接手前 `origin/main` 与干净隔离工作树同为 `23e7941`，原接口工作树和旧候选工作树的未提交改动只读保留；远程 v2 测试脚本和轻量首页配置已从 Pages 读取确认，正式 JSON 仍指向正式 v2。候选使用站点真实的 10 个分类 ID，补入排序、日期、时长三组筛选和分类分页。用户所说的“部分分类不出结果”根因是三类页面使用无 `video-link` 类名的旧卡片结构；桌面实页按新选择器分别取得 41、41、20 条有效卡片，其余七类各 59 条。自动测试、脚本语法、测试 JSON 解析和差异检查通过。轻量首页在手机本轮一次 ADB 粗测约 7.8 秒出现分类和可见卡片，先前完整网页一次约 13 秒；这只是两次观察、不是性能基准，也不代表用户已认可速度。
 
-未验证 / 未完成：用户尚未反馈手机实机验收结果；分类点击、三组筛选、搜索、详情、多清晰度、播放、快进和返回重播均不能写成已通过，正式入口也未回归。标签是网站多选能力，而 TV 现有筛选协议为单选，本轮未把它伪装成不等价的标签筛选；首页在 TV 原生列表中为扁平呈现，不是网页像素级复刻。用户验收前不要合入正式配置、提升正式脚本缓存版本或声称功能已修好。
+未验证 / 未完成：修正版加载后用户尚未重新反馈，不能声称速度或分类问题已修好；分类点击、三组筛选、搜索、详情、多清晰度、播放、快进和返回重播均未实机复验，正式入口也未回归。分类页保留站点每页全部结果，没有为速度截断；首页只展示最新 30 条并保留全部分类入口，不再展开网页全部分组。标签是网站多选能力，而 TV 现有筛选协议为单选，本轮未把它伪装成不等价的标签筛选；TV 首页是扁平列表，不是网页像素级复刻。用户验收前不要合入正式配置、提升正式脚本缓存版本或声称功能已修好。
 
 ### 1. 仓库、正式入口与当前版本
 
 | 对象 | 当前核对结果 |
 | --- | --- |
-| 接口 fork | [jokers963/CatVodSpider](https://github.com/jokers963/CatVodSpider)；本轮测试候选提交为 `ec0263f`，后续交接提交只改 Markdown；接手时核对实际 `main` HEAD |
+| 接口 fork | [jokers963/CatVodSpider](https://github.com/jokers963/CatVodSpider)；本轮最新功能候选为 `fe354b8`，后续交接提交只改 Markdown；接手时核对实际 `main` HEAD |
 | 播放器 fork | [jokers963/TV](https://github.com/jokers963/TV)，本地 `fongmi` 为 `4afc4473e22a7ed3d98ee12233e0c2a490061000`；**本地 TV 仓库严格只读** |
 | 正式手机配置 | `https://jokers963.github.io/CatVodSpider/json/supjav.json`，不是 GitHub `blob` 页面、本地文件或根目录 |
 | 正式 Spider | `jar/gm_subs-v35.jar?v=35`；此次交接未重新构建或替换 |
