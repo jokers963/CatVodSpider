@@ -9,14 +9,15 @@
       "searchable": 0,
       "quickSearch": 0,
       "changeable": 0,
-      "filterable": 0,
+      "filterable": 1,
       "timeout": 60,
       "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/rou.user.js?v=3",
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/rou.user.js?v=4",
         "debug": false,
         "webViewSettings": {"blockNetworkImage": true},
         "spider": {
-          "homeContent": {"loadUrl": "https://rou.video/home"},
+          "homeContent": {"loadUrl": "https://rou.video/v"},
+          "categoryContent": {"loadUrl": "https://rou.video/${tid}?order=${order:-createdAt}&page=${pg:-1}"},
           "detailContent": {"loadUrl": "https://rou.video/v/${id}"}
         }
       }

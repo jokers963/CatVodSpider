@@ -45,14 +45,24 @@ const rou = await run('rou', 'detailContent', 'sample', {
 }, {location: {origin: 'https://rou.video'}});
 assert.equal(rou.list[0].vod_play_url, '播放$https://rou.video/api/hls/sample.m3u8');
 const rouHome = await run('rou', 'homeContent', '', {
+    scripts: [], querySelectorAll: () => []
+}, {location: {origin: 'https://rou.video'}});
+assert.equal(rouHome.list.length, 0, 'Rou home returns categories without waiting for cards');
+assert.deepEqual(Array.from(rouHome.class, item => item.type_name),
+    ['全部', '自拍流出', '國產AV', '探花', '日本', '麻豆傳媒', 'OnlyFans']);
+assert.equal(rouHome.filters['t/OnlyFans'][0].value[1].v, 'viewCount');
+const rouCategory = await run('rou', 'categoryContent', 't/OnlyFans', {
     scripts: [],
-    querySelectorAll: () => [{
+    querySelectorAll: selector => selector === 'main a[href*="page="]'
+        ? [{href: 'https://rou.video/t/OnlyFans?order=createdAt&page=78'}]
+        : [{
         href: 'https://rou.video/v/sample',
         querySelector: selector => selector === 'img' ? {alt: '', src: 'https://rou.video/cover.jpg'}
                 : selector === '.clamp-2' ? {textContent: 'Sample title'} : null
     }]
 }, {location: {origin: 'https://rou.video'}});
-assert.equal(rouHome.list[0].vod_name, 'Sample title', 'Rou cards do not put their title in image alt');
+assert.equal(rouCategory.list[0].vod_name, 'Sample title', 'Rou cards do not put their title in image alt');
+assert.equal(rouCategory.pagecount, 78);
 const fetched = await run('rou', 'detailContent', 'sample', {
     title: 'Example', scripts: [], querySelector: () => null
 }, {location: {origin: 'https://rou.video', href: 'https://rou.video/v/sample'},

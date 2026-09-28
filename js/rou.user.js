@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Rou
 // @namespace    luoyuqiuspider
-// @version      1.0.2
+// @version      1.0.3
 // @match        https://rou.video/*
 // @grant        unsafeWindow
 // ==/UserScript==
@@ -10,6 +10,24 @@
     const method = args.shift();
     const started = performance.timeOrigin || Date.now();
     let sent = false, busy = false, htmlPromise;
+    const categories = [
+        ['v', '全部'], ['t/自拍流出', '自拍流出'], ['t/國產AV', '國產AV'],
+        ['t/探花', '探花'], ['t/日本', '日本'], ['t/麻豆傳媒', '麻豆傳媒'],
+        ['t/OnlyFans', 'OnlyFans']
+    ].map(([path, type_name]) => ({type_id: path.split('/').map(encodeURIComponent).join('/'), type_name}));
+    const sort = [{key: 'order', name: '排序', value: [
+        {n: '最新發布', v: 'createdAt'}, {n: '最多觀看', v: 'viewCount'},
+        {n: '最多喜歡', v: 'likeCount'}
+    ]}];
+
+    function pageCount() {
+        let count = 1;
+        document.querySelectorAll('main a[href*="page="]').forEach(function (link) {
+            const page = Number(new URL(link.href).searchParams.get('page'));
+            if (page > count) count = page;
+        });
+        return count;
+    }
 
     function videos() {
         const seen = new Set();
@@ -51,9 +69,12 @@
         if (sent || busy) return;
         busy = true;
         const waiting = Date.now() - started;
-        let result = method === 'detailContent' ? await detail(args[0]) : {list: videos()};
-        if (method === 'homeContent') result.class = [];
-        const ready = method === 'detailContent' ? !!result.list[0].vod_play_url : result.list.length > 0;
+        let result = method === 'homeContent'
+            ? {list: [], class: categories, filters: Object.fromEntries(categories.map(({type_id}) => [type_id, sort]))}
+            : method === 'detailContent' ? await detail(args[0]) : {list: videos()};
+        if (method === 'categoryContent') result.pagecount = pageCount();
+        const ready = method === 'homeContent' || (method === 'detailContent'
+            ? !!result.list[0].vod_play_url : result.list.length > 0);
         if (!ready && waiting < 25000) { busy = false; return; }
         if (!ready) result = {list: [], msg: '页面未获取到可播放内容'};
         sent = true;
