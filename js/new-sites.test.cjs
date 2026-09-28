@@ -42,4 +42,13 @@ const rou = run('rou', 'detailContent', 'sample', {
     querySelector: () => null
 }, {location: {origin: 'https://rou.video'}});
 assert.equal(rou.list[0].vod_play_url, '播放$https://rou.video/api/hls/sample.m3u8');
+const rouHome = run('rou', 'homeContent', '', {
+    scripts: [],
+    querySelectorAll: () => [{
+        href: 'https://rou.video/v/sample',
+        querySelector: selector => selector === 'img' ? {alt: '', src: 'https://rou.video/cover.jpg'}
+                : selector === '.clamp-2' ? {textContent: 'Sample title'} : null
+    }]
+}, {location: {origin: 'https://rou.video'}});
+assert.equal(rouHome.list[0].vod_name, 'Sample title', 'Rou cards do not put their title in image alt');
 console.log('New-site adapter checks passed.');

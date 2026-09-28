@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Rou
 // @namespace    luoyuqiuspider
-// @version      1.0.0
+// @version      1.0.1
 // @match        https://rou.video/*
 // @grant        unsafeWindow
 // ==/UserScript==
@@ -16,7 +16,7 @@
         return [...document.querySelectorAll('a[href^="/v/"]')].map(function (link) {
             const image = link.querySelector('img');
             const id = new URL(link.href).pathname.split('/')[2];
-            const name = image?.alt || '';
+            const name = link.querySelector('.clamp-2')?.textContent.trim() || image?.alt || '';
             if (!id || !name || seen.has(id)) return null;
             seen.add(id);
             return {vod_id: id, vod_name: name, vod_pic: image.src};
