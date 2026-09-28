@@ -1,0 +1,71 @@
+{
+  "spider": "https://jokers963.github.io/CatVodSpider/jar/gm_subs-v35.jar?v=35",
+  "sites": [
+    {
+      "key": "rou",
+      "name": "Rou (测试)",
+      "type": 3,
+      "api": "csp_GMSubs",
+      "searchable": 0,
+      "quickSearch": 0,
+      "changeable": 0,
+      "filterable": 0,
+      "timeout": 60,
+      "ext": {
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/rou.user.js?v=1",
+        "debug": false,
+        "webViewSettings": {"blockNetworkImage": true},
+        "spider": {
+          "homeContent": {"loadUrl": "https://rou.video/home"},
+          "detailContent": {"loadUrl": "https://rou.video/v/${id}"}
+        }
+      }
+    },
+    {
+      "key": "airav",
+      "name": "AirAV (测试)",
+      "type": 3,
+      "api": "csp_GMSubs",
+      "searchable": 1,
+      "quickSearch": 1,
+      "changeable": 0,
+      "filterable": 0,
+      "timeout": 60,
+      "ext": {
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/airav.user.js?v=1",
+        "debug": false,
+        "webViewSettings": {"blockNetworkImage": true},
+        "spider": {
+          "homeContent": {"loadUrl": "https://airav.io/"},
+          "detailContent": {"loadUrl": "https://airav.io/video?hid=${id}"},
+          "searchContent": {"loadUrl": "https://airav.io/search_result?kw=${key}"}
+        }
+      }
+    },
+    {
+      "key": "hanime1",
+      "name": "Hanime1 (测试)",
+      "type": 3,
+      "api": "csp_GMSubs",
+      "searchable": 1,
+      "quickSearch": 1,
+      "changeable": 0,
+      "filterable": 0,
+      "timeout": 60,
+      "ext": {
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/hanime1.user.js?v=1",
+        "debug": false,
+        "webViewSettings": {"blockNetworkImage": true},
+        "spider": {
+          "homeContent": {"loadUrl": "https://hanime1.me/"},
+          "detailContent": {"loadUrl": "https://hanime1.me/watch?v=${id}"},
+          "searchContent": {"loadUrl": "https://hanime1.me/search?query=${key}"}
+        }
+      }
+    }
+  ],
+  "parses": [],
+  "lives": [],
+  "rules": [],
+  "ads": []
+}
