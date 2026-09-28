@@ -1,5 +1,61 @@
 # 落雨秋 AI 接手与协作记录
 
+## 给下一位 AI 的最新交接（2026-09-28；本节优先）
+
+这是 Android 播放器“落雨秋”及其远程点播接口。用户不是开发人员，希望新 AI 能直接接手开发、自己构建和验证；不要让用户重复解释架构，也不要把单条视频成功写成整站稳定。本文下方多处“最新”“当前”是写入时的历史快照，**与本节冲突时以重新核对的远程状态和本节为准**。交接只记录事实，不替代用户对下一项改动的授权。
+
+### 1. 仓库、正式入口与当前版本
+
+| 对象 | 当前核对结果 |
+| --- | --- |
+| 接口 fork | [jokers963/CatVodSpider](https://github.com/jokers963/CatVodSpider)，`main` 的远程 HEAD 为 `4c828c2df5a0f45c6526008fa6f1951e8ee193f7` |
+| 播放器 fork | [jokers963/TV](https://github.com/jokers963/TV)，本地 `fongmi` 为 `4afc4473e22a7ed3d98ee12233e0c2a490061000`；**本地 TV 仓库严格只读** |
+| 正式手机配置 | `https://jokers963.github.io/CatVodSpider/json/supjav.json`，不是 GitHub `blob` 页面、本地文件或根目录 |
+| 正式 Spider | `jar/gm_subs-v35.jar?v=35`；此次交接未重新构建或替换 |
+| 正式站点 | SupJav、MissAV、Jable、AV01、Hanime1，共 5 站；2026-09-28 从 Pages 直接读取确认 |
+| 正式脚本缓存版本 | SupJav `v=33`、MissAV `v=7`、Jable `v=7`、AV01 `v=4`、Hanime1 `v=2` |
+| 手机 | 2026-09-28 ADB 显示已连接；已安装 `com.fongmi.android.tv` 版本 `5.6.6`。**本次未操作播放、未重载配置**，设备状态会变化 |
+
+源码位置：接口 `D:\CodexWorkspace\Android\影视\CatVodSpider`；播放器 `D:\CodexWorkspace\Android\影视\TV`。原接口 `main` 工作树停在旧提交 `1d97a24`，落后远程且有用户改动和未跟踪的 `交接.md`，**不要重置、清理、覆盖或直接从它发布**。本次可用的干净隔离工作树为 `C:\Users\Administrator\AppData\Local\Temp\catvodspider-hanime-nav-only-20260928`，分支 `publish/hanime-nav-only-20260928`；另一隔离工作树 `C:\Users\Administrator\AppData\Local\Temp\catvodspider-release-v34-20260927` 含未提交候选，**不得误当正式代码或覆盖**。接手时重新查看 `git status`、`origin/main` 和 Pages，不假定上述快照仍然新。
+
+### 2. 一分钟理解调用链
+
+手机 TV 宿主读取 Pages JSON → 通过 `DexClassLoader` 加载 JAR 的 `csp_GMSubs` → `GMSubs` 调用第三方 `jar/gm.jar` 的 GM WebView 运行对应 `js/*.user.js` → 脚本返回统一的首页/分类/搜索/详情/播放数据 → `GMSubs` 必要时处理 HLS 代理和字幕 → TV 内置 Media3/ExoPlayer 或 mpv 播放。JSON **不是视频服务器**；列表成功、拿到 URL、出现缓冲都不等于实际播放。`GM` 返回 `type: match` 后还会等待媒体请求；不要在 Java 中把初始脚本返回误当最终地址。MissAV 不要擅自改回带 `name` 的 `finalUrl`。
+
+先读本仓库 [AGENTS.md](AGENTS.md)、[接口原理](LUOYUQIU_ARCHITECTURE.md)，再按任务读 [正式 JSON](json/supjav.json)、[GMSubs.java](app/src/main/java/com/github/catvod/spider/GMSubs.java) 和对应 userscript。TV 只读源码入口：`VodConfig`、`BaseLoader`/`JarLoader`、`SiteApi`、`PlaybackActivity`、`PlayerManager`、`ExoMediaSourceFactory`。旧接口原理文档指向的 TV 专属 `LUOYUQIU_ARCHITECTURE.md` **在此次检查的 TV `origin/fongmi` 文件树中不存在**；以实际 TV 源码和其 `README.md` 为准，勿把坏链接当作已读文档。
+
+### 3. 站点事实与未完成项
+
+| 站点/线路 | 已有证据 | 不能声称的事 / 下一步 |
+| --- | --- | --- |
+| SupJav TV | 之前在正式入口的一条目复核为 `state=3` 且进度增长；v35 测试候选曾通过持续播放、快进 | 未完成所有视频回归；验证新改动时重新测。ST/VOE 已按用户要求取消，不要恢复 |
+| SupJav FST | v35 已加入限域代理和 30 秒总期限；SNOS-377 曾多段播放且快进后恢复 | ABF-381 仍有慢读、短读与长缓冲不确定性；不能说整线稳定。用户明确说 SSIS-001 的 FST 自身有问题，不用管 |
+| MissAV/Jable/AV01 | 原四站正式保留，历史记录有功能测试 | 本轮未做多视频/长期回归；不因保留在 JSON 就写成完全稳定 |
+| Hanime1 | 正式已接入；此前一条目在手机内置播放器进度增长、快进、返回重播通过。v2 仅显示 10 个顶部分类名称 | **分类点选不加载结果**：类型 ID 是 `nav-1`～`nav-10`，JSON 没有 `categoryContent`；首页推荐仍存在，搜索和多视频稳定性未验收。分类列表候选曾在本地试写后撤回，未提交/推送 |
+| Rou | 独立远程测试入口可列首页、开详情；脚本可解码 `/api/hls/...` 地址 | 手机曾无法播放。2026-09-28 再测该地址：HTTP 200 但为约 1–1.4 KB 的 `image/png`，有 PNG 签名、无 `#EXTM3U`；常规与浏览器样式请求头都如此。网站网页使用 `blob:` 播放器，不等于该直链可供 TV 播放。根因/可用媒体方案未找到，**未纳入正式** |
+| AirAV | 独立测试入口曾有一条目手机播放、快进、重播通过；2026-09-28 桌面浏览器首页可访问 | 先前切正式时手机首页遇真人验证，已撤回；此次未重做手机验证，**未纳入正式** |
+| JavMenu | 用户曾提出此站 | 没有适配脚本/实机测试；此前自动浏览被安全边界拦截，勿换途径绕过；**未纳入正式** |
+
+Rou、AirAV、Hanime1 的动态列表中曾出现年龄身份暗示的性化条目。先前 AI 因此没有发布 Hanime1 功能性分类或 Rou/AirAV 整站新接入；这不是对每一作品实际年龄的事实裁定，也**不是** Rou 播放失败的技术根因。新 AI 应独立遵守自身安全要求，不要把用户的“用任何方法”理解成允许绕过安全、验证码、付费或访问控制。有关内容不在交接中复述、传播或保存具体标题和媒体地址。
+
+### 4. 构建、发布与实机验收规则
+
+- `json/new-sites-test.json` 是独立远程测试入口（含 Rou、AirAV、Hanime1），**不是正式手机配置**。本次没有改它、正式 JSON、JAR、userscript 或 APK；正式配置在 Pages 仍为上表版本。
+- JS 最小检查：`node --check js/<站点>.user.js`、`node js/new-sites.test.cjs`、`node js/adapters.test.cjs`；Hanime1 导航另有 `node js/hanime1.nav.test.cjs`。再验 JSON 解析、`git diff --check`。测试通过只说明脚本结构/模拟数据，不代表实播。
+- JAR 构建入口 `scripts/gmRelease/build-check.ps1`（先读脚本并指定新的独立输出目录）；它依赖本机 JDK/SDK/缓存和部分生成文件。历史上 21 项 JUnit、手动 javac/D8/结构检查通过，但**没有成功的完整 Gradle Debug 构建，也没有本轮新 APK 安装**。不能把手动 JAR 检查写成 `assembleDebug` 成功。
+- 改站点先用独立远程测试 JSON/JAR/脚本，确认可用后才评估正式发布。正式发布只做任务范围内文件的非强推提交，确认 GitHub Pages 实际 HTTP 内容和缓存版本，再从手机**正式远程 URL**重新加载验证；本地地址不能代替。
+- 手机不清数据、不盲填配置历史、不改变方向锁定/VPN、不使用外部播放器、不自动点击验证或宣称验证成功；不遗留 WebView 调试。确认实际站点/线路，至少两次观察 `state` 与进度自然增长，并验首次、持续、快进、返回重播。`state=6` 是缓冲，`state=7` 是错误，需结合进度与错误类型，不能设几秒死线。
+- 不输出 Cookie、凭据、签名媒体 URL、完整日志、设备序列号或私有地址。TV 本地工作树有大量原有未提交改动，**只读，不修改、不 reset、不覆盖、不提交、不推送**。两个 AI 协作时分离文件负责人、手机操作者和唯一发布人；未沟通前不要并发操作手机或同一工作树。
+
+### 5. 给新 AI 的开场消息（用户复制这一段即可）
+
+```text
+请接手“落雨秋”项目。先读 jokers963/CatVodSpider 仓库 main 分支的 AGENTS.md 与 AI_HANDOFF.md 顶部“给下一位 AI 的最新交接”，按任务再看 LUOYUQIU_ARCHITECTURE.md 和实际源码。另一个 fork 是 jokers963/TV 的 fongmi 分支，本地 TV 工作树严格只读。正式接口是 https://jokers963.github.io/CatVodSpider/json/supjav.json。
+先核对远程版本、Git 状态和未提交文件，再说明你准备处理的具体问题；不要覆盖用户改动，不要把测试入口、本地地址或单条视频成功当成正式验收。当前我交给你的具体任务是：<由我填写>。完成后请更新交接、列出已验证与未验证结果，方便再交给下一位 AI。
+```
+
+---
+
 ### 2026-09-28 Hanime1 顶部导航展示（最新）
 
 用户将需求明确收窄为截图最上方的 10 个分类名称，不包括第二排筛选栏或分类结果列表，且明确不修改 TV 播放器。提交 `54864b6` 已正常推送到接口仓库 `main`；正式 `json/supjav.json` 仅把 Hanime1 脚本缓存版本改为 `v=2`，其余四站、运行 JAR 和 Hanime1 其它路由未改。`js/hanime1.user.js` 仅在首页结果中增加 10 个导航名称；类型 ID 为 `nav-1` 至 `nav-10`，没有配置 `categoryContent`，故点选后的分类加载**未实现**，不得称为功能性分类或网站样式的像素级复刻。播放器现有原生界面负责呈现这些名称。
