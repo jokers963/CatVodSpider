@@ -8,7 +8,7 @@
 
 | 对象 | 当前核对结果 |
 | --- | --- |
-| 接口 fork | [jokers963/CatVodSpider](https://github.com/jokers963/CatVodSpider)，`main` 的远程 HEAD 为 `4c828c2df5a0f45c6526008fa6f1951e8ee193f7` |
+| 接口 fork | [jokers963/CatVodSpider](https://github.com/jokers963/CatVodSpider)；本交接写入前的运行资源基线为 `4c828c2df5a0f45c6526008fa6f1951e8ee193f7`，交接提交只改 Markdown；接手时核对实际 `main` HEAD |
 | 播放器 fork | [jokers963/TV](https://github.com/jokers963/TV)，本地 `fongmi` 为 `4afc4473e22a7ed3d98ee12233e0c2a490061000`；**本地 TV 仓库严格只读** |
 | 正式手机配置 | `https://jokers963.github.io/CatVodSpider/json/supjav.json`，不是 GitHub `blob` 页面、本地文件或根目录 |
 | 正式 Spider | `jar/gm_subs-v35.jar?v=35`；此次交接未重新构建或替换 |
