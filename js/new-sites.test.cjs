@@ -25,7 +25,7 @@ const airav = await run('airav', 'detailContent', 'ABF-381', {
 });
 assert.equal(airav.list[0].vod_play_url, '播放$https://cdn.example/video.m3u8');
 
-const hanime1 = await run('hanime1', 'detailContent', '42', {
+const hanime1 = await run('diagnostic/hanime1-home-v3', 'detailContent', '42', {
     title: 'Example',
     querySelector: () => null,
     querySelectorAll: selector => selector.startsWith('video source') ? [
