@@ -4,6 +4,16 @@
 
 这是 Android 播放器“落雨秋”及其远程点播接口。用户不是开发人员，希望新 AI 能直接接手开发、自己构建和验证；不要让用户重复解释架构，也不要把单条视频成功写成整站稳定。本文下方多处“最新”“当前”是写入时的历史快照，**与本节冲突时以重新核对的远程状态和本节为准**。交接只记录事实，不替代用户对下一项改动的授权。
 
+### 本轮：Rou `roUd` HLS 独立测试候选（2026-09-28）
+
+用户要求开始做 Rou，并要求候选完成后直接加载到手机由其验证。提交 `efce677` 只更新独立测试入口：新增 `jar/gm_subs-v36.jar`，令 `json/new-sites-test.json` 指向 v36，并在 `GMSubs` 现有 HLS 代理中加入 Rou 解包；正式 `json/supjav.json`、v35 JAR、五个正式站点和 TV 源码均未修改。手机现已加载 `https://jokers963.github.io/CatVodSpider/json/new-sites-test.json`，进入点播后曾显示 `Rou (测试)`，随后首页列表出现 12 个可见卡片；已停在该列表等待用户亲自点播。
+
+已确认此前约 1–2 MB / 1–2 KB 的 `image/png` 不是普通占位图：当前网页播放器脚本会查找 PNG 自定义 `roUd` chunk，首字节 bit 0 表示 zlib/deflate。一个实时主清单样本的 1505 字节 PNG 解包为 8186 字节、以 `#EXTM3U` 开头；其首个分片样本的 1,951,576 字节容器解包为 1,946,740 字节、首字节为 MPEG-TS 同步字节 `0x47`。候选仅对无用户信息的 HTTPS `rou.video/api/hls/` 初始地址启用现有本地代理；同一流里的清单和分片再按内容识别 `roUd`，压缩内容用 JDK `InflaterInputStream`，复用既有清单 URI 改写和分片转发。清单最多 8 MiB、膨胀输出最多 64 MiB；没有新依赖、重试、播放器修改或外部播放器。
+
+已验证：22 项 `GMSubsTest`（含压缩清单、未压缩 TS、PNG 尾部截断及 URL 边界）通过；离线 javac/D8、JAR 结构/引用和 quiet 组合检查通过；`new-sites.test.cjs`、既有 adapter、Rou 脚本语法、测试 JSON 与 `git diff --check` 通过。Pages 测试 JSON 已返回 v36，远程 JAR SHA-256 `6B38A7474644176A3891DC460516F896344302F5FD9B0F0A03E1112A41CCF2CC` 与本地逐字一致。完整 Gradle 任务因本机 Gradle daemon 无法建立 loopback 连接而未成功，不能写成完整 Gradle 构建通过；离线脚本复用了历史缓存的 app 编译 API JAR。
+
+未验证 / 未完成：尚未由用户实机确认首次播放、持续播放、快进、返回重播或多条目；手机只证明远程测试配置和 Rou 首页列表已加载，不能据此声称播放已修好。也未验证所有分片都采用相同包装上限，当前解析只在前 64 KiB 内寻找 `roUd`（实时样本满足）；若出现更大的前置 PNG chunk，再改为全流 chunk 扫描。未接入正式接口，必须等用户明确验收和授权后再提升 v36/Rou，不能提前改正式配置。
+
 ### 本轮：Hanime1 完整首页候选（2026-09-28）
 
 用户要求把 Hanime1 首页补完整，并在完成后加载到手机由用户验收。初版候选 `ec0263f` 后，用户反馈首页和分类慢、部分分类不出结果；`221f3a5` 补齐另一套分类卡片 DOM，`fe354b8` 改用较轻的数据源。用户随后要求删除播放器自动插入的“推荐”页并继续提速，`0971d80` 让首页只返回分类元数据、无影片列表，从而不触发 TV 的“推荐”伪分类，并使用 GM 已支持的 `blockList` 屏蔽页面样式、字体、广告和统计请求。用户确认测试效果“可以了”并明确要求接入正式接口；提交 `0c03947` 已把同一执行体提升到正式 `js/hanime1.user.js?v=3`，正式 `json/supjav.json` 增加分类、筛选和资源拦截。其余四站、正式 v35 JAR、APK 和 TV 源码均未修改。
@@ -16,13 +26,13 @@
 
 | 对象 | 当前核对结果 |
 | --- | --- |
-| 接口 fork | [jokers963/CatVodSpider](https://github.com/jokers963/CatVodSpider)；本轮正式功能提交为 `0c03947`，后续交接提交只改 Markdown；接手时核对实际 `main` HEAD |
+| 接口 fork | [jokers963/CatVodSpider](https://github.com/jokers963/CatVodSpider)；Rou 独立测试功能提交为 `efce677`，正式功能仍以 Hanime1 的 `0c03947` 为准；接手时核对实际 `main` HEAD |
 | 播放器 fork | [jokers963/TV](https://github.com/jokers963/TV)，本地 `fongmi` 为 `4afc4473e22a7ed3d98ee12233e0c2a490061000`；**本地 TV 仓库严格只读** |
 | 正式手机配置 | `https://jokers963.github.io/CatVodSpider/json/supjav.json`，不是 GitHub `blob` 页面、本地文件或根目录 |
 | 正式 Spider | `jar/gm_subs-v35.jar?v=35`；此次交接未重新构建或替换 |
 | 正式站点 | SupJav、MissAV、Jable、AV01、Hanime1，共 5 站；2026-09-28 从 Pages 直接读取确认 |
 | 正式脚本缓存版本 | SupJav `v=33`、MissAV `v=7`、Jable `v=7`、AV01 `v=4`、Hanime1 `v=3` |
-| 手机 | 2026-09-28 ADB 显示已连接；已安装 `com.fongmi.android.tv` 版本 `5.6.6`。已加载裸正式配置，当前停在 Hanime1 分类列表，等待用户复验；未验证播放，设备状态会变化 |
+| 手机 | 2026-09-28 ADB 显示已连接；已安装 `com.fongmi.android.tv` 版本 `5.6.6`。当前加载独立 `new-sites-test.json`，停在 Rou 首页列表等待用户实播；未验证播放，设备状态会变化 |
 
 源码位置：接口 `D:\CodexWorkspace\Android\影视\CatVodSpider`；播放器 `D:\CodexWorkspace\Android\影视\TV`。原接口 `main` 工作树停在旧提交 `1d97a24`，落后远程且有用户改动和未跟踪的 `交接.md`，**不要重置、清理、覆盖或直接从它发布**。本轮发布来自新的隔离克隆 `C:\Users\Administrator\Documents\Codex\2026-09-28\https-github-com-jokers963-catvodspider-blob\work\CatVodSpider`；旧候选工作树 `C:\Users\Administrator\AppData\Local\Temp\catvodspider-release-v34-20260927` 含未提交改动，**不得误当正式代码或覆盖**。接手时重新查看 `git status`、`origin/main` 和 Pages，不假定上述快照仍然新。
 
@@ -40,7 +50,7 @@
 | SupJav FST | v35 已加入限域代理和 30 秒总期限；SNOS-377 曾多段播放且快进后恢复 | ABF-381 仍有慢读、短读与长缓冲不确定性；不能说整线稳定。用户明确说 SSIS-001 的 FST 自身有问题，不用管 |
 | MissAV/Jable/AV01 | 原四站正式保留，历史记录有功能测试 | 本轮未做多视频/长期回归；不因保留在 JSON 就写成完全稳定 |
 | Hanime1 | 正式 v3 已使用真实分类 ID、分类分页、三组筛选和资源拦截；不再显示“推荐”。测试入口由用户认可后发布，正式手机已显示分类与列表 | 正式入口的筛选、搜索、多清晰度与播放回归仍待用户复验；不能由测试列表出现推断整站稳定 |
-| Rou | 独立远程测试入口可列首页、开详情；脚本可解码 `/api/hls/...` 地址 | 手机曾无法播放。2026-09-28 再测该地址：HTTP 200 但为约 1–1.4 KB 的 `image/png`，有 PNG 签名、无 `#EXTM3U`；常规与浏览器样式请求头都如此。网站网页使用 `blob:` 播放器，不等于该直链可供 TV 播放。根因/可用媒体方案未找到，**未纳入正式** |
+| Rou | 独立远程测试入口可列首页、开详情；已确认站点把 HLS 清单/分片放在 PNG `roUd` chunk 内，v36 测试 JAR 能按网页同一规则解包并复用现有代理 | 测试配置和首页已加载手机，实播、持续、快进、重播、多条目仍待用户验收；候选尚未证明播放成功，**未纳入正式** |
 | AirAV | 独立测试入口曾有一条目手机播放、快进、重播通过；2026-09-28 桌面浏览器首页可访问 | 先前切正式时手机首页遇真人验证，已撤回；此次未重做手机验证，**未纳入正式** |
 | JavMenu | 用户曾提出此站 | 没有适配脚本/实机测试；此前自动浏览被安全边界拦截，勿换途径绕过；**未纳入正式** |
 
