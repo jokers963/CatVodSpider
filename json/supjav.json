@@ -183,6 +183,28 @@
           "searchContent": {"loadUrl": "https://hanime1.me/search?query=${key}"}
         }
       }
+    },
+    {
+      "key": "rou",
+      "name": "Rou",
+      "type": 3,
+      "api": "csp_GMSubs",
+      "jar": "https://jokers963.github.io/CatVodSpider/jar/gm_subs-v36.jar?v=36",
+      "searchable": 0,
+      "quickSearch": 0,
+      "changeable": 0,
+      "filterable": 1,
+      "timeout": 60,
+      "ext": {
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/rou.user.js?v=5",
+        "debug": false,
+        "webViewSettings": {"blockNetworkImage": true},
+        "spider": {
+          "homeContent": {"loadUrl": "https://rou.video/v"},
+          "categoryContent": {"loadUrl": "https://rou.video/${tid}?order=${order:-createdAt}&s=${s:-}&f=${f:-}&tag=${tag:-}&page=${pg:-1}"},
+          "detailContent": {"loadUrl": "https://rou.video/${id}"}
+        }
+      }
     }
   ],
   "parses": [],

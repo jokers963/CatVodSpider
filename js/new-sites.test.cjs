@@ -38,7 +38,7 @@ assert.equal(hanime1.list[0].vod_play_url, '720$https://cdn.example/720.mp4#480$
 const raw = JSON.stringify({videoUrl: '/api/hls/sample.m3u8', thumbVTTUrl: ''});
 const shift = 48;
 const encoded = Buffer.from([...raw].map(c => String.fromCharCode(c.charCodeAt(0) + shift)).join(''), 'latin1').toString('base64');
-const rou = await run('rou', 'detailContent', 'sample', {
+const rou = await run('rou', 'detailContent', 'v/sample', {
     title: 'Example',
     scripts: [{textContent: 'ev:$R[99]={d:"' + encoded + '",k:' + shift + '}'}],
     querySelector: () => null
@@ -46,11 +46,13 @@ const rou = await run('rou', 'detailContent', 'sample', {
 assert.equal(rou.list[0].vod_play_url, '播放$https://rou.video/api/hls/sample.m3u8');
 const rouHome = await run('rou', 'homeContent', '', {
     scripts: [], querySelectorAll: () => []
-}, {location: {origin: 'https://rou.video'}});
+}, {location: {origin: 'https://rou.video', pathname: '/v/sample'}});
 assert.equal(rouHome.list.length, 0, 'Rou home returns categories without waiting for cards');
 assert.deepEqual(Array.from(rouHome.class, item => item.type_name),
-    ['全部', '自拍流出', '國產AV', '探花', '日本', '麻豆傳媒', 'OnlyFans']);
+    ['劇集庫', '全部', '自拍流出', '國產AV', '探花', '日本', '麻豆傳媒', 'OnlyFans']);
 assert.equal(rouHome.filters['t/OnlyFans'][0].value[1].v, 'viewCount');
+assert.equal(rouHome.filters.series[0].value[1].v, 'hot');
+assert.equal(rouHome.filters.series[1].value[2].v, 'completed');
 const rouCategory = await run('rou', 'categoryContent', 't/OnlyFans', {
     scripts: [],
     querySelectorAll: selector => selector === 'main a[href*="page="]'
@@ -61,11 +63,33 @@ const rouCategory = await run('rou', 'categoryContent', 't/OnlyFans', {
                 : selector === '.clamp-2' ? {textContent: 'Sample title'} : null
     }]
 }, {location: {origin: 'https://rou.video'}});
+assert.equal(rouCategory.list[0].vod_id, 'v/sample');
 assert.equal(rouCategory.list[0].vod_name, 'Sample title', 'Rou cards do not put their title in image alt');
 assert.equal(rouCategory.pagecount, 78);
-const fetched = await run('rou', 'detailContent', 'sample', {
+const rouSeries = await run('rou', 'categoryContent', 'series', {
+    scripts: [],
+    querySelectorAll: selector => selector === 'main a[href*="page="]'
+        ? [{href: 'https://rou.video/series?page=32'}]
+        : [{href: 'https://rou.video/s/show',
+            querySelector: selector => selector === 'h3' ? {textContent: 'Example series'}
+                : selector === 'img' ? {src: 'https://rou.video/series.jpg'} : null}]
+}, {location: {origin: 'https://rou.video', pathname: '/series'}});
+assert.equal(rouSeries.list[0].vod_id, 's/show');
+assert.equal(rouSeries.pagecount, 32);
+const rouEpisodes = await run('rou', 'detailContent', 's/show', {
+    title: 'Example series',
+    querySelector: selector => selector === 'meta[property="og:image"]' ? {content: 'https://rou.video/series.jpg'} : null,
+    querySelectorAll: () => [
+        {href: 'https://rou.video/v/one', textContent: '從第 1 集開始'},
+        {href: 'https://rou.video/v/one', textContent: '第 1 集5 分鐘'},
+        {href: 'https://rou.video/v/two', textContent: '第 2 集6 分鐘'}
+    ]
+}, {location: {origin: 'https://rou.video', pathname: '/s/show'}});
+assert.equal(rouEpisodes.list[0].vod_play_url,
+    '第1集$https://rou.video/api/hls/one#第2集$https://rou.video/api/hls/two');
+const fetched = await run('rou', 'detailContent', 'v/sample', {
     title: 'Example', scripts: [], querySelector: () => null
-}, {location: {origin: 'https://rou.video', href: 'https://rou.video/v/sample'},
+}, {location: {origin: 'https://rou.video', pathname: '/v/sample', href: 'https://rou.video/v/sample'},
     fetch: async () => ({ok: true, text: async () => 'ev:$R[99]={d:"' + encoded + '",k:' + shift + '}'})});
 assert.equal(fetched.list[0].vod_play_url, '播放$https://rou.video/api/hls/sample.m3u8');
 console.log('New-site adapter checks passed.');
