@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      1.0.25
+// @version      1.0.26
 // @description  SupJav WebView adapter for the open-source GM spider runtime.
 // @match        https://supjav.com/*
 // @match        https://turbovidhls.com/*
@@ -80,7 +80,7 @@
                     {type_id: "category/reducing-mosaic", type_name: "无码破解"},
                     {type_id: "category/english-subtitles", type_name: "英文字幕"}
                 ],
-                list: videos()
+                list: []
             };
         },
         categoryContent: function (tid, pg) {
@@ -191,16 +191,6 @@
         const result = ready ? spider[method].apply(spider, args)
                 : method === "playerContent" ? {type: "url", ext: {url: "", header: {}}}
                 : {list: [], msg: message};
-        if (!ready && method === "homeContent") {
-            result.list = [{
-                vod_id: "supjav-unavailable",
-                vod_name: "SupJav 页面暂未就绪",
-                vod_pic: "",
-                vod_remarks: message,
-                vod_content: message,
-                vod_year: ""
-            }];
-        }
         GmSpiderInject.HideWebview();
         GmSpiderInject.SetSpiderResult(JSON.stringify(result));
     }

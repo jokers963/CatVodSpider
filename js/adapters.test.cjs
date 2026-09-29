@@ -27,6 +27,7 @@ function supjav(method, scriptStartedAt = 0) {
     return result;
 }
 assert.deepEqual(supjav('detailContent').list, []);
+assert.deepEqual(supjav('homeContent').list, [], 'unavailable SupJav home must not create a recommendation tab');
 assert.match(supjav('detailContent').msg, /验证/);
 assert.match(supjav('detailContent', 20000).msg, /验证未完成/, 'page time before script start counts toward the wait limit');
 assert.equal(supjav('playerContent').type, 'url', 'an unavailable page must not wait for a media match');
@@ -58,6 +59,32 @@ vm.runInNewContext(fs.readFileSync(__dirname + '/jable.user.js', 'utf8'), {
 });
 assert.match(jableResult.list[0].vod_play_from, /abf-381/i);
 assert.equal(jableResult.list[0].vod_play_url, '播放$https://cdn.example/test.m3u8');
+function home(name, document, extra = {}) {
+    let result;
+    const chain = {ready: fn => fn(), on() {}};
+    vm.runInNewContext(fs.readFileSync(__dirname + '/' + name + '.user.js', 'utf8'), {
+        document, location: {hostname: name + '.com', href: 'https://' + name + '.com/'}, unsafeWindow: {addEventListener() {}},
+        Date, URL, performance: {timeOrigin: Date.now()}, $: () => chain,
+        GmSpiderInject: {GetSpiderArgs: () => '["homeContent","true"]', HideWebview() {}, ShowWebview() {},
+            SetSpiderResult: text => { result = JSON.parse(text); }},
+        setInterval: () => 1, clearInterval() {}, setTimeout: fn => fn(), ...extra
+    });
+    return result;
+}
+const supjavHome = home('supjav', {title: 'SupJav', querySelector: selector => selector === '.post' ? {} : null});
+assert.ok(supjavHome.class.length > 0);
+assert.deepEqual(supjavHome.list, []);
+const missavHome = home('missav', {title: 'MissAV', querySelector: () => null, addEventListener() {}});
+assert.ok(missavHome.class.length > 0);
+assert.deepEqual(missavHome.list, []);
+const jableHome = home('jable', {
+    title: 'Jable', readyState: 'complete', querySelector: () => null,
+    querySelectorAll: selector => selector === 'div.img-box > a, div.horizontal-img-box > a'
+        ? [{href: 'https://jable.tv/categories/sample/',
+            querySelector: () => ({textContent: 'Sample category'})}] : []
+});
+assert.equal(jableHome.class.length, 1);
+assert.deepEqual(jableHome.list, []);
 function jableWait(challenged, readyState, method = 'homeContent', navigationStart = 0, scriptStart = 0) {
     let now = scriptStart, tick, result, shows = 0;
     vm.runInNewContext(fs.readFileSync(__dirname + '/jable.user.js', 'utf8'), {
@@ -142,6 +169,16 @@ function av01(method, fetch, callArgs = ['latest', '1']) {
 }
 
 async function testAv01() {
+    const homeRequests = [];
+    const av01Home = av01('homeContent', async url => {
+        homeRequests.push(url);
+        return {ok: true, json: async () => ({tags: []})};
+    });
+    const homeResult = await av01Home.done;
+    assert.deepEqual(homeResult.list, []);
+    assert.equal(homeResult.class.length, 2);
+    assert.equal(homeRequests.length, 1, 'AV01 home does not load the unused latest-video list');
+
     const timeout = av01('categoryContent', (_url, options) => new Promise((_, reject) => {
         options.signal.onabort = () => { const error = new Error('aborted'); error.name = 'AbortError'; reject(error); };
     }));

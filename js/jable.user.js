@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Jable
 // @namespace    luoyuqiuspider
-// @version      1.0.5
+// @version      1.0.6
 // @description  Jable WebView adapter for the open-source GM spider runtime.
 // @match        https://jable.tv/*
 // @match        https://*.jable.tv/*
@@ -66,7 +66,7 @@
     }
 
     const spider = {
-        homeContent: function () { return {class: classes(), list: videos()}; },
+        homeContent: function () { return {class: classes(), list: []}; },
         categoryContent: function () { return {list: videos(), pagecount: pageCount()}; },
         searchContent: function () { return {list: videos(), pagecount: pageCount()}; },
         detailContent: function (ids) {
@@ -116,9 +116,11 @@
         }
         const result = spider[method].apply(spider, args);
         if (method === "detailContent" && !result.list[0].vod_play_url && waiting < 12000) return;
-        if ((method === "homeContent" || method === "categoryContent" || method === "searchContent")
-                && !result.list.length && waiting < 25000) return;
-        const ready = method === "detailContent" ? !!result.list[0].vod_play_url : result.list.length > 0;
+        if ((method === "homeContent" ? !result.class.length
+                : (method === "categoryContent" || method === "searchContent") && !result.list.length)
+                && waiting < 25000) return;
+        const ready = method === "homeContent" ? result.class.length > 0
+                : method === "detailContent" ? !!result.list[0].vod_play_url : result.list.length > 0;
         sent = true;
         clearInterval(poller);
         GmSpiderInject.HideWebview();

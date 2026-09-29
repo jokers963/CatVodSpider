@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MissAV
 // @namespace    luoyuqiuspider
-// @version      1.2.3
+// @version      1.2.4
 // @description  MissAV WebView adapter for the open-source GM spider runtime.
 // @match        https://missav.ws/*
 // @grant        unsafeWindow
@@ -70,7 +70,7 @@
     }
 
     const spider = {
-        homeContent: function () { return {class: classes, list: videos()}; },
+        homeContent: function () { return {class: classes, list: []}; },
         categoryContent: function (tid) {
             const groupName = {
                 amateur: ["素人"],
@@ -118,7 +118,8 @@
             GmSpiderInject.ShowWebview();
         }
         const result = challenged ? null : spider[method].apply(spider, args);
-        const ready = result && (method === "detailContent" ? result.list[0].vod_play_url : result.list.length);
+        const ready = result && (method === "homeContent" ? result.class.length
+                : method === "detailContent" ? result.list[0].vod_play_url : result.list.length);
         if (!ready && Date.now() - startedAt < 25000) return;
         sent = true;
         clearInterval(poller);

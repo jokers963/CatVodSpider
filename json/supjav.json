@@ -12,7 +12,7 @@
       "filterable": 1,
       "timeout": 60,
       "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/supjav.user.js?v=33",
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/supjav.user.js?v=34",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": true,
@@ -70,7 +70,7 @@
       "filterable": 0,
       "timeout": 60,
       "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/missav.user.js?v=7",
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/missav.user.js?v=8",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": true
@@ -94,7 +94,7 @@
       "filterable": 0,
       "timeout": 60,
       "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/jable.user.js?v=7",
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/jable.user.js?v=8",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": false,
@@ -130,7 +130,7 @@
       "filterable": 0,
       "timeout": 60,
       "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/av01.user.js?v=4",
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/av01.user.js?v=5",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": true,
@@ -152,7 +152,7 @@
     },
     {
       "key": "rou",
-      "name": "Rou",
+      "name": "肉视频",
       "type": 3,
       "api": "csp_GMSubs",
       "jar": "https://jokers963.github.io/CatVodSpider/jar/gm_subs-v36.jar?v=36",

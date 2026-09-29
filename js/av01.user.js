@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AV01
 // @namespace    luoyuqiuspider
-// @version      1.0.2
+// @version      1.0.3
 // @description  AV01 WebView adapter for the open-source GM spider runtime.
 // @match        https://www.av01.media/*
 // @grant        unsafeWindow
@@ -124,8 +124,7 @@
 
     const spider = {
         homeContent: async function () {
-            const results = await Promise.all([tagClasses(), json(listPath("latest", 1)).then(page)]);
-            return {class: fixedClasses.concat(results[0]), list: results[1].list};
+            return {class: fixedClasses.concat(await tagClasses()), list: []};
         },
         categoryContent: async function (tid, pg) {
             return page(await json(listPath(tid, pg)));
