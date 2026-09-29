@@ -4,7 +4,13 @@
 
 这是 Android 播放器“落雨秋”及其远程点播接口。用户不是开发人员，希望新 AI 能直接接手开发、自己构建和验证；不要让用户重复解释架构，也不要把单条视频成功写成整站稳定。本文下方多处“最新”“当前”是写入时的历史快照，**与本节冲突时以重新核对的远程状态和本节为准**。交接只记录事实，不替代用户对下一项改动的授权。
 
-### 本轮：第五站更名并移除前四站“推荐”（2026-09-29）
+### 本轮：六站显示名增加分类表情（2026-09-29）
+
+用户要求给前四站、第五站及最后一站的名字增加表情分类。按本轮已告知用户的映射，提交 `fe98c43` 只改正式 `json/supjav.json` 的六个 `name`：🎬 SupJav、🎬 MissAV、🎬 Jable、🎬 AV01、📺 肉视频、🎨 Hanime1。站点 key、顺序、脚本、JAR、分类、搜索及播放配置完全不变；TV/APK 未改。JSON 解析、逐对象比较和 diff 检查通过。Pages 发布成功且裸正式 URL 返回六个新名称。手机重新加载同一正式 URL 后，菜单六项表情和顺序均核对无误，当前选中“📺 肉视频”。
+
+未验证：本轮是纯显示名改动，未重新测试分类结果、搜索或实播。用户此前反馈两列仍未解决封面裁切；测试用的全局“特大”已恢复原先的“大”（三列），TV 仓库继续只读，未改封面适配或安装 APK。
+
+### 历史：第五站更名并移除前四站“推荐”（2026-09-29）
 
 用户要求正式接口第五站从“Rou”显示为“肉视频”，并删除 SupJav、MissAV、Jable、AV01 各自最前面的“推荐”分类。提交 `3fb015e` 保持六站顺序与站点 key 不变，仅把 Rou 的显示名改为“肉视频”；前四站 `homeContent` 只返回原有分类、`list: []`，从而不触发 TV `TypeAdapter` 对非空首页列表自动插入的“推荐”。MissAV/Jable 的首页就绪条件相应改为分类可用；AV01 不再请求首页不用的最新影片列表；SupJav 验证失败时也不再返回会触发“推荐”的占位影片。四站分类、搜索、详情及播放逻辑未改。正式脚本缓存版本改为 34/8/8/5；Rou v6、Hanime1 v3、全局 v35 和 Rou 专属 v36 JAR 均未改，TV/APK 未改。
 
@@ -68,9 +74,9 @@
 | 播放器 fork | [jokers963/TV](https://github.com/jokers963/TV)，本地 `fongmi` 为 `4afc4473e22a7ed3d98ee12233e0c2a490061000`；**本地 TV 仓库严格只读** |
 | 正式手机配置 | `https://jokers963.github.io/CatVodSpider/json/supjav.json`，不是 GitHub `blob` 页面、本地文件或根目录 |
 | 正式 Spider | 全局 `jar/gm_subs-v35.jar?v=35`；仅 Rou 站点覆写 `jar/gm_subs-v36.jar?v=36`；此次未重新构建或替换 |
-| 正式站点 | SupJav、MissAV、Jable、AV01、肉视频（key `rou`）、Hanime1，共 6 站；2026-09-29 从 Pages 直接读取确认 |
+| 正式站点 | 🎬 SupJav、🎬 MissAV、🎬 Jable、🎬 AV01、📺 肉视频（key `rou`）、🎨 Hanime1，共 6 站；2026-09-29 从 Pages 直接读取确认 |
 | 正式脚本缓存版本 | SupJav `v=34`、MissAV `v=8`、Jable `v=8`、AV01 `v=5`、肉视频 `v=6`、Hanime1 `v=3` |
-| 手机 | 2026-09-29 ADB 已连接；`com.fongmi.android.tv` 版本 `5.6.6`。当前加载裸正式 URL；站点菜单第五项“肉视频”，手机停在其“劇集庫”列表；设备状态会变化 |
+| 手机 | 2026-09-29 ADB 已连接；`com.fongmi.android.tv` 版本 `5.6.6`。当前加载裸正式 URL；六个表情站名已在菜单显示，选中第五项“📺 肉视频”；大小保持原先的“大”（三列）。设备状态会变化 |
 
 源码位置：接口 `D:\CodexWorkspace\Android\影视\CatVodSpider`；播放器 `D:\CodexWorkspace\Android\影视\TV`。原接口 `main` 工作树停在旧提交 `1d97a24`，落后远程且有用户改动和未跟踪的 `交接.md`，**不要重置、清理、覆盖或直接从它发布**。本轮发布来自新的隔离克隆 `C:\Users\Administrator\Documents\Codex\2026-09-28\https-github-com-jokers963-catvodspider-blob\work\CatVodSpider`；旧候选工作树 `C:\Users\Administrator\AppData\Local\Temp\catvodspider-release-v34-20260927` 含未提交改动，**不得误当正式代码或覆盖**。接手时重新查看 `git status`、`origin/main` 和 Pages，不假定上述快照仍然新。
 
