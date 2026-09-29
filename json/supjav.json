@@ -151,6 +151,29 @@
       }
     },
     {
+      "key": "rou",
+      "name": "Rou",
+      "type": 3,
+      "api": "csp_GMSubs",
+      "jar": "https://jokers963.github.io/CatVodSpider/jar/gm_subs-v36.jar?v=36",
+      "searchable": 1,
+      "quickSearch": 0,
+      "changeable": 0,
+      "filterable": 1,
+      "timeout": 60,
+      "ext": {
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/rou.user.js?v=6",
+        "debug": false,
+        "webViewSettings": {"blockNetworkImage": true},
+        "spider": {
+          "homeContent": {"loadUrl": "https://rou.video/v"},
+          "categoryContent": {"loadUrl": "https://rou.video/${tid}?order=${order:-createdAt}&s=${s:-}&f=${f:-}&tag=${tag:-}&page=${pg:-1}"},
+          "detailContent": {"loadUrl": "https://rou.video/${id}"},
+          "searchContent": {"loadUrl": "https://rou.video/search?q=${key}&page=${pg:-1}"}
+        }
+      }
+    },
+    {
       "key": "hanime1",
       "name": "Hanime1",
       "type": 3,
@@ -181,29 +204,6 @@
           "categoryContent": {"loadUrl": "https://hanime1.me/search?genre=${tid}&page=${pg:-1}&sort=${sort:-%E6%9C%80%E6%96%B0%E4%B8%8A%E5%B8%82}&date=${date:-}&duration=${duration:-}"},
           "detailContent": {"loadUrl": "https://hanime1.me/watch?v=${id}"},
           "searchContent": {"loadUrl": "https://hanime1.me/search?query=${key}"}
-        }
-      }
-    },
-    {
-      "key": "rou",
-      "name": "Rou",
-      "type": 3,
-      "api": "csp_GMSubs",
-      "jar": "https://jokers963.github.io/CatVodSpider/jar/gm_subs-v36.jar?v=36",
-      "searchable": 1,
-      "quickSearch": 0,
-      "changeable": 0,
-      "filterable": 1,
-      "timeout": 60,
-      "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/rou.user.js?v=6",
-        "debug": false,
-        "webViewSettings": {"blockNetworkImage": true},
-        "spider": {
-          "homeContent": {"loadUrl": "https://rou.video/v"},
-          "categoryContent": {"loadUrl": "https://rou.video/${tid}?order=${order:-createdAt}&s=${s:-}&f=${f:-}&tag=${tag:-}&page=${pg:-1}"},
-          "detailContent": {"loadUrl": "https://rou.video/${id}"},
-          "searchContent": {"loadUrl": "https://rou.video/search?q=${key}&page=${pg:-1}"}
         }
       }
     }
