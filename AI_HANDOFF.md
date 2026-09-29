@@ -4,6 +4,12 @@
 
 这是 Android 播放器“落雨秋”及其远程点播接口。用户不是开发人员，希望新 AI 能直接接手开发、自己构建和验证；不要让用户重复解释架构，也不要把单条视频成功写成整站稳定。本文下方多处“最新”“当前”是写入时的历史快照，**与本节冲突时以重新核对的远程状态和本节为准**。交接只记录事实，不替代用户对下一项改动的授权。
 
+### 本轮：独立包名定制版构建受缺失播放器依赖阻挡（2026-09-29）
+
+用户已明确最终想要自己的定制 APK，并将首包取舍交由 AI 决定。选择先做最小并存测试包：同步上游的 TV fork 加搜索封面候选，不纳入旧 TV 目录几十处未提交定制。隔离目录 `work/TV-cover-sync` 的 `build/luoyuqiu-preview` 分支已推送，提交 `1306d40a3` 在搜索封面修复 `98fcdd1` 之上，只给 `mobile` flavor 设置独立包名 `com.jokers963.luoyuqiu`，并将移动端应用标签改为“落雨秋测试”；不改正式接口、播放器逻辑或官方包。原目录 `D:\CodexWorkspace\Android\影视\TV` 全程只读。隔离目录内从原目录复制了 19 个被 Git 忽略的 `lib-*.aar`，以及仅用于 debug 构建的被忽略 `local.properties` 占位设置；无真实签名文件/密码被复制或提交。
+
+Windows 本机 Gradle daemon 最初因 JDK Unix Domain Socket 临时路径报 `Unable to establish loopback connection`。仅在构建进程中设置 `JAVA_TOOL_OPTIONS=-Djdk.net.unixdomain.tmpdir=E:/DevTools/Gradle.gradle` 后，`:app:assembleMobileDebug --no-daemon --console=plain` 已进入 Java 编译。编译仍因配套 AAR 不全失败：现有 `app/libs/` 缺 `androidx.media3.exoplayer.libass` 的 `LibassPlaybackSession`、`LibassSubtitleController`、`androidx.media3.ui.libass.LibassPlayerViewController` 及 `SecondaryTextTrackSelector` 等类，共 29 个编译错误。这是上游源码与手头旧的未入库播放器二进制依赖不匹配，不能通过只改封面代码解决；仓库 README 也明确 `lib-*.aar` 未纳入 Git。未下载到可核对版本的官方配套 AAR，未采用其他 fork 的不明二进制代替。`git diff --check` 通过，**APK 未生成、未签名、未加载手机，封面修复未实机验证**。官方 5.6.8 `com.fongmi.android.tv` 和数据均未动。后续应取得与当前 FongMi/TV 源码对应的播放器 AAR/可信构建产物后重试构建，核对 APK 包名与签名，再并存安装；若取不到，应向用户说明阻碍，不要宣称已完成定制包。上述 preview 分支只供测试，草稿 PR #1 仍仅含搜索封面代码，尚未合并。
+
 ### 本轮：手机上游 Release 版本澄清（2026-09-29）
 
 用户给出上游成品包地址 `https://github.com/FongMi/Release/releases`，明确手机当前安装 5.6.8。只读 ADB 核对 `com.fongmi.android.tv` 为 `versionCode 568`、`versionName 5.6.8`；GitHub Release 5.6.8 发布于 2026-09-29，含 `mobile-arm64_v8a.apk` 与 `mobile-armeabi_v7a.apk`。下文先前截图所记 5.6.7 是旧快照，应以本节为准。TV fork 当前 `app/build.gradle` 仍标注 5.6.3，不能假定它与上游 5.6.8 成品 APK 是同一构建；草稿 PR #1 未构建、未签名、未安装。原装应用、用户数据与点播配置均未动。无上游签名密钥，不得尝试以不同签名直接覆盖安装或先卸载；若要实机测试，先设计独立包名/数据隔离的候选方案并获得用户同意。
