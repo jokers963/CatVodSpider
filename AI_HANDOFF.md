@@ -4,7 +4,13 @@
 
 这是 Android 播放器“落雨秋”及其远程点播接口。用户不是开发人员，希望新 AI 能直接接手开发、自己构建和验证；不要让用户重复解释架构，也不要把单条视频成功写成整站稳定。本文下方多处“最新”“当前”是写入时的历史快照，**与本节冲突时以重新核对的远程状态和本节为准**。交接只记录事实，不替代用户对下一项改动的授权。
 
-### 本轮：Rou 正式搜索修复（2026-09-29）
+### 本轮：Rou 调整为正式接口第五站（2026-09-29）
+
+用户确认 Rou 搜索修复“可以了”，要求把 Rou 挪到第五个站点。提交 `2492bec` 仅交换正式 `json/supjav.json` 中 Rou 与 Hanime1 的顺序：SupJav、MissAV、Jable、AV01、Rou、Hanime1。逐站对象和全局字段完全不变；测试入口、脚本、JAR、APK、TV 均未改。JSON 解析、对象不变比较与 diff 检查通过；Pages 发布成功，裸正式 URL 返回相同顺序。手机重新加载裸正式 URL，站点菜单依次显示六站，Rou 确为第五个；已选回 Rou 并停在“劇集庫”列表。
+
+本轮未重新测试搜索、播放或所有分类；搜索可用是用户对上一轮 v6 的反馈，播放没问题是更早的用户反馈，不把这次纯排序发布写成全站回归通过。
+
+### 历史：Rou 正式搜索修复（2026-09-29）
 
 用户在正式入口验证 Rou 播放后反馈“播放没问题，就是搜索有问题”。根因是正式/测试 Rou 对象原来都配置 `searchable: 0`，且没有 `searchContent` 地址。提交 `cf7bebb` 将两份配置的 Rou 改为可搜索，脚本缓存升级到 `v=6`，站点脚本 `@version 1.0.5` 使用 `/search?q=${key}&page=${pg:-1}` 的视频页，并以同源请求读取 `tab=series` 剧集页，合并两类卡片及最大页数；详情和播放代理未改。TV、APK、JAR 与其他五站对象也未改。
 
@@ -54,9 +60,9 @@
 | 播放器 fork | [jokers963/TV](https://github.com/jokers963/TV)，本地 `fongmi` 为 `4afc4473e22a7ed3d98ee12233e0c2a490061000`；**本地 TV 仓库严格只读** |
 | 正式手机配置 | `https://jokers963.github.io/CatVodSpider/json/supjav.json`，不是 GitHub `blob` 页面、本地文件或根目录 |
 | 正式 Spider | 全局 `jar/gm_subs-v35.jar?v=35`；仅 Rou 站点覆写 `jar/gm_subs-v36.jar?v=36`；此次未重新构建或替换 |
-| 正式站点 | SupJav、MissAV、Jable、AV01、Hanime1、Rou，共 6 站；2026-09-29 从 Pages 直接读取确认 |
+| 正式站点 | SupJav、MissAV、Jable、AV01、Rou、Hanime1，共 6 站；2026-09-29 从 Pages 直接读取确认 |
 | 正式脚本缓存版本 | SupJav `v=33`、MissAV `v=7`、Jable `v=7`、AV01 `v=4`、Hanime1 `v=3`、Rou `v=6` |
-| 手机 | 2026-09-29 ADB 已连接；`com.fongmi.android.tv` 版本 `5.6.6`。当前加载裸正式 URL 并停在“AI”搜索结果页，已见 Rou 卡片；设备状态会变化 |
+| 手机 | 2026-09-29 ADB 已连接；`com.fongmi.android.tv` 版本 `5.6.6`。当前加载裸正式 URL；站点菜单显示 Rou 第五，手机停在 Rou“劇集庫”列表；设备状态会变化 |
 
 源码位置：接口 `D:\CodexWorkspace\Android\影视\CatVodSpider`；播放器 `D:\CodexWorkspace\Android\影视\TV`。原接口 `main` 工作树停在旧提交 `1d97a24`，落后远程且有用户改动和未跟踪的 `交接.md`，**不要重置、清理、覆盖或直接从它发布**。本轮发布来自新的隔离克隆 `C:\Users\Administrator\Documents\Codex\2026-09-28\https-github-com-jokers963-catvodspider-blob\work\CatVodSpider`；旧候选工作树 `C:\Users\Administrator\AppData\Local\Temp\catvodspider-release-v34-20260927` 含未提交改动，**不得误当正式代码或覆盖**。接手时重新查看 `git status`、`origin/main` 和 Pages，不假定上述快照仍然新。
 
