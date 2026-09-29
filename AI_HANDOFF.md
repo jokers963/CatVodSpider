@@ -4,6 +4,10 @@
 
 这是 Android 播放器“落雨秋”及其远程点播接口。用户不是开发人员，希望新 AI 能直接接手开发、自己构建和验证；不要让用户重复解释架构，也不要把单条视频成功写成整站稳定。本文下方多处“最新”“当前”是写入时的历史快照，**与本节冲突时以重新核对的远程状态和本节为准**。交接只记录事实，不替代用户对下一项改动的授权。
 
+### 本轮：手机上游 Release 版本澄清（2026-09-29）
+
+用户给出上游成品包地址 `https://github.com/FongMi/Release/releases`，明确手机当前安装 5.6.8。只读 ADB 核对 `com.fongmi.android.tv` 为 `versionCode 568`、`versionName 5.6.8`；GitHub Release 5.6.8 发布于 2026-09-29，含 `mobile-arm64_v8a.apk` 与 `mobile-armeabi_v7a.apk`。下文先前截图所记 5.6.7 是旧快照，应以本节为准。TV fork 当前 `app/build.gradle` 仍标注 5.6.3，不能假定它与上游 5.6.8 成品 APK 是同一构建；草稿 PR #1 未构建、未签名、未安装。原装应用、用户数据与点播配置均未动。无上游签名密钥，不得尝试以不同签名直接覆盖安装或先卸载；若要实机测试，先设计独立包名/数据隔离的候选方案并获得用户同意。
+
 ### 本轮：播放器 fork 同步上游与搜索封面候选（2026-09-29）
 
 用户说明手机安装的是源仓库成品 APK、不是其 fork 构建包，并选择“保留现有工作，把最新上游合并进 fork，再改搜索封面”。TV 原本地目录 `D:\CodexWorkspace\Android\影视\TV` 有大量未提交定制，本轮保持完全只读；操作在独立克隆 `C:\Users\Administrator\Documents\Codex\2026-09-28\https-github-com-jokers963-catvodspider-blob\work\TV-cover-sync` 完成。核对时 fork `fongmi` 为 `91b8c9a`，上游 `FongMi/TV` 的 `fongmi` 为 `c616c0a`，双方分叉：fork 独有两项文档提交，上游独有一项代理跳转修复。非强推合并提交 `322f2604` 已推到 `jokers963/TV:fongmi`；验证两个旧提交都是合并提交祖先、远程分支指向 `322f2604`。本地旧目录仍未同步或清理，**其未提交代码不在远程合并中**。
