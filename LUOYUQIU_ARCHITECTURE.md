@@ -34,10 +34,10 @@ TV 是播放器宿主，提供界面、配置加载、插件运行、内置播�
 正式点播配置地址：
 
 ```text
-https://jokers963.github.io/CatVodSpider/json/supjav.json
+https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json
 ```
 
-[打开正式配置](https://jokers963.github.io/CatVodSpider/json/supjav.json) · [查看仓库中的配置文件](json/supjav.json)
+[打开正式配置](https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json) · [查看仓库中的配置文件](json/luoyuqiu.json)。旧 `json/supjav.json` 保持兼容，后续发布需同步。
 
 手机应填写完整 JSON 地址，而不是 GitHub 的 `blob/main/...` 查看页面、GitHub Pages 根目录或 JAR 地址。电脑上的本地文件改变不等于远程发布完成；需要确认远程仓库、Pages 部署和实际 HTTP 返回内容。
 
@@ -88,7 +88,7 @@ Android 宿主使用 `DexClassLoader` 加载 JAR 中的 DEX，通过约定的类
 
 普通详情使用 `vod_play_from`、`vod_play_url`。`$$$` 分隔线路，`#` 分隔集数，`$` 分隔集数名和播放 ID。播放 ID 可以是描述或标识，不一定已经是媒体直链。
 
-当前关键代码：[Spider 基类](app/src/main/java/com/github/catvod/crawler/Spider.java)、[GMSubs](app/src/main/java/com/github/catvod/spider/GMSubs.java)、[配置](json/supjav.json)。
+当前关键代码：[Spider 基类](app/src/main/java/com/github/catvod/crawler/Spider.java)、[GMSubs](app/src/main/java/com/github/catvod/spider/GMSubs.java)、[配置](json/luoyuqiu.json)。
 
 ## 5. GM、JavaScript 与播放地址
 

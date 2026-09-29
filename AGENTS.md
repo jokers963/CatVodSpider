@@ -11,7 +11,7 @@
 ## 工作边界
 
 - 本仓库负责远程配置、GMSubs、站点 userscript 与运行 JAR；配套播放器在 [jokers963/TV](https://github.com/jokers963/TV)，默认分支 `fongmi`。
-- 正式手机入口是 `https://jokers963.github.io/CatVodSpider/json/supjav.json`，不是电脑本地文件或 GitHub blob 页面。
+- 正式手机入口是 `https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json`；旧 `json/supjav.json` 保持兼容，两份配置发布时必须同步。不要填写电脑本地文件或 GitHub blob 页面。
 - 保护用户未提交改动；旧 `交接.md` 不删除/覆盖，其历史内容不能代替当前源码。禁止破坏性 Git 操作、强推或未经请求同步上游。
 - TV 本地工作树及运行文件保持只读；文档不授予运行修改或发布权限，权限以用户当次明确授权为准。
 - 不恢复已取消的站点/线路；MissAV 不擅自改回带 `name` 的 `finalUrl`；GM 的 `type: match` 不代表媒体解析已经结束。

@@ -4,6 +4,10 @@
 
 这是 Android 播放器“落雨秋”及其远程点播接口。用户不是开发人员，希望新 AI 能直接接手开发、自己构建和验证；不要让用户重复解释架构，也不要把单条视频成功写成整站稳定。本文下方多处“最新”“当前”是写入时的历史快照，**与本节冲突时以重新核对的远程状态和本节为准**。交接只记录事实，不替代用户对下一项改动的授权。
 
+### 本轮：正式接口新增 `luoyuqiu.json` 地址（2026-09-29）
+
+用户指定正式接口新文件名 `luoyuqiu.json`。新增 `json/luoyuqiu.json`，其内容与当时正式 `json/supjav.json` 相同；旧 URL 保留兼容。两份正式 JSON 后续功能发布必须同步，避免新旧链接漂移。`json/cover-style-test.json` 仍是独立横向封面试验，**未因改名自动合入正式**。此轮不改站点对象、脚本、JAR、TV 或 APK；不要将链接改名等同于搜索封面修复。发布/远程检查结果见本节后续记录。
+
 ### 本轮：前四站封面比例试验与搜索页限制（2026-09-29）
 
 用户指出后两站封面正常、前四站分类封面裁切；随后同意试用横向卡片。提交 `113a9e3` 新增独立测试入口 `json/cover-style-test.json`：复制正式六站配置，仅给 SupJav、MissAV、Jable、AV01 添加站点 `style: {"type":"rect","ratio":1.5}`；Rou、Hanime1 保持原样。正式 `json/supjav.json`、脚本、JAR、TV 源码及 APK 均未改。Pages 测试 URL 已返回 200；JSON 与正式六站对象逐项比较，除上述四个 `style` 外一致。TV 只读源码确认分类 `TypeFragment` 使用站点 `style`，横向样式将当前三列降为两列。用户反馈试用“可以了”，但搜索结果封面仍显示不全；这仅是用户对分类画面的认可，不代表搜索已修好或所有条目均适配。
@@ -78,7 +82,7 @@
 | --- | --- |
 | 接口 fork | [jokers963/CatVodSpider](https://github.com/jokers963/CatVodSpider)；Rou 正式功能提交 `9e879d3`，本交接更新提交在其后；接手时核对实际 `main` HEAD |
 | 播放器 fork | [jokers963/TV](https://github.com/jokers963/TV)，本地 `fongmi` 为 `4afc4473e22a7ed3d98ee12233e0c2a490061000`；**本地 TV 仓库严格只读** |
-| 正式手机配置 | `https://jokers963.github.io/CatVodSpider/json/supjav.json`，不是 GitHub `blob` 页面、本地文件或根目录 |
+| 正式手机配置 | 新主地址 `https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json`；旧 `json/supjav.json` 保持兼容；不是 GitHub `blob` 页面、本地文件或根目录 |
 | 正式 Spider | 全局 `jar/gm_subs-v35.jar?v=35`；仅 Rou 站点覆写 `jar/gm_subs-v36.jar?v=36`；此次未重新构建或替换 |
 | 正式站点 | 🎬 SupJav、🎬 MissAV、🎬 Jable、🎬 AV01、📺 肉视频（key `rou`）、🎨 Hanime1，共 6 站；2026-09-29 从 Pages 直接读取确认 |
 | 正式脚本缓存版本 | SupJav `v=34`、MissAV `v=8`、Jable `v=8`、AV01 `v=5`、肉视频 `v=6`、Hanime1 `v=3` |
@@ -90,7 +94,7 @@
 
 手机 TV 宿主读取 Pages JSON → 通过 `DexClassLoader` 加载 JAR 的 `csp_GMSubs` → `GMSubs` 调用第三方 `jar/gm.jar` 的 GM WebView 运行对应 `js/*.user.js` → 脚本返回统一的首页/分类/搜索/详情/播放数据 → `GMSubs` 必要时处理 HLS 代理和字幕 → TV 内置 Media3/ExoPlayer 或 mpv 播放。JSON **不是视频服务器**；列表成功、拿到 URL、出现缓冲都不等于实际播放。`GM` 返回 `type: match` 后还会等待媒体请求；不要在 Java 中把初始脚本返回误当最终地址。MissAV 不要擅自改回带 `name` 的 `finalUrl`。
 
-先读本仓库 [AGENTS.md](AGENTS.md)、[接口原理](LUOYUQIU_ARCHITECTURE.md)，再按任务读 [正式 JSON](json/supjav.json)、[GMSubs.java](app/src/main/java/com/github/catvod/spider/GMSubs.java) 和对应 userscript。TV 只读源码入口：`VodConfig`、`BaseLoader`/`JarLoader`、`SiteApi`、`PlaybackActivity`、`PlayerManager`、`ExoMediaSourceFactory`。旧接口原理文档指向的 TV 专属 `LUOYUQIU_ARCHITECTURE.md` **在此次检查的 TV `origin/fongmi` 文件树中不存在**；以实际 TV 源码和其 `README.md` 为准，勿把坏链接当作已读文档。
+先读本仓库 [AGENTS.md](AGENTS.md)、[接口原理](LUOYUQIU_ARCHITECTURE.md)，再按任务读 [正式 JSON](json/luoyuqiu.json)、[GMSubs.java](app/src/main/java/com/github/catvod/spider/GMSubs.java) 和对应 userscript。TV 只读源码入口：`VodConfig`、`BaseLoader`/`JarLoader`、`SiteApi`、`PlaybackActivity`、`PlayerManager`、`ExoMediaSourceFactory`。旧接口原理文档指向的 TV 专属 `LUOYUQIU_ARCHITECTURE.md` **在此次检查的 TV `origin/fongmi` 文件树中不存在**；以实际 TV 源码和其 `README.md` 为准，勿把坏链接当作已读文档。
 
 ### 3. 站点事实与未完成项
 
@@ -118,7 +122,7 @@ Rou、AirAV、Hanime1 的动态列表中曾出现年龄身份暗示的性化条�
 ### 5. 给新 AI 的开场消息（用户复制这一段即可）
 
 ```text
-请接手“落雨秋”项目。先读 jokers963/CatVodSpider 仓库 main 分支的 AGENTS.md 与 AI_HANDOFF.md 顶部“给下一位 AI 的最新交接”，按任务再看 LUOYUQIU_ARCHITECTURE.md 和实际源码。另一个 fork 是 jokers963/TV 的 fongmi 分支，本地 TV 工作树严格只读。正式接口是 https://jokers963.github.io/CatVodSpider/json/supjav.json。
+请接手“落雨秋”项目。先读 jokers963/CatVodSpider 仓库 main 分支的 AGENTS.md 与 AI_HANDOFF.md 顶部“给下一位 AI 的最新交接”，按任务再看 LUOYUQIU_ARCHITECTURE.md 和实际源码。另一个 fork 是 jokers963/TV 的 fongmi 分支，本地 TV 工作树严格只读。正式接口是 https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json；旧 supjav.json 兼容保留。
 先核对远程版本、Git 状态和未提交文件，再说明你准备处理的具体问题；不要覆盖用户改动，不要把测试入口、本地地址或单条视频成功当成正式验收。当前我交给你的具体任务是：<由我填写>。完成后请更新交接、列出已验证与未验证结果，方便再交给下一位 AI。
 ```
 
