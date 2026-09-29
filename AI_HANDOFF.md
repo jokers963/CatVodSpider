@@ -12,7 +12,7 @@
 
 新 arm64 APK：`mobile-arm64_v8a.apk`，94,558,431 字节，SHA-256 `10D1612F41D6031A6A3299F8D5802CAA2317D2931E2CACD27CF779A4EB947C83`。ADB `install -r` 覆盖成功，`firstInstallTime` 保持 2026-09-29，说明未卸载/清数据；设备已显示版本 `5.6.3-lyq.1`。启动日志未出现 `VerifyError`、`FATAL EXCEPTION` 或此前 Updater JSON 404，并开始下载正式 JAR；手机当时处于休眠状态，本轮未自动唤醒或点击，所以没有重新宣称首页画面、搜索封面或播放已通过。
 
-正式接口的 `json/luoyuqiu.json` 与兼容 `json/supjav.json` 已同时给前四站 SupJav、MissAV、Jable、AV01 加入用户此前认可的 `style: {"type":"rect","ratio":1.5}`；肉视频和 Hanime1 保持原样。`hanime1.nav.test.cjs` 新增两份正式配置语义相等和四站样式断言；三组现有 JS 测试及 JSON 解析通过。发布后还需核对 Pages 实际内容。**未完成/未验证：**搜索页 `FIT_CENTER`、六站首页/分类/搜索/详情/播放均未做本轮实机回归；当前 APK 仍使用 Android Debug keystore 签名，切永久签名会要求一次卸载或数据迁移，未擅自执行；旧 AAR 基线下 libass 和双字幕仍被禁用，不能称为上游完整播放器能力。
+正式接口提交 `7bc5564` 已同时给 `json/luoyuqiu.json` 与兼容 `json/supjav.json` 的前四站 SupJav、MissAV、Jable、AV01 加入用户此前认可的 `style: {"type":"rect","ratio":1.5}`；肉视频和 Hanime1 保持原样。`hanime1.nav.test.cjs` 新增两份正式配置语义相等和四站样式断言；三组现有 JS 测试及 JSON 解析通过。GitHub Pages 部署成功，两个裸 URL 均为 HTTP 200、ETag `W/"6abbf00c-1f14"`，远程 JSON 语义相等且四站样式已出现。**未完成/未验证：**搜索页 `FIT_CENTER`、六站首页/分类/搜索/详情/播放均未做本轮实机回归；当前 APK 仍使用 Android Debug keystore 签名，切永久签名会要求一次卸载或数据迁移，未擅自执行；旧 AAR 基线下 libass 和双字幕仍被禁用，不能称为上游完整播放器能力。
 
 ### 本轮：5.6.3 独立测试包修正为 Release 构建，正式接口首页已恢复（2026-09-29）
 
