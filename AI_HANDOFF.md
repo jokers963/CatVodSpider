@@ -1,8 +1,18 @@
 # 落雨秋 AI 接手与协作记录
 
-## 给下一位 AI 的最新交接（2026-09-29；本节优先）
+## 给下一位 AI 的最新交接（2026-09-30；本节优先）
 
 这是 Android 播放器“落雨秋”及其远程点播接口。用户不是开发人员，希望新 AI 能直接接手开发、自己构建和验证；不要让用户重复解释架构，也不要把单条视频成功写成整站稳定。本文下方多处“最新”“当前”是写入时的历史快照，**与本节冲突时以重新核对的远程状态和本节为准**。交接只记录事实，不替代用户对下一项改动的授权。
+
+### 本轮：建立可追踪的落雨秋 5.6.3 定制分支并覆盖安装（2026-09-30）
+
+用户授权自行决定后续改进且暂不参与。本轮没有改动原目录 `D:\CodexWorkspace\Android\影视\TV`；继续在短路径隔离工作树 `D:\CodexWorkspace\Android\TV563Release` 处理，并将分支改名为 `luoyuqiu`。提交 `23ec57576` 已推送到 `jokers963/TV:luoyuqiu`，基线仍是旧版 `4afc4473e`，不是上游当前 `fongmi`。该提交把此前能实际构建的定制源码、启动图和搜索封面修正纳入版本控制；19 个被忽略的 `lib-*.aar` 仍不上传，只新增 `app/libs/luoyuqiu-media3.sha256` 固定其文件名与 SHA-256。线上源码因此可审计，但全新电脑仍需取得完全匹配的 AAR 才能复现构建。
+
+手机版包名保持 `com.jokers963.luoyuqiu`，显示名从“落雨秋测试”改为“落雨秋”，独立版本改为 `5.6.3-lyq.1` / `56301`。当数据库没有点播配置时，仅该定制包默认创建正式地址 `https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json`；已有配置不覆盖。定制包启动时不再访问 FongMi 官方更新源，手动检查更新会提示暂未开放，避免下载包名/签名不相容的官方 APK。原来写在共享 `ResponseInterceptor` 的 PNG/TS 兼容处理已拆成播放器专用网络拦截器，Glide 封面继续使用普通响应流，不再因普通 PNG 封面整包缓冲。Gradle 的 daemon JVM vendor 从本机无法建立 loopback 的 JetBrains 改为已安装的 Adoptium JDK 21；随后 `:app:assembleMobileRelease --no-daemon` 完整成功。
+
+新 arm64 APK：`mobile-arm64_v8a.apk`，94,558,431 字节，SHA-256 `10D1612F41D6031A6A3299F8D5802CAA2317D2931E2CACD27CF779A4EB947C83`。ADB `install -r` 覆盖成功，`firstInstallTime` 保持 2026-09-29，说明未卸载/清数据；设备已显示版本 `5.6.3-lyq.1`。启动日志未出现 `VerifyError`、`FATAL EXCEPTION` 或此前 Updater JSON 404，并开始下载正式 JAR；手机当时处于休眠状态，本轮未自动唤醒或点击，所以没有重新宣称首页画面、搜索封面或播放已通过。
+
+正式接口的 `json/luoyuqiu.json` 与兼容 `json/supjav.json` 已同时给前四站 SupJav、MissAV、Jable、AV01 加入用户此前认可的 `style: {"type":"rect","ratio":1.5}`；肉视频和 Hanime1 保持原样。`hanime1.nav.test.cjs` 新增两份正式配置语义相等和四站样式断言；三组现有 JS 测试及 JSON 解析通过。发布后还需核对 Pages 实际内容。**未完成/未验证：**搜索页 `FIT_CENTER`、六站首页/分类/搜索/详情/播放均未做本轮实机回归；当前 APK 仍使用 Android Debug keystore 签名，切永久签名会要求一次卸载或数据迁移，未擅自执行；旧 AAR 基线下 libass 和双字幕仍被禁用，不能称为上游完整播放器能力。
 
 ### 本轮：5.6.3 独立测试包修正为 Release 构建，正式接口首页已恢复（2026-09-29）
 

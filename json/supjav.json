@@ -57,6 +57,10 @@
           "playerContent": {"loadUrl": "https://supjav.com/zh/${pathname}#${link}"},
           "searchContent": {"loadUrl": "https://supjav.com/zh/page/${pg:-1}?s=${key}"}
         }
+      },
+      "style": {
+        "type": "rect",
+        "ratio": 1.5
       }
     },
     {
@@ -81,6 +85,10 @@
           "detailContent": {"loadUrl": "https://missav.ws/cn/${id}"},
           "searchContent": {"loadUrl": "https://missav.ws/cn/search/${key}?page=${pg:-1}"}
         }
+      },
+      "style": {
+        "type": "rect",
+        "ratio": 1.5
       }
     },
     {
@@ -117,6 +125,10 @@
           "detailContent": {"loadUrl": "https://jable.tv/videos/${id}/"},
           "searchContent": {"loadUrl": "https://jable.tv/search/${key}/"}
         }
+      },
+      "style": {
+        "type": "rect",
+        "ratio": 1.5
       }
     },
     {
@@ -148,6 +160,10 @@
           "playerContent": {"loadUrl": "https://www.av01.media/cn/video/${id}/${slug}"},
           "searchContent": {"loadUrl": "https://www.av01.media/cn"}
         }
+      },
+      "style": {
+        "type": "rect",
+        "ratio": 1.5
       }
     },
     {
