@@ -6,7 +6,7 @@
 
 ### 本轮：正式接口新增 `luoyuqiu.json` 地址（2026-09-29）
 
-用户指定正式接口新文件名 `luoyuqiu.json`。新增 `json/luoyuqiu.json`，其内容与当时正式 `json/supjav.json` 相同；旧 URL 保留兼容。两份正式 JSON 后续功能发布必须同步，避免新旧链接漂移。`json/cover-style-test.json` 仍是独立横向封面试验，**未因改名自动合入正式**。此轮不改站点对象、脚本、JAR、TV 或 APK；不要将链接改名等同于搜索封面修复。发布/远程检查结果见本节后续记录。
+用户指定正式接口新文件名 `luoyuqiu.json`。提交 `eceee5e` 新增 `json/luoyuqiu.json`，其 JSON 内容与当时正式 `json/supjav.json` 相同；旧 URL 保留兼容。两份正式 JSON 后续功能发布必须同步，避免新旧链接漂移。`json/cover-style-test.json` 仍是独立横向封面试验，**未因改名自动合入正式**。此轮不改站点对象、脚本、JAR、TV 或 APK；不要将链接改名等同于搜索封面修复。Pages 部署成功后新旧 URL 均 HTTP 200，解析为完全相同的六站配置，均无站点横向 `style`；本轮未重新加载手机或测试搜索、播放。
 
 ### 本轮：前四站封面比例试验与搜索页限制（2026-09-29）
 
