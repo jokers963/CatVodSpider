@@ -3,7 +3,7 @@
   "sites": [
     {
       "key": "supjav",
-      "name": "SupJav",
+      "name": "🎬 SupJav",
       "type": 3,
       "api": "csp_GMSubs",
       "searchable": 1,
@@ -61,7 +61,7 @@
     },
     {
       "key": "missav",
-      "name": "MissAV",
+      "name": "🎬 MissAV",
       "type": 3,
       "api": "csp_GMSubs",
       "searchable": 1,
@@ -85,7 +85,7 @@
     },
     {
       "key": "jable",
-      "name": "Jable",
+      "name": "🎬 Jable",
       "type": 3,
       "api": "csp_GMSubs",
       "searchable": 1,
@@ -121,7 +121,7 @@
     },
     {
       "key": "av01",
-      "name": "AV01",
+      "name": "🎬 AV01",
       "type": 3,
       "api": "csp_GMSubs",
       "searchable": 1,
@@ -152,7 +152,7 @@
     },
     {
       "key": "rou",
-      "name": "肉视频",
+      "name": "📺 肉视频",
       "type": 3,
       "api": "csp_GMSubs",
       "jar": "https://jokers963.github.io/CatVodSpider/jar/gm_subs-v36.jar?v=36",
@@ -175,7 +175,7 @@
     },
     {
       "key": "hanime1",
-      "name": "Hanime1",
+      "name": "🎨 Hanime1",
       "type": 3,
       "api": "csp_GMSubs",
       "searchable": 1,
