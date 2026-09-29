@@ -4,6 +4,12 @@
 
 这是 Android 播放器“落雨秋”及其远程点播接口。用户不是开发人员，希望新 AI 能直接接手开发、自己构建和验证；不要让用户重复解释架构，也不要把单条视频成功写成整站稳定。本文下方多处“最新”“当前”是写入时的历史快照，**与本节冲突时以重新核对的远程状态和本节为准**。交接只记录事实，不替代用户对下一项改动的授权。
 
+### 本轮：播放器 fork 同步上游与搜索封面候选（2026-09-29）
+
+用户说明手机安装的是源仓库成品 APK、不是其 fork 构建包，并选择“保留现有工作，把最新上游合并进 fork，再改搜索封面”。TV 原本地目录 `D:\CodexWorkspace\Android\影视\TV` 有大量未提交定制，本轮保持完全只读；操作在独立克隆 `C:\Users\Administrator\Documents\Codex\2026-09-28\https-github-com-jokers963-catvodspider-blob\work\TV-cover-sync` 完成。核对时 fork `fongmi` 为 `91b8c9a`，上游 `FongMi/TV` 的 `fongmi` 为 `c616c0a`，双方分叉：fork 独有两项文档提交，上游独有一项代理跳转修复。非强推合并提交 `322f2604` 已推到 `jokers963/TV:fongmi`；验证两个旧提交都是合并提交祖先、远程分支指向 `322f2604`。本地旧目录仍未同步或清理，**其未提交代码不在远程合并中**。
+
+搜索封面候选仅改移动端 `SearchAdapter`：使用现有 `ImgUtil.load(..., false)` 的等比 `FIT_CENTER`，并保持图片视图可见以保留空/失败图片的文字占位；其他 UI、分类比例、播放器和接口均未改。候选提交 `98fcdd1` 已推到 `fix/search-cover-fit`，草稿 PR [jokers963/TV#1](https://github.com/jokers963/TV/pull/1) 尚未合并。`git diff --check` 通过；JDK 21 下尝试 `:app:compileMobileDebugJavaWithJavac`，Gradle daemon 在编译前返回空首结果，故**未通过构建**。未生成/安装 APK，未实机检查搜索封面；手机源仓库 APK 界面曾显示 5.6.7，而 fork 源码 `app/build.gradle` 标注 5.6.3，不能假定版本或签名匹配，更不能卸载现有应用。下一步应先解决独立环境构建并确认 APK/签名与安装方案，再由用户验证；在此之前不要把 PR 当成已修好。
+
 ### 本轮：正式接口新增 `luoyuqiu.json` 地址（2026-09-29）
 
 用户指定正式接口新文件名 `luoyuqiu.json`。提交 `eceee5e` 新增 `json/luoyuqiu.json`，其 JSON 内容与当时正式 `json/supjav.json` 相同；旧 URL 保留兼容。两份正式 JSON 后续功能发布必须同步，避免新旧链接漂移。`json/cover-style-test.json` 仍是独立横向封面试验，**未因改名自动合入正式**。此轮不改站点对象、脚本、JAR、TV 或 APK；不要将链接改名等同于搜索封面修复。Pages 部署成功后新旧 URL 均 HTTP 200，解析为完全相同的六站配置，均无站点横向 `style`；本轮未重新加载手机或测试搜索、播放。
