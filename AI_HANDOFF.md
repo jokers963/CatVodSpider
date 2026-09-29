@@ -1,10 +1,18 @@
 # 落雨秋 AI 接手与协作记录
 
-## 给下一位 AI 的最新交接（2026-09-28；本节优先）
+## 给下一位 AI 的最新交接（2026-09-29；本节优先）
 
 这是 Android 播放器“落雨秋”及其远程点播接口。用户不是开发人员，希望新 AI 能直接接手开发、自己构建和验证；不要让用户重复解释架构，也不要把单条视频成功写成整站稳定。本文下方多处“最新”“当前”是写入时的历史快照，**与本节冲突时以重新核对的远程状态和本节为准**。交接只记录事实，不替代用户对下一项改动的授权。
 
-### 本轮：Rou 首页提速与主分类（2026-09-28）
+### 本轮：Rou 剧集库置顶并接入正式接口（2026-09-29）
+
+用户提供 `https://rou.video/series` 截图，要求将“劇集庫”放在 Rou 分类第一位、直接发布正式接口，再由其在手机验证。功能提交 `9e879d3`：`js/rou.user.js?v=5` 增加 `/series` 分类、网站的排序／连载状态／标签筛选、剧集卡片和 `/s/<id>` 分集详情；常规视频 ID 改为带 `v/` 前缀，使两类详情共用 `https://rou.video/${id}`。正式 `json/supjav.json` 增加第六站 Rou，**仅 Rou 站点覆写为 `jar/gm_subs-v36.jar?v=36`**，正式全局 JAR 仍为 v35，原五站对象未变。独立测试入口同步到 v5；TV、APK、JAR 文件均未改。
+
+已验证：网站 `/series` 卡片与 `/s/<id>` 分集结构、排序／状态参数、分页；脚本语法、新站与既有适配测试、JSON 解析、原五站对象及全局 JAR 不变检查、`git diff --check` 均通过。`9e879d3` 已推送，Pages 发布成功；裸正式 URL 返回六站配置且 Rou v5 脚本与提交内容一致。手机 `vodUrl` 已逐字核对为裸正式 URL，点播中选中 Rou，首个分类“劇集庫”列表有卡片；打开一条剧集可见“Rou 劇集”线路与第 1–6 集，筛选面板显示排序、连载状态、标签选项。手机已返回 Rou 剧集库列表，交给用户测试。
+
+未验证：用户尚未在**正式入口**实播剧集分集，也未反馈各排序／状态／标签组合、翻页、搜索、持续播放、快进、返回重播或多条目表现。此前“播放没有什么问题”仅是 v36 **测试入口旧版普通视频**的用户反馈，不能算本次正式剧集播放通过；手机列表和分集按钮出现也不等于可播放。若用户反馈异常，先分清剧集与普通视频、分类请求与 HLS 代理，勿直接扩大到全站。
+
+### 历史：Rou 首页提速与主分类（2026-09-28）
 
 用户在 v36 测试入口实播后反馈“播放没有什么问题”，同时指出首页慢、分类需要完善。提交 `5cbbcae` 更新独立测试入口的 `js/rou.user.js?v=4` 和 Rou 配置：`homeContent` 改从比 `/home` 更轻的 `/v` 加载，只返回分类元数据，不等视频卡片；分类按网站视频库的“全部”及六个主分类路由 `/v`、`/t/<分类>`，支持“最新发布／最多观看／最多喜欢”排序和网站分页。详情与 v36 播放代理未改，正式 `json/supjav.json`、v35 JAR 和 TV 均未改。测试接口仍为 `https://jokers963.github.io/CatVodSpider/json/new-sites-test.json`。
 
@@ -34,13 +42,13 @@
 
 | 对象 | 当前核对结果 |
 | --- | --- |
-| 接口 fork | [jokers963/CatVodSpider](https://github.com/jokers963/CatVodSpider)；Rou 独立测试功能提交为 `efce677`，正式功能仍以 Hanime1 的 `0c03947` 为准；接手时核对实际 `main` HEAD |
+| 接口 fork | [jokers963/CatVodSpider](https://github.com/jokers963/CatVodSpider)；Rou 正式功能提交 `9e879d3`，本交接更新提交在其后；接手时核对实际 `main` HEAD |
 | 播放器 fork | [jokers963/TV](https://github.com/jokers963/TV)，本地 `fongmi` 为 `4afc4473e22a7ed3d98ee12233e0c2a490061000`；**本地 TV 仓库严格只读** |
 | 正式手机配置 | `https://jokers963.github.io/CatVodSpider/json/supjav.json`，不是 GitHub `blob` 页面、本地文件或根目录 |
-| 正式 Spider | `jar/gm_subs-v35.jar?v=35`；此次交接未重新构建或替换 |
-| 正式站点 | SupJav、MissAV、Jable、AV01、Hanime1，共 5 站；2026-09-28 从 Pages 直接读取确认 |
-| 正式脚本缓存版本 | SupJav `v=33`、MissAV `v=7`、Jable `v=7`、AV01 `v=4`、Hanime1 `v=3` |
-| 手机 | 2026-09-28 ADB 显示已连接；已安装 `com.fongmi.android.tv` 版本 `5.6.6`。当前加载独立 `new-sites-test.json` 的 Rou v4 分类页，已交给用户复验；设备状态会变化 |
+| 正式 Spider | 全局 `jar/gm_subs-v35.jar?v=35`；仅 Rou 站点覆写 `jar/gm_subs-v36.jar?v=36`；此次未重新构建或替换 |
+| 正式站点 | SupJav、MissAV、Jable、AV01、Hanime1、Rou，共 6 站；2026-09-29 从 Pages 直接读取确认 |
+| 正式脚本缓存版本 | SupJav `v=33`、MissAV `v=7`、Jable `v=7`、AV01 `v=4`、Hanime1 `v=3`、Rou `v=5` |
+| 手机 | 2026-09-29 ADB 已连接；`com.fongmi.android.tv` 版本 `5.6.6`。当前加载裸正式 URL 并停在 Rou“劇集庫”列表，设备状态会变化 |
 
 源码位置：接口 `D:\CodexWorkspace\Android\影视\CatVodSpider`；播放器 `D:\CodexWorkspace\Android\影视\TV`。原接口 `main` 工作树停在旧提交 `1d97a24`，落后远程且有用户改动和未跟踪的 `交接.md`，**不要重置、清理、覆盖或直接从它发布**。本轮发布来自新的隔离克隆 `C:\Users\Administrator\Documents\Codex\2026-09-28\https-github-com-jokers963-catvodspider-blob\work\CatVodSpider`；旧候选工作树 `C:\Users\Administrator\AppData\Local\Temp\catvodspider-release-v34-20260927` 含未提交改动，**不得误当正式代码或覆盖**。接手时重新查看 `git status`、`origin/main` 和 Pages，不假定上述快照仍然新。
 
@@ -58,7 +66,7 @@
 | SupJav FST | v35 已加入限域代理和 30 秒总期限；SNOS-377 曾多段播放且快进后恢复 | ABF-381 仍有慢读、短读与长缓冲不确定性；不能说整线稳定。用户明确说 SSIS-001 的 FST 自身有问题，不用管 |
 | MissAV/Jable/AV01 | 原四站正式保留，历史记录有功能测试 | 本轮未做多视频/长期回归；不因保留在 JSON 就写成完全稳定 |
 | Hanime1 | 正式 v3 已使用真实分类 ID、分类分页、三组筛选和资源拦截；不再显示“推荐”。测试入口由用户认可后发布，正式手机已显示分类与列表 | 正式入口的筛选、搜索、多清晰度与播放回归仍待用户复验；不能由测试列表出现推断整站稳定 |
-| Rou | v36 代理解包后用户反馈播放没有什么问题；v4 测试脚本提供网站六个主分类、排序和分页，手机已显示分类并加载两个分类列表 | 用户尚未复验 v4 首页速度、全部分类与翻页；多条目/长时间播放未验证，**未纳入正式** |
+| Rou | 用户曾反馈 v36 测试入口普通视频播放没有什么问题；正式 v5 已新增置顶“劇集庫”与网站六个主分类，手机正式入口显示剧集列表、分集按钮和筛选 | 本次正式入口的剧集分集实播、排序/筛选组合、翻页、多条目/长时间播放仍待用户验证；不能由按钮出现推断播放成功 |
 | AirAV | 独立测试入口曾有一条目手机播放、快进、重播通过；2026-09-28 桌面浏览器首页可访问 | 先前切正式时手机首页遇真人验证，已撤回；此次未重做手机验证，**未纳入正式** |
 | JavMenu | 用户曾提出此站 | 没有适配脚本/实机测试；此前自动浏览被安全边界拦截，勿换途径绕过；**未纳入正式** |
 
@@ -66,7 +74,7 @@ Rou、AirAV、Hanime1 的动态列表中曾出现年龄身份暗示的性化条�
 
 ### 4. 构建、发布与实机验收规则
 
-- `json/new-sites-test.json` 是独立远程测试入口（含 Rou、AirAV、Hanime1），**不是正式手机配置**。本轮先在该入口验收 Hanime1 v3，再按用户明确授权提升到正式 JSON/userscript；JAR、APK 和 TV 源码未改，正式状态以上表为准。
+- `json/new-sites-test.json` 是独立远程测试入口（含 Rou、AirAV、Hanime1），**不是正式手机配置**。Rou 已按用户明确授权加入正式 JSON；仅 Rou 使用站点专属 v36 JAR，其他站仍用全局 v35。JAR、APK 和 TV 源码未改，正式状态以上表为准。
 - JS 最小检查：`node --check js/<站点>.user.js`、`node js/new-sites.test.cjs`、`node js/adapters.test.cjs`；Hanime1 导航另有 `node js/hanime1.nav.test.cjs`。再验 JSON 解析、`git diff --check`。测试通过只说明脚本结构/模拟数据，不代表实播。
 - JAR 构建入口 `scripts/gmRelease/build-check.ps1`（先读脚本并指定新的独立输出目录）；它依赖本机 JDK/SDK/缓存和部分生成文件。历史上 21 项 JUnit、手动 javac/D8/结构检查通过，但**没有成功的完整 Gradle Debug 构建，也没有本轮新 APK 安装**。不能把手动 JAR 检查写成 `assembleDebug` 成功。
 - 改站点先用独立远程测试 JSON/JAR/脚本，确认可用后才评估正式发布。正式发布只做任务范围内文件的非强推提交，确认 GitHub Pages 实际 HTTP 内容和缓存版本，再从手机**正式远程 URL**重新加载验证；本地地址不能代替。
