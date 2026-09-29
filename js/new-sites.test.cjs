@@ -87,6 +87,27 @@ const rouEpisodes = await run('rou', 'detailContent', 's/show', {
 }, {location: {origin: 'https://rou.video', pathname: '/s/show'}});
 assert.equal(rouEpisodes.list[0].vod_play_url,
     '第1集$https://rou.video/api/hls/one#第2集$https://rou.video/api/hls/two');
+const searchSeriesPage = {
+    querySelectorAll: selector => selector === 'main a[href*="page="]'
+        ? [{href: 'https://rou.video/search?q=sample&tab=series&page=4'}]
+        : [{href: 'https://rou.video/s/show',
+            querySelector: selector => selector === 'h3' ? {textContent: 'Example series'}
+                : selector === 'img' ? {src: 'https://rou.video/series.jpg'} : null}]
+};
+const rouSearch = await run('rou', 'searchContent', 'sample', {
+    querySelector: selector => selector === '#page-search' ? {} : null,
+    querySelectorAll: selector => selector === 'main a[href*="page="]'
+        ? [{href: 'https://rou.video/search?q=sample&page=2'}]
+        : selector === 'a[href^="/v/"]' ? [{href: 'https://rou.video/v/sample',
+            querySelector: selector => selector === '.clamp-2' ? {textContent: 'Example video'} : null}]
+            : []
+}, {location: {origin: 'https://rou.video', href: 'https://rou.video/search?q=sample&page=2'},
+    fetch: async url => {
+        assert.equal(url, 'https://rou.video/search?q=sample&page=2&tab=series');
+        return {ok: true, text: async () => '<html></html>'};
+    }, DOMParser: class { parseFromString() { return searchSeriesPage; } }});
+assert.deepEqual(Array.from(rouSearch.list, item => item.vod_id), ['v/sample', 's/show']);
+assert.equal(rouSearch.pagecount, 4);
 const fetched = await run('rou', 'detailContent', 'v/sample', {
     title: 'Example', scripts: [], querySelector: () => null
 }, {location: {origin: 'https://rou.video', pathname: '/v/sample', href: 'https://rou.video/v/sample'},

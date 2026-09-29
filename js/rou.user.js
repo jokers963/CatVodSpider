@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Rou
 // @namespace    luoyuqiuspider
-// @version      1.0.4
+// @version      1.0.5
 // @match        https://rou.video/*
 // @grant        unsafeWindow
 // ==/UserScript==
@@ -34,18 +34,18 @@
         ]}
     ];
 
-    function pageCount() {
+    function pageCount(root = document) {
         let count = 1;
-        document.querySelectorAll('main a[href*="page="]').forEach(function (link) {
+        root.querySelectorAll('main a[href*="page="]').forEach(function (link) {
             const page = Number(new URL(link.href).searchParams.get('page'));
             if (page > count) count = page;
         });
         return count;
     }
 
-    function videos() {
+    function videos(root = document) {
         const seen = new Set();
-        return [...document.querySelectorAll('a[href^="/v/"]')].map(function (link) {
+        return [...root.querySelectorAll('a[href^="/v/"]')].map(function (link) {
             const image = link.querySelector('img');
             const id = new URL(link.href).pathname.split('/')[2];
             const name = link.querySelector('.clamp-2')?.textContent.trim() || image?.alt || '';
@@ -55,15 +55,24 @@
         }).filter(Boolean);
     }
 
-    function series() {
+    function series(root = document) {
         const seen = new Set();
-        return [...document.querySelectorAll('main a[href^="/s/"]')].map(function (link) {
+        return [...root.querySelectorAll('main a[href^="/s/"]')].map(function (link) {
             const id = new URL(link.href).pathname.split('/')[2];
             const name = link.querySelector('h3')?.textContent.trim();
             if (!id || !name || seen.has(id)) return null;
             seen.add(id);
             return {vod_id: 's/' + id, vod_name: name, vod_pic: link.querySelector('img')?.src || ''};
         }).filter(Boolean);
+    }
+
+    async function search() {
+        const url = new URL(location.href);
+        url.searchParams.set('tab', 'series');
+        const response = await fetch(url.href, {credentials: 'same-origin'}).catch(() => null);
+        const seriesPage = response?.ok ? new DOMParser().parseFromString(await response.text(), 'text/html') : null;
+        return {list: [...videos(), ...(seriesPage ? series(seriesPage) : [])],
+            pagecount: Math.max(pageCount(), seriesPage ? pageCount(seriesPage) : 1)};
     }
 
     async function playUrl() {
@@ -105,13 +114,18 @@
         if (sent || busy) return;
         busy = true;
         const waiting = Date.now() - started;
+        if (method === 'searchContent' && !document.querySelector('#page-search') && waiting < 25000) {
+            busy = false;
+            return;
+        }
         let result = method === 'homeContent'
             ? {list: [], class: categories, filters: Object.fromEntries(categories.map(({type_id}) =>
                 [type_id, type_id === 'series' ? seriesFilters : sort]))}
             : method === 'detailContent' ? await detail(args[0])
+                : method === 'searchContent' ? await search()
                 : {list: location.pathname === '/series' ? series() : videos()};
         if (method === 'categoryContent') result.pagecount = pageCount();
-        const ready = method === 'homeContent' || (method === 'detailContent'
+        const ready = method === 'homeContent' || method === 'searchContent' || (method === 'detailContent'
             ? !!result.list[0].vod_play_url : result.list.length > 0);
         if (!ready && waiting < 25000) { busy = false; return; }
         if (!ready) result = {list: [], msg: '页面未获取到可播放内容'};

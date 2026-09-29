@@ -6,19 +6,20 @@
       "name": "Rou (测试)",
       "type": 3,
       "api": "csp_GMSubs",
-      "searchable": 0,
+      "searchable": 1,
       "quickSearch": 0,
       "changeable": 0,
       "filterable": 1,
       "timeout": 60,
       "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/rou.user.js?v=5",
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/rou.user.js?v=6",
         "debug": false,
         "webViewSettings": {"blockNetworkImage": true},
         "spider": {
           "homeContent": {"loadUrl": "https://rou.video/v"},
           "categoryContent": {"loadUrl": "https://rou.video/${tid}?order=${order:-createdAt}&s=${s:-}&f=${f:-}&tag=${tag:-}&page=${pg:-1}"},
-          "detailContent": {"loadUrl": "https://rou.video/${id}"}
+          "detailContent": {"loadUrl": "https://rou.video/${id}"},
+          "searchContent": {"loadUrl": "https://rou.video/search?q=${key}&page=${pg:-1}"}
         }
       }
     },
