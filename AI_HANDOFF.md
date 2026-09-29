@@ -4,13 +4,15 @@
 
 这是 Android 播放器“落雨秋”及其远程点播接口。用户不是开发人员，希望新 AI 能直接接手开发、自己构建和验证；不要让用户重复解释架构，也不要把单条视频成功写成整站稳定。本文下方多处“最新”“当前”是写入时的历史快照，**与本节冲突时以重新核对的远程状态和本节为准**。交接只记录事实，不替代用户对下一项改动的授权。
 
-### 本轮：以可用的 5.6.3 基线构建独立搜索封面测试包（2026-09-29）
+### 本轮：5.6.3 独立测试包修正为 Release 构建，正式接口首页已恢复（2026-09-29）
 
 用户选择以自己实际可用的版本为准。只读核对本机 TV 源码 HEAD 与远程 `jokers963/TV:fongmi` 均为 `4afc4473e22a7ed3d98ee12233e0c2a490061000`（5.6.3）；原目录 `D:\CodexWorkspace\Android\影视\TV` 的 39 项工作状态未修改。隔离副本新建本地分支 `build/luoyuqiu-563-searchfix`，从该基线保留可区分的本地定制源码与未跟踪启动图；此前复制的 19 个被忽略 `lib-*.aar` 与旧目录逐项 SHA-256 一致。真实签名文件/密码未复制。前一轮全新上游源码因缺少较新的 libass AAR 类而无法编译；本轮没有解决或替换那套上游依赖，而是退回用户现有可用的 5.6.3 源码/AAR 基线。
 
-搜索结果移动端 `SearchAdapter` 改用已有 `ImgUtil.load(..., false)` 的等比 `FIT_CENTER`，并强制图片视图可见，以免空图片地址时 `ImgUtil` 隐藏文字占位。仅测试版 `mobile` flavor 设置包名 `com.jokers963.luoyuqiu`、名称“落雨秋测试”，可与原包并存；没有改正式接口、远程仓库代码或原安装包。本地执行 `:app:assembleMobileDebug --no-daemon` 成功，使用进程级 `JAVA_TOOL_OPTIONS=-Djdk.net.unixdomain.tmpdir=E:/DevTools/Gradle.gradle`。两种 ABI APK 均生成；arm64 文件 114,756,699 字节，SHA-256 `176CFB12B06F894B8201711B4A0EB063D86387473F45197848F12B19FD74EC18`。`apkanalyzer` 核对 applicationId、versionName/code 为 `com.jokers963.luoyuqiu`、`5.6.3`/`563`；`apksigner verify` 通过，证书为 Android Debug。`git diff --check HEAD` 通过。资源处理输出了旧字符串/未知 XML namespace 警告，但构建成功。
+搜索结果移动端 `SearchAdapter` 改用已有 `ImgUtil.load(..., false)` 的等比 `FIT_CENTER`，并强制图片视图可见，以免空图片地址时 `ImgUtil` 隐藏文字占位。仅测试版 `mobile` flavor 设置包名 `com.jokers963.luoyuqiu`、名称“落雨秋测试”，可与原包并存；没有改正式接口、远程仓库代码或原安装包。最初 Debug APK 能安装，但用户加载正常 `supjav.json` 后首页为空。ADB 只读核对保存的 `config_0` 确为正式 URL；重启捕获到 `gm_subs.jar` 的 `java.lang.VerifyError`，其中协程类名与未混淆 Debug 宿主不匹配。根因不是接口地址或网络，而是当前运行 JAR 依赖 Release/R8 后的宿主类名，Debug APK 不兼容。
 
-**未完成/未验证：**本轮未安装、启动或操作手机，未实测搜索封面是否符合预期；用户将自行安装并验证。APK 是 Debug 签名的本地测试产物，未上传/发布，不能覆盖正式包，也不代表与上游 5.6.8 等同。手机当前安装版本本轮未重新读取，既有应用及数据未动。下一步等待用户反馈搜索结果画面；如反馈不符，再基于这份 5.6.3 测试分支继续排查，并在得到实机证据后更新结论。
+为避开 Windows 长路径导致的 Chaquopy `.pyc` 生成失败，在 `D:\CodexWorkspace\Android\TV563Release` 建立短路径隔离工作树 `build/luoyuqiu-563-release`，复制同一批源码改动、启动图和逐项校验一致的 AAR；原 TV 目录仍未改。用系统默认 Android Debug keystore 执行 `:app:assembleMobileRelease --no-daemon` 成功，R8/资源收缩均完成。arm64 APK 为 94,558,431 字节，SHA-256 `63E53A531288B9C8DAA70A640024143C4F0AF9BD8FA909AF11DF880D9D0A2008`；`apkanalyzer` 核对 `com.jokers963.luoyuqiu`、`5.6.3`/`563`，证书 SHA-256 仍为 `f69d932950846d328d766facb2a2fe7a265dc4bfe397c818324d999efc2db72b`。ADB `install -r` 覆盖成功并保留应用数据。重启后不再出现 `VerifyError`，日志记录 `GMSubs` 首页返回分类、SupJav `popular` 分类返回 25 条列表，屏幕可见三列卡片，故“正式接口加载为空”已验证解决。
+
+**未完成/未验证：**未自动点击搜索，搜索结果封面 `FIT_CENTER` 效果仍待用户亲自验收；未测试其余五站、详情、播放、快进或重播。当前只是本地 Debug 证书签名的 Release 测试包，源码分支与 APK 均未推送/发布，也不代表与上游 5.6.8 等同。启动时 Updater 对独立测试包返回 JSON `404` 的非致命日志仍存在，不影响本轮接口首页加载，后续定制更新机制时再处理。
 
 ### 本轮：手机上游 Release 版本澄清（2026-09-29）
 
