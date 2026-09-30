@@ -1,13 +1,12 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      1.0.26-nbd-diag4
+// @version      1.0.26-nbd-diag5
 // @description  SupJav WebView adapter for the open-source GM spider runtime.
 // @match        https://supjav.com/*
 // @match        https://turbovidhls.com/*
 // @match        https://fc2stream.tv/*
 // @match        https://lk1.supremejav.com/*
-// @run-at       document-start
 // @require      https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.slim.min.js
 // @grant        GM_cookie
 // @grant        unsafeWindow
@@ -27,8 +26,10 @@
             if (!frame) return;
             try {
                 const url = new URL(frame.src);
-                if (url.protocol !== "https:" || url.hostname !== "fc2stream.tv"
-                        || !url.pathname.startsWith("/e/") || url.username || url.password) return;
+                const target = url.hostname === "fc2stream.tv" && url.pathname.startsWith("/e/")
+                        || url.hostname === "lk1.supremejav.com" && url.pathname === "/supjav.php"
+                        && url.searchParams.has("c") && !url.searchParams.has("l");
+                if (url.protocol !== "https:" || !target || url.username || url.password) return;
                 opened = true;
                 clearInterval(timer);
                 diag("frame", url.href);
