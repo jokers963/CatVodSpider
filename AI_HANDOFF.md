@@ -16,12 +16,13 @@
 
 但该件 API 旧，**不匹配当前 TV 源码**。在全新隔离工作树 `D:/CodexWorkspace/Android/TVUpstreamCompatibility`、原样上游 c616c0aa 源码，复制旧 19 AAR 并额外加入上述官方件，Wrapper `:app:compileMobileReleaseJavaWithJavac --no-daemon` 真实执行到 Javac 后失败，15 条初始报错，去重为 7 个缺失类：
 
-| 需要的配套模块 | 缺失类 |
+| 缺失 API 包（需要匹配配套实现） | 缺失类 |
 | --- | --- |
-| 新版 lib-exoplayer-libass | `LibassConfiguration`、`LibassSubtitleController`、`LibassFontFile` |
-| 新版 lib-exoplayer | `SecondaryTextOutput`、`SecondaryTextTrackSelector` |
-| 新版 lib-ui | `LibassPlayerViewController` |
-| 新版 lib-ui-danmaku | `DanmakuPlayerViewController` |
+| `androidx.media3.exoplayer.libass` | `LibassConfiguration`、`LibassSubtitleController`、`LibassFontFile` |
+| `androidx.media3.exoplayer.text` | `SecondaryTextOutput` |
+| `androidx.media3.exoplayer.trackselection` | `SecondaryTextTrackSelector` |
+| `androidx.media3.ui.libass` | `LibassPlayerViewController` |
+| `androidx.media3.ui.danmaku` | `DanmakuPlayerViewController` |
 
 此外旧官方件 `LibassPlaybackSession` 构造函数为三字符串/可选 boolean，没有 TV 使用的配置对象构造及新样式接口；修掉 import 也不代表其余 API 兼容。前述口头“8 个类”是未去重的初步计数，以这里的 7 个去重缺失类为准。`FongMi/media` 当前公开两分支为 release `2bc20785`、release-1.11.0-fongmi `3c2cbe8a`；后一分支与 artifact head 分叉，当前树没有该 libass 模块或双字幕类，不能仅构建当前 media 分支就得到新配套件。官方 Actions 仅四次旧 libass run，两个成功 artifact、无新配套整套 AAR；公开代码搜索未找到这三个新版 libass 类的实现。没有从陌生播放器替换、从 APK 拼假 AAR 或写空壳类冒充完整功能。下一步仍需取得匹配的新模块源码/整套 AAR及 5.6.8 源码对应关系，或另做明确范围的独立移植，不能称为已完成追平上游。
 
