@@ -4,6 +4,31 @@
 
 这是 Android 播放器“落雨秋”及其远程点播接口。用户不是开发人员，希望新 AI 能直接接手开发、自己构建和验证；不要让用户重复解释架构，也不要把单条视频成功写成整站稳定。本文下方多处“最新”“当前”是写入时的历史快照，**与本节冲突时以重新核对的远程状态和本节为准**。交接只记录事实，不替代用户对下一项改动的授权。
 
+### 本轮：专用签名覆盖升级及上游依赖复核（2026-09-30）
+
+**当前手机/交付包：**`com.jokers963.luoyuqiu`，`5.6.3-lyq.3` / 56303。播放器提交 `6767d2660` 已推送 `jokers963/TV:luoyuqiu`；仍基于可用的旧 5.6.3 源码/AAR，不是完整上游 5.6.8。本次只有版本号和签名流程变化，搜索大封面与原播放链不变。[APK 预览发布](https://github.com/jokers963/TV/releases/tag/lyq-5.6.3-lyq.3-preview) 的 arm64 附件为 94,669,222 字节，GitHub digest 与本地 SHA-256 均为 `C21E933BA065C518D622D461D75BD34ED05D8062BE9B4EBDC492EA70206A9E93`。最终签名包在 `D:/CodexWorkspace/Android/TV563Release/Release/luoyuqiu-5.6.3-lyq.3-arm64.apk`；不要发布 Gradle 原始旧签名中间包。
+
+**签名及实机已验证：**采用 Android 官方证书沿袭，不需要卸载。旧证书 SHA-256 `f69d932950846d328d766facb2a2fe7a265dc4bfe397c818324d999efc2db72b` → 新专用 RSA 3072 证书 `83134ad0da0affc9b56943fda1a141201330f8874111c7b18cf4c8505debdec8`，installed-data 能力保留、rollback 禁用。`scripts/sign-mobile.ps1` 检查包名、拒绝覆盖已有输出，调用官方 `apksigner` 并校验 Android 9+ 的预期新证书；有效签名及无效输入/已有输出拒绝检查通过。Release Wrapper 构建成功，v2/v3 签名验证通过。Android 13 手机 `adb install -r` 成功，版本 56303，`firstInstallTime` 仍为 `2026-09-29 23:12:34`（本次更新 `2026-09-30 11:05:14`）。启动自动加载原 MissAV 分类和卡片；只读接口历史第一项仍为正式别名 `supjav.json`，既有 ipx/AI/ABF-381 搜索历史可见。搜索卡片可进入详情，同一 SupJav 条目切 FST 后 `/media` 为 state=3、position=25814、duration=7117143、speed=1.0，实际播放。仍未据此验收全部站点、网络或整片。
+
+密钥、随机密码、旧证书备份及沿袭放在仓库外 `D:/CodexWorkspace/Signing/Luoyuqiu`，另一份在 `C:/Users/Administrator/.android/luoyuqiu-signing-backup`；四件逐项哈希相等，ACL 仅当前 Windows 用户/SYSTEM。未提交密钥或密码。两份仍在同一台电脑，不等于异机灾备；其他 Android 版本的沿袭升级未实测。后续所有可升级 APK 必须沿用同一专用密钥和沿袭，不能换签名或卸载清数据。本文历史段落“切永久签名必须卸载”的判断被本次 Android 13 覆盖升级事实纠正；不承诺所有旧系统都支持轮换。
+
+**上游 5.6.8 核查与未完成项：**截至查询，`FongMi/Release` 最新 5.6.8 的附件只有四个 APK；`FongMi/TV:fongmi` HEAD 仍为 `c616c0aa3613e87529791587a9f71b78c278c991`，公开 app/build.gradle 仍标 5.6.3，无可确认的 5.6.8 TV 源码 tag。发现并下载了作者 [Build libass 成功工作流](https://github.com/FongMi/media/actions/runs/31571172760) 的 `media3-libass-aar`，artifact id `9131565941`，2026-08-12 构建提交 `9dae39e9689ee305c83f94bd11cf3bcecb9d6171`，过期日 2026-11-10。其中 `lib-exoplayer-libass-release.aar` 为 1,875,353 字节，SHA-256 `3B2326D98E1339F3CA4D1763E3A3028DE20A5DD62CC738875AF51B6329FE2571`，有两个 ARM ABI 的 `libmedia3ass.so`，因此不能再笼统说作者完全没有可取得的 libass AAR。
+
+但该件 API 旧，**不匹配当前 TV 源码**。在全新隔离工作树 `D:/CodexWorkspace/Android/TVUpstreamCompatibility`、原样上游 c616c0aa 源码，复制旧 19 AAR 并额外加入上述官方件，Wrapper `:app:compileMobileReleaseJavaWithJavac --no-daemon` 真实执行到 Javac 后失败，15 条初始报错，去重为 7 个缺失类：
+
+| 需要的配套模块 | 缺失类 |
+| --- | --- |
+| 新版 lib-exoplayer-libass | `LibassConfiguration`、`LibassSubtitleController`、`LibassFontFile` |
+| 新版 lib-exoplayer | `SecondaryTextOutput`、`SecondaryTextTrackSelector` |
+| 新版 lib-ui | `LibassPlayerViewController` |
+| 新版 lib-ui-danmaku | `DanmakuPlayerViewController` |
+
+此外旧官方件 `LibassPlaybackSession` 构造函数为三字符串/可选 boolean，没有 TV 使用的配置对象构造及新样式接口；修掉 import 也不代表其余 API 兼容。前述口头“8 个类”是未去重的初步计数，以这里的 7 个去重缺失类为准。`FongMi/media` 当前公开两分支为 release `2bc20785`、release-1.11.0-fongmi `3c2cbe8a`；后一分支与 artifact head 分叉，当前树没有该 libass 模块或双字幕类，不能仅构建当前 media 分支就得到新配套件。官方 Actions 仅四次旧 libass run，两个成功 artifact、无新配套整套 AAR；公开代码搜索未找到这三个新版 libass 类的实现。没有从陌生播放器替换、从 APK 拼假 AAR 或写空壳类冒充完整功能。下一步仍需取得匹配的新模块源码/整套 AAR及 5.6.8 源码对应关系，或另做明确范围的独立移植，不能称为已完成追平上游。
+
+原始脏 TV、既有 TV-cover-sync 及 media 工作目录未覆盖；实验只在新的隔离目录，候选没有安装、签名或发布。本次遇到 Gradle/JDK 的 Unix-domain 临时连接错误，命令内指定短 `jdk.net.unixdomain.tmpdir` 后正常执行到上述源码错误；未更改全局系统/VPN/安全设置。六站抽样问题仍见下节，正式配置/脚本/JAR未改；没有全量回归、异机密钥备份、上游功能等同性证明。
+
+补充构建验收：当前定制分支 `:app:assembleMobileDebug --no-daemon` 成功，两个 Debug APK 已生成：`app/build/outputs/apk/mobile/debug/app-mobile-arm64-v8a-debug.apk`（114,757,271 字节）及 `app-mobile-armeabi-v7a-debug.apk`（102,616,993 字节）。Debug 包未安装或发布，手机保留已验证的专用签名 Release。结束时原始 TV 仍为 39 项工作状态，media 仍只有既有三个工作状态；定制工作树及上游隔离候选工作树无未提交源码改动。ADB 临时转发和本轮临时画面/XML已移除。
+
 ### 本轮：六站核心流程抽样回归（2026-09-30）
 
 用户要求按顺序完成剩余工作。本项继续使用手机已安装的 `5.6.3-lyq.2` / 56302、正式旧别名入口和相同远程脚本，没有改 APK、脚本、运行 JAR 或正式配置。六站首分类已在上一阶段检查；本次分别切换第二个分类：SupJav 有码、MissAV 观看日本 AV、Jable 中文字幕、AV01 热门、肉视频全部、Hanime1 泡面番，均出现列表。每个抽样分类连续向下滑动后出现不同卡片，未停在首屏；这是分类切换与滚动加载的画面检查，没有抓取各分页请求或穷举全部分类。
