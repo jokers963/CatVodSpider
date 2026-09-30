@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      1.0.26-nbd-diag3
+// @version      1.0.26-nbd-diag4
 // @description  SupJav WebView adapter for the open-source GM spider runtime.
 // @match        https://supjav.com/*
 // @match        https://turbovidhls.com/*
 // @match        https://fc2stream.tv/*
 // @match        https://lk1.supremejav.com/*
+// @run-at       document-start
 // @require      https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.slim.min.js
 // @grant        GM_cookie
 // @grant        unsafeWindow
@@ -18,6 +19,7 @@
     const method = args.shift();
     if (location.hostname === "lk1.supremejav.com") {
         if (method !== "playerContent") return;
+        diag("stage", "started");
         let opened = false;
         const open = function () {
             if (opened) return;
