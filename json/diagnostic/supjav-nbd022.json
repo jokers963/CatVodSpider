@@ -12,7 +12,7 @@
       "filterable": 1,
       "timeout": 60,
       "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/diagnostic/supjav-nbd022.user.js?v=5",
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/supjav.user.js?v=34",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": true,
@@ -40,6 +40,7 @@
           ]
         },
         "playUrlMatch": [
+          "https://fc2stream.tv/e/*",
           "https://fc2stream.tv/*.m3u8*",
           "https://*.cdn-centaurus.com/*/master.m3u8*",
           "https://*.cloudatacdn.com/*",
@@ -72,7 +73,7 @@
         "type": "rect",
         "ratio": 1.5
       },
-      "jar": "https://jokers963.github.io/CatVodSpider/jar/diagnostic/gm_subs-nbd022.jar?v=1"
+      "jar": "https://jokers963.github.io/CatVodSpider/jar/diagnostic/gm_subs-nbd022-v2.jar?v=2"
     },
     {
       "key": "missav",

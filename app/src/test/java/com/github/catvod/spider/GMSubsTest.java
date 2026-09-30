@@ -263,6 +263,32 @@ public class GMSubsTest {
     }
 
     @Test
+    public void resolvesFc2EmbedFromItsPackedPlayerWithoutLeakingSiteCredentials() throws Exception {
+        String packed = "<script>eval(function(p,a,c,k,e,d){while(c--)if(k[c])p=p.replace(new RegExp('\\\\b'+c.toString(a)+'\\\\b','g'),k[c]);return p}('0 1=\\\"2://3.4.10/5/6.7?8=9\\\";',10,11,'const|url|https|media|cdn-centaurus|hls|master|m3u8|token|safe|com'.split('|')))</script>";
+        okhttp3.OkHttpClient client = new okhttp3.OkHttpClient.Builder().addInterceptor(chain -> {
+            assertEquals("https://lk1.supremejav.com/", chain.request().header("Referer"));
+            return new okhttp3.Response.Builder().request(chain.request()).protocol(okhttp3.Protocol.HTTP_1_1)
+                    .code(200).message("OK").body(okhttp3.ResponseBody.create(packed, okhttp3.MediaType.parse("text/html"))).build();
+        }).build();
+        JSONObject play = new JSONObject().put("url", "https://fc2stream.tv/e/test_123")
+                .put("header", new JSONObject().put("User-Agent", "UA").put("Cookie", "private"));
+
+        assertTrue(GMSubs.resolveFc2Embed(play, client));
+        assertEquals("https://media.cdn-centaurus.com/hls/master.m3u8?token=safe", play.getString("url"));
+        assertEquals("https://edge.premilkyway.com/hls/master.m3u8?token=safe",
+                GMSubs.extractFc2Playlist(packed.replace("media|cdn-centaurus", "edge|premilkyway")));
+        JSONObject header = play.getJSONObject("header");
+        assertEquals("UA", header.getString("User-Agent"));
+        assertEquals("https://fc2stream.tv/e/test_123", header.getString("Referer"));
+        assertEquals("https://fc2stream.tv", header.getString("Origin"));
+        assertFalse(header.has("Cookie"));
+        for (String url : new String[]{"http://fc2stream.tv/e/test", "https://user@fc2stream.tv/e/test",
+                "https://fc2stream.tv.attacker.example/e/test", "https://fc2stream.tv/watch/test"}) {
+            assertFalse(GMSubs.isFc2Embed(url));
+        }
+    }
+
+    @Test
     public void unwrapsRouPngPayloadsAndStopsBeforePngTrailer() throws Exception {
         byte[] playlist = "#EXTM3U\n#EXT-X-ENDLIST\n".getBytes(StandardCharsets.UTF_8);
         assertArrayEquals(playlist, readAll(GMSubs.stripFakePng(new ByteArrayInputStream(rouPng(playlist, true)))));
