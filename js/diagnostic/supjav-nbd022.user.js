@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      1.0.26-nbd-diag2
+// @version      1.0.26-nbd-diag3
 // @description  SupJav WebView adapter for the open-source GM spider runtime.
 // @match        https://supjav.com/*
 // @match        https://turbovidhls.com/*
 // @match        https://fc2stream.tv/*
+// @match        https://lk1.supremejav.com/*
 // @require      https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.slim.min.js
 // @grant        GM_cookie
 // @grant        unsafeWindow
@@ -15,6 +16,28 @@
             ? ["homeContent", "true"]
             : JSON.parse(GmSpiderInject.GetSpiderArgs());
     const method = args.shift();
+    if (location.hostname === "lk1.supremejav.com") {
+        if (method !== "playerContent") return;
+        let opened = false;
+        const open = function () {
+            if (opened) return;
+            const frame = document.querySelector("iframe[src]");
+            if (!frame) return;
+            try {
+                const url = new URL(frame.src);
+                if (url.protocol !== "https:" || url.hostname !== "fc2stream.tv"
+                        || !url.pathname.startsWith("/e/") || url.username || url.password) return;
+                opened = true;
+                clearInterval(timer);
+                diag("frame", url.href);
+                location.replace(url.href);
+            } catch (_) {}
+        };
+        const timer = setInterval(open, 400);
+        setTimeout(function () { clearInterval(timer); }, 30000);
+        open();
+        return;
+    }
     if (location.hostname === "turbovidhls.com" || location.hostname === "fc2stream.tv") {
         if (method !== "playerContent") return;
         diag("stage", "started");
@@ -142,7 +165,18 @@
             });
             const arm = function () {
                 const frame = document.getElementById("video");
-                if (!frame || frame.getAttribute("data-armed") === "1") return !!frame;
+                if (!frame) return false;
+                if (button && (button.textContent || "").trim().toUpperCase() === "FST") {
+                    try {
+                        const url = new URL(frame.src);
+                        if (url.protocol !== "https:" || url.hostname !== "lk1.supremejav.com"
+                                || url.pathname !== "/supjav.php" || url.username || url.password) return false;
+                        diag("frame", url.href);
+                        location.replace(url.href);
+                        return true;
+                    } catch (_) { return false; }
+                }
+                if (frame.getAttribute("data-armed") === "1") return true;
                 diag("frame", frame.src);
                 frame.setAttribute("data-armed", "1");
                 frame.setAttribute("allow", "autoplay; fullscreen");
