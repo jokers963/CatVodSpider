@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      1.0.26-nbd-diag
+// @version      1.0.26-nbd-diag2
 // @description  SupJav WebView adapter for the open-source GM spider runtime.
 // @match        https://supjav.com/*
 // @match        https://turbovidhls.com/*
+// @match        https://fc2stream.tv/*
 // @require      https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.slim.min.js
 // @grant        GM_cookie
 // @grant        unsafeWindow
@@ -14,20 +15,23 @@
             ? ["homeContent", "true"]
             : JSON.parse(GmSpiderInject.GetSpiderArgs());
     const method = args.shift();
-    if (location.hostname === "turbovidhls.com") {
+    if (location.hostname === "turbovidhls.com" || location.hostname === "fc2stream.tv") {
         if (method !== "playerContent") return;
+        diag("stage", "started");
         // This TV player disables autostart. Start it once so GM can capture its media request.
         let started = false;
         const start = function () {
             if (started) return;
             try {
-                const player = unsafeWindow.jwplayer("video_player");
+                const player = unsafeWindow.jwplayer(location.hostname === "fc2stream.tv" ? "vplayer" : "video_player");
                 const item = player.getPlaylistItem();
                 if (!item || !(item.file || item.sources?.[0]?.file)) return;
                 started = true;
+                diag("stage", "page_ready");
                 clearInterval(timer);
                 player.setMute(true);
                 player.play(true);
+                diag("stage", "match_wait");
             } catch (_) {}
         };
         const timer = setInterval(start, 400);
