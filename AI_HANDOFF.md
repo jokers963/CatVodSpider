@@ -4,6 +4,96 @@
 
 这是 Android 播放器“落雨秋”及其远程点播接口。用户不是开发人员，希望新 AI 能直接接手开发、自己构建和验证；不要让用户重复解释架构，也不要把单条视频成功写成整站稳定。本文下方多处“最新”“当前”是写入时的历史快照，**与本节冲突时以重新核对的远程状态和本节为准**。交接只记录事实，不替代用户对下一项改动的授权。
 
+### 整个项目移交总览（2026-09-30；优先于下方历史快照）
+
+用户要求先停止当前修复，整理**整个项目**交接，并新开对话交给另一位 AI。旧对话停止开发/发布运行资源，手机和文件操作权在交接后释放；新对话先重新核对状态，再接续 NBD-022，不能重复已经失败的实验。用户总体目标是自己的定制 APK，能用优先、尽量靠近上游；不是另做陌生播放器，也不是只改版本号冒充 5.6.8。此前 WebHTV/磁盘绕路已被用户否定，不再采用。
+
+#### 1）当前真正使用的版本与目录
+
+| 对象 | 交接时核对结果 |
+| --- | --- |
+| 接口线上仓库 | `jokers963/CatVodSpider:main`；交接前 remote/local HEAD 同为 `e25bc44971537b6857ac87309c22c7a92be2b359`。其后本次只提交交接文档，不发布运行修复 |
+| 接口工作目录 | `C:/Users/Administrator/Documents/Codex/2026-09-28/https-github-com-jokers963-catvodspider-blob/work/CatVodSpider`；交接前只有本文未提交。本轮自己写的失败候选测试已撤回，`js/adapters.test.cjs` 内容哈希与 HEAD 一致；没有丢弃用户改动 |
+| 正式接口 | `https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json`；兼容旧地址 `https://jokers963.github.io/CatVodSpider/json/supjav.json`。本次直接 HTTP 核对均 200、正文完全相同 |
+| 可用定制播放器 | `jokers963/TV:luoyuqiu`，remote/local HEAD `6767d26604f385237ba304b895d2a4c4028904d2`；`D:/CodexWorkspace/Android/TV563Release` 工作树干净。**后续定制在此分支，不是旧脏目录** |
+| TV fork 另一分支 | 远程 `jokers963/TV:fongmi` 为 `322f2604b514578c10ec14f710643caa8075e22a`；不是目前安装 APK 的构建分支 |
+| 上游公开源码 | 本次只读 `FongMi/TV:fongmi` 为 `c616c0aa3613e87529791587a9f71b78c278c991`；此前检查公开构建文件标 5.6.3，官方安装包最新 5.6.8 不等于可重建源码已对应 |
+| 手机安装 | 本次只读包信息仍为 `com.jokers963.luoyuqiu`、`5.6.3-lyq.3` / 56303、Android 13；没有安装新 APK或清数据 |
+| 最终 APK | `D:/CodexWorkspace/Android/TV563Release/Release/luoyuqiu-5.6.3-lyq.3-arm64.apk`；94,669,222 字节，SHA-256 `C21E933BA065C518D622D461D75BD34ED05D8062BE9B4EBDC492EA70206A9E93`，与线上预览 Release 附件一致 |
+
+须只读保留的旧工作树：`D:/CodexWorkspace/Android/影视/CatVodSpider` 停在 `1d97a24`，9 个已跟踪修改与 3 个未跟踪项；`D:/CodexWorkspace/Android/影视/TV` 39 项工作状态；同级 `media` 3 项；本会话 `work/TV-cover-sync` 37 项；旧临时候选 `C:/Users/Administrator/AppData/Local/Temp/catvodspider-release-v34-20260927` 7 项。它们不是最新正式源码，不 reset、不清理、不整体搬入当前分支。上游兼容性实验目录 `D:/CodexWorkspace/Android/TVUpstreamCompatibility` 为 detached c616c0aa、干净，仅供核查，不是可交付版本。
+
+#### 2）正式接口当前内容及已做功能
+
+| 顺序/站点 | 正式 userscript 缓存版本 | 运行 JAR |
+| --- | --- | --- |
+| 1 🎬 SupJav | `js/supjav.user.js?v=34`（元数据 1.0.26） | 全局 v35 |
+| 2 🎬 MissAV | `js/missav.user.js?v=8` | 全局 v35 |
+| 3 🎬 Jable | `js/jable.user.js?v=8` | 全局 v35 |
+| 4 🎬 AV01 | `js/av01.user.js?v=5` | 全局 v35 |
+| 5 📺 肉视频 | `js/rou.user.js?v=6` | 站点覆写 v36 |
+| 6 🎨 Hanime1 | `js/hanime1.user.js?v=3` | 全局 v35 |
+
+全局 `jar/gm_subs-v35.jar?v=35`，肉视频专用 `jar/gm_subs-v36.jar?v=36`；全部站点 `debug=false`。前四站已去掉第一个“推荐”伪分类，配置封面样式为 `rect / ratio=1.5`；肉视频“劇集庫”置顶、搜索 v6 与 Hanime1 分类 v3 已上线。AirAV/JavMenu 未纳入正式；SupJav ST/VOE 已取消，不恢复。不能把保留在配置中的线路当成播放验收。
+
+播放器已在当前定制分支实现：独立包名/显示名；首次无配置时使用正式 URL，已有配置不覆盖；停止下载不兼容的官方更新；搜索/收藏封面 160×160dp + FIT_CENTER 完整显示；图片失败记录最多 512 项、2 分钟后重试；PNG/TS 兼容仅作用于播放器媒体流，不污染封面响应。APK 未完整追平上游 5.6.8。
+
+调用链：手机 TV → Pages JSON → DexClassLoader 加载 GMSubs JAR → GM WebView 执行 userscript → 统一列表/详情/播放数据 → 必要 HLS 代理/字幕 → 内置播放引擎。`type: match` 后 GM 还要等媒体请求；取址失败与解码失败不是一回事。原理文件是历史基线说明，不能覆盖本节当前版本。
+
+#### 3）构建、依赖、永久签名
+
+接口入口先读 `AGENTS.md`、本文顶部、`LUOYUQIU_ARCHITECTURE.md`；关键源码是 `app/src/main/java/com/github/catvod/spider/GMSubs.java` 与 `js/*.user.js`。构建复用 `scripts/gmSubsManual/build-check.ps1`、`scripts/gmDiagnostic/build-check.ps1`、`scripts/gmRelease/build-check.ps1`；先完整读脚本并指定独立新输出目录，不能盲目重建覆盖现有 JAR。GM 运行时来源/许可在 `NOTICE-GM.md`。正式 v35/v36 已关闭原 GM 遥测并使用 quiet 日志出口；不要误用历史 v34 原包调查完整 URL。
+
+本机 Android SDK `E:/DevTools/Android/sdk`，Gradle 缓存 `E:/DevTools/Gradle.gradle`，已有 JDK21、APKtool/D8，优先用现成工具，不引入陌生播放器或新框架。接口完整 Gradle 构建历史未通过，手动 JUnit/D8/JAR 检查不能写成完整 `assembleDebug` 成功；播放器当前分支的 Release/Debug Wrapper 构建历史已成功，本次未重新构建。
+
+播放器必须先读 `D:/CodexWorkspace/AGENTS.md`、`TV563Release/scripts/SIGNING.md`、`scripts/sign-mobile.ps1` 与 `Release/lyq.3-notes.md`。用项目 Wrapper `:app:assembleMobileRelease --no-daemon` 后，签名脚本输出到**新路径**；不要交付 Gradle 原始旧签名中间包。19 个 Media3 基线 AAR 在本机 `app/libs`，逐项与 `luoyuqiu-media3.sha256` 匹配，但未被 Git 跟踪；新 clone 不能只靠源码构建，须保留本机匹配件，禁止拿不匹配 AAR 或空壳类伪装新版。
+
+专用签名及官方证书沿袭已在 Android 13 覆盖升级、保留安装数据；后续沿用同一密钥/沿袭，不卸载。材料在仓库外 `D:/CodexWorkspace/Signing/Luoyuqiu`，本机备份 `C:/Users/Administrator/.android/luoyuqiu-signing-backup`；不得输出或上传密钥/密码。两份仍在同一电脑，异机灾备未完成。
+
+上游兼容实验取得了官方旧 libass AAR，但编译当前公开 TV 仍缺 7 个去重 API 类：`LibassConfiguration`、`LibassSubtitleController`、`LibassFontFile`、`SecondaryTextOutput`、`SecondaryTextTrackSelector`、`LibassPlayerViewController`、`DanmakuPlayerViewController`，且还有旧构造/样式 API 差异。详细证据见下方专用签名与依赖复核节；未取得匹配新版整套源码/AAR，不能说“只差一个 AAR”或已完成 5.6.8。
+
+#### 4）最近未完成任务：NBD-022，同样本 FST 取址失败
+
+样本精确路径 `/zh/461393.html`，官网搜索只有一个匹配结果，FST/ST/VOE、没有 TV。官网 FST 原生 video 多次自然推进，`paused=false / readyState=4`、duration `8277.767` 秒；手机同条目 FST 多次“播放地址加载失败”，媒体会话 state=0/position=0。此前 IPX-487 `/zh/456930.html` 官网/手机 FST 均曾实播，因此不是整条 FST 永久不可用。**尚未修好，不是解码故障证据。**
+
+正式 JSON、六份正式脚本、正式 v35/v36 JAR、TV 源码和 APK均未因本轮诊断改变。新发布的只有独立测试三文件：
+
+- `json/diagnostic/supjav-nbd022.json`，远程诊断入口，不是正式配置。
+- `js/diagnostic/supjav-nbd022.user.js?v=5`，失败候选，**不要提升正式**。
+- `jar/diagnostic/gm_subs-nbd022.jar?v=1`，关闭遥测、仅限量脱敏阶段/host 日志；SHA-256 `7CFDFFFED256D9C45D99D45FDE87C6230E1774A2BBCBA1A9509FEDC236F82500`。主 DEX 诊断出口 + 当前正式 v35 `classes2.dex` + safe helper，27 项日志检查/DEX结构检查历史通过；APK没有改。
+
+实验提交依次为 `fc23bc4`（独立诊断 JAR/JSON）、`04186c4`（阶段记录）、`c7b6b1a`（FST userscript 起播）、`58538b4`（把 FST 中转页提升为主页面）、`383124e`（尝试 document-start）、`e25bc44`（补中间 iframe 跳转）。v2 仅加 @match/fc2 起播仍失败；v3–v5 主页面跳转路线失败；v4 的 userscript document-start 还造成首页/搜索无结果，v5已撤回该元数据。候选模拟断言曾通过，**实机仍失败，所以已撤回本地对应实验断言并恢复原正式测试，不制造通过错觉**。交接时三组现有 Node 测试重新通过。
+
+已查到的限制/线索（不是完整根因证明）：GM `WebViewClientGm.onPageStarted/onPageFinished` 用顶层 `evaluateJavascript`，不会自动对跨域嵌套 frame 注入；正式 TV 起播逻辑只覆盖 `turbovidhls.com` 的 `video_player`，FST 播放器为 `jwplayer("vplayer")`。日志进入 `match_wait`、看到 `lk1.supremejav.com` 中转 frame，但未捕获到该样本媒体 URL。官网真实链为 SupJav → Supreme `?l=` iframe → `?c=` iframe → `fc2stream.tv/e/...`。直接把中转页改成主页面不适用：中转源码在 `top.location.href == location.href` 时将 body 置为 404，必须保留合法嵌入流程，不能继续这条路或删除站点检查来冒充修复。
+
+下一条**未实现/未实机验证**的最小路线：核查 AndroidX 原生 `WebViewCompat.addDocumentStartJavaScript` 是否可在指定 origin 的嵌套 frame 安装短起播脚本。[官方文档](https://developer.android.com/reference/androidx/webkit/WebViewCompat)要求在 `loadUrl` 前注册、检查 `WebViewFeature.isFeatureSupported("DOCUMENT_START_SCRIPT")`；只限 `https://fc2stream.tv` 且只限 SupJav playerContent，保留原 iframe/跳转与浏览器安全隔离。TV本机依赖有 WebKit1.16.0，但 Release APK 是否保留所需 API、设备 WebView 是否支持尚未查证；R8 可能裁剪，不能凭缓存存在宣称可用。若需要 APK改动，仍走当前可用 luoyuqiu 分支和永久签名，不搞另一套播放器。
+
+本机可继续读的隔离材料：`C:/Users/Administrator/AppData/Local/Temp/catvod-gm-dex-readonly-236f691eca9447349b0340f9ff71a660/decoded` 与 `C:/Users/Administrator/AppData/Local/Temp/luoyuqiu-nbd-diag-51e97cb98e23489b9e8e5a87d33674e0`；存在已核对，但临时路径可能被系统清理。关注 `WebViewFactory.lambda$loadUrl$3`（创建/配置 WebView → loadUrl）、`GetSpiderArgs`、`WebViewClientGmHook`；不用重复反编译/全仓调研。现有 blockNetworkImage、媒体手势设置及媒体 match 已查过，别盲目增加总超时。
+
+#### 5）实机与移交现场，先做什么
+
+**必须先确认手机配置。**最后成功核对的选择仍是 NBD 诊断入口 v5。交接收尾尝试返回/启动应用恢复正式入口，但手机画面留在 MIUI 启动器；Maestro 启动及点击图标没有得到可见的 app 设置页，`assertVisible(setting)` 失败。因此**本次没有完成/确认恢复正式接口**，不能写成已经恢复；也没有把这次启动现象确诊为崩溃。只读包信息仍为 lyq.3、媒体会话 state=null。新 AI 先查看手机当前实际画面和点播配置，安全恢复上述裸正式远程 URL后再测，不清数据、不卸载。
+
+本轮 ADB 脱敏日志采集会话已停止；浏览器仅留用户 `http://127.0.0.1:10001/` 手机画面页，无遗留官网测试标签/播放。用户此前问过为何还要截图，优先 Maestro 实时画面 + inspect_screen，需要视觉证据才截图；不展示成人内容缩略图。`list_devices → inspect_screen → run`，手机ID不写交接或公开日志。原生 Windows 控制仅在用户明确请求时走已装 computer-use skill + deferred node_repl/@oai/sky；cua_repl用于浏览器，不拿它控制原生 Windows。
+
+优先顺序：①确认/恢复正式手机配置；②NBD-022 官网成功再手机同条目FST取址修复；③首次播放、持续两次自然进度、快进、返回重播及 IPX已有成功样本回归，再评估正式发布；④处理 MissAV 首次验证超时、AV01偶发封面失败（可重试恢复，根因未证实）；⑤补六站全部分类/筛选/分页/线路和长期播放。上游新版配套依赖与异机签名备份是独立待办，不为它们推翻当前可用基线或重复下载旧不匹配件。
+
+六站此前只做核心**抽样**：首/第二分类出现列表并滑动加载，搜索有结果且大封面完整；MissAV/Jable/AV01/Hanime1 各一个样本、SupJav部分FST样本、肉视频一个剧集有播放进度证据，肉视频还测试过快进/返回重播。不等于全部资源稳定；SupJav官网失败的TV不再手机复测，MissAV不自动点验证，封面重试尚未人为网络故障实机验收，长期/全部线路/不同网络未完成。
+
+交接检查：`node js/adapters.test.cjs`、`node js/new-sites.test.cjs`、`node js/hanime1.nav.test.cjs` 全通过；正式双别名HTTP内容相等/六站版本核对通过。只提交本文，不重建APK或发布运行资源；最后 Git/Pages 文档提交结果以新对话接手时实际 HEAD为准。旧对话移交后不再操作手机或写这些源码文件。
+
+### 本轮：官网与手机同条目对照，NBD-022 取址失败已复现（2026-09-30）
+
+用户最新规则：**官网不能播放的线路，不再去手机重复试；先官网成功，再对照同条目、同线路。**本次最终指定样本为 `NBD-022`，SupJav 搜索只有一个匹配结果，详情 `/zh/461393.html`，是带“无码破解”前缀的版本。官网提供 FST/ST/VOE，没有 TV；正式脚本按已有规则排除 ST/VOE，手机仅显示 FST，本轮没有恢复已取消的线路。
+
+**已验证：**官网 FST 的嵌入播放器来自 `fc2stream.tv`，点击播放后原生 video 的进度从 `29.849123` 增至 `158.761582` 秒，`paused=false`、`readyState=4`，时长 `8277.767` 秒。之后手机现有 `5.6.3-lyq.3` 从正式配置搜索并进入同条目，FST 被选中但提示“播放地址加载失败”，媒体会话 `state=0`、position/buffer 均为 0。返回搜索结果重新进入后再次得到同一错误；这证明该样本官网能播、手机播放地址加载失败，不是解码阶段的证据，也不能归为官网失效。
+
+**未完成：**具体根因尚未定位，当前 Release 可读取的日志没有提供该次 GM 内部取址失败原因；不能据此断言是自动播放、匹配规则、超时、网络或验证中的哪一项。本轮未改脚本、JAR、正式 JSON、TV 源码或 APK，未构建/安装新包；不称为已修好。后续应以此精确样本补取 GM/WebView 到媒体请求的证据，再做最小修复和同样本实机回归，不盲目增加超时或恢复取消线路。官网测试页已关闭，手机保留失败详情，没有清数据、改网络或点验证。
+
+此前对照补充：IPX-487 的破解版本 `/zh/456930.html`，官网 FST 原生 video 进度 `87.318127 → 165.093899` 秒，手机 FST 媒体会话 `state=3`、position `49353 → 113918` 毫秒、speed=1.0；仅该样本可播，不能代替 NBD-022 验收。官网该样本及 ABF-381 原版 `/zh/453032.html` 的 TV 最终框架均在 `turbonewvid.com` 显示连接终止，未播成功；按用户新规则，不再重复手机 TV 测试。没有绕过 TLS/验证或以陌生播放器替代。
+
+开始及结束核对：接口 main 远程/local HEAD `c9303a029fce8be543607198fb7c86661a4b6029`，开始工作树干净；播放器 `TV563Release` 无未提交改动。此节仅新增交接记录，其他旧脏目录未修改；记录在本地，尚未推送线上。
+
 ### 本轮：专用签名覆盖升级及上游依赖复核（2026-09-30）
 
 **当前手机/交付包：**`com.jokers963.luoyuqiu`，`5.6.3-lyq.3` / 56303。播放器提交 `6767d2660` 已推送 `jokers963/TV:luoyuqiu`；仍基于可用的旧 5.6.3 源码/AAR，不是完整上游 5.6.8。本次只有版本号和签名流程变化，搜索大封面与原播放链不变。[APK 预览发布](https://github.com/jokers963/TV/releases/tag/lyq-5.6.3-lyq.3-preview) 的 arm64 附件为 94,669,222 字节，GitHub digest 与本地 SHA-256 均为 `C21E933BA065C518D622D461D75BD34ED05D8062BE9B4EBDC492EA70206A9E93`。最终签名包在 `D:/CodexWorkspace/Android/TV563Release/Release/luoyuqiu-5.6.3-lyq.3-arm64.apk`；不要发布 Gradle 原始旧签名中间包。
@@ -460,10 +550,11 @@ https://jokers963.github.io/CatVodSpider/json/supjav.json
 
 ### 当前任务登记
 
-截至 2026-09-27：八文件源码同步已由 `574e2aa6eead6b4ed54d59ae899e32b3a8d4d3ec` 推送至 `origin/main`，只读远程核对吻合；运行资源发布基线仍为 `ee3637d` / v34，未发布新运行资源。其后本轮只读诊断/实机记录仅修改本文，未提交/推送。手机实测使用正式入口 `https://jokers963.github.io/CatVodSpider/json/supjav.json`；结束时停在 SupJav `ABF-381` 详情页，TV 线路暂停于 `150621 ms`，外部字幕开启。当前不再操作设备。TV 仓库仍只读、无代码改动。以下登记只描述本任务，不代表其它会话资源空闲。
+截至 2026-09-30：用户明确要求新开对话，移交整个项目。当前正式版本、工作树与手机现场以本文顶部“整个项目移交总览”为准；旧对话停止开发/发布并释放手机，收尾未确认手机恢复正式配置，新接手对话先安全核对/恢复。下表第一行为当前移交，后面三个 2026-09-27 任务是已结束的历史登记，不再代表占用或正在开发；不另建一份互相冲突的任务表。
 
 | 任务 | 负责人/发布人 | 仓库与基线 | 文件/共享资源范围 | 状态与下一步 | 验证证据 |
 | --- | --- | --- | --- | --- | --- |
+| 整个项目移交（2026-09-30） | 用户请求的新接手对话；旧对话停止开发/实机操作 | CatVodSpider main `e25bc44` 后本次文档提交；TV luoyuqiu `6767d2660` | 本文整体交接；正式运行资源不变；手机释放，恢复正式配置未确认；旧脏目录保护 | 先确认手机配置，再继续 NBD-022 FST。失败诊断 v5 禁止提升正式；不同时向 main 发布 | 顶部总览：双正式 URL HTTP/版本、三组Node测试、APK/hash、源码注入限制和失败实验 |
 | 四站稳定性复核/源码同步 | Codex 子任务；原对话主负责人复核 | CatVodSpider；源码同步 `574e2aa` 已推送；运行基线 `ee3637d` | 本轮仅 `AI_HANDOFF.md` 未提交实机记录；原脏工作树 `main` / `1d97a24` 保留；手机当前暂停于 ABF-381 TV `150621 ms` 并开启外挂字幕；TV 只读 | 不发布运行资源；字幕两时间点/同帧开关已实机验证；FST 跨层根因与字幕 HTTP 失败隔离仍未知；交回主负责人复核 | 正式 JSON v34/v33/v7/v7/v4；进度原始字段、cue 时间和未验证项见第 3 节 |
 | 独立隐私诊断验收 | 原对话主负责人，子对话已停止 | CatVodSpider；诊断资源 `5d3e281`，正式运行仍 `ee3637d` / v34 | 两份独立测试资源已推送；`scripts/gmDiagnostic/` 与本文仅本地；TV 只读；手机已恢复正式地址并释放 | TV 对照/持续播放/快进/切回恢复通过；FST 两次失败，媒体摘要不足以定位根因；返回重播及恢复后的 TV 重播未做；辅助工具正常安装成功 | 最新授权、远程哈希、日志出口实机证明、进度和未完成项见本文开头 |
 | FST 媒体请求继续排查 | 主负责人单独实现/发布/实机验证 | CatVodSpider 隔离分支，r6 `afe6f88`；正式基线 v34 不变 | 独立诊断资源、`scripts/gmDiagnostic/`、本地记录；手机本轮由主负责人占用；TV 只读 | 正在比较请求头/响应/分片吞吐，证据充分才做测试入口修复，结束恢复正式地址 | 本轮最新证据与收尾状态见开头 |
