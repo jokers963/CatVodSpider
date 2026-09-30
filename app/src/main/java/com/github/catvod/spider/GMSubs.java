@@ -322,6 +322,7 @@ public class GMSubs extends Spider {
         return FAKE_PNG_HLS.matcher(url).find() || parsed != null && parsed.isHttps()
                 && parsed.username().isEmpty() && parsed.password().isEmpty()
                 && (parsed.host().equals("fc2stream.tv") && parsed.encodedPath().endsWith(".m3u8")
+                || isFc2MediaHost(parsed.host()) && parsed.encodedPath().endsWith(".m3u8")
                 || parsed.host().equals("rou.video") && parsed.encodedPath().startsWith("/api/hls/"));
     }
 
@@ -630,6 +631,11 @@ public class GMSubs extends Spider {
                 && parsed.host().equals("fc2stream.tv") && parsed.encodedPath().matches("/e/[A-Za-z0-9_-]+");
     }
 
+    private static boolean isFc2MediaHost(String host) {
+        return host.equals("cdn-centaurus.com") || host.endsWith(".cdn-centaurus.com")
+                || host.equals("premilkyway.com") || host.endsWith(".premilkyway.com");
+    }
+
     static boolean resolveFc2Embed(JSONObject play, OkHttpClient client) throws Exception {
         String embed = play.optString("url");
         if (!isFc2Embed(embed)) return false;
@@ -689,8 +695,7 @@ public class GMSubs extends Spider {
             while (urls.find()) {
                 HttpUrl url = HttpUrl.parse(urls.group().replace("&amp;", "&"));
                 if (url != null && url.isHttps() && url.username().isEmpty() && url.password().isEmpty()
-                        && (url.host().equals("cdn-centaurus.com") || url.host().endsWith(".cdn-centaurus.com")
-                        || url.host().equals("premilkyway.com") || url.host().endsWith(".premilkyway.com"))
+                        && isFc2MediaHost(url.host())
                         && url.encodedPath().endsWith(".m3u8")) return url.toString();
             }
         }

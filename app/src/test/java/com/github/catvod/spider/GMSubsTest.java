@@ -254,9 +254,12 @@ public class GMSubsTest {
     public void fstPlaylistsReuseThePngProxyWithoutChangingOtherSites() {
         assertTrue(GMSubs.needsPngProxy("https://fc2stream.tv/video/master.m3u8?token=test"));
         assertTrue(GMSubs.needsPngProxy("https://cdn3.turboviplay.com/video/master.m3u8"));
+        assertTrue(GMSubs.needsPngProxy("https://media.cdn-centaurus.com/hls/master.m3u8?token=test"));
+        assertTrue(GMSubs.needsPngProxy("https://edge.premilkyway.com/hls/master.m3u8?token=test"));
         assertTrue(GMSubs.needsPngProxy("https://rou.video/api/hls/video-id"));
         for (String url : new String[]{null, "https://fc2stream.tv.attacker.example/a.m3u8", "https://user@fc2stream.tv/a.m3u8",
                 "http://fc2stream.tv/a.m3u8", "https://fc2stream.tv/ad.mp4", "https://www.av01.media/master.m3u8",
+                "https://cdn-centaurus.com.attacker.example/a.m3u8", "https://premilkyway.com.attacker.example/a.m3u8",
                 "http://rou.video/api/hls/id", "https://user@rou.video/api/hls/id", "https://rou.video.evil.example/api/hls/id"}) {
             assertFalse(GMSubs.needsPngProxy(url));
         }
