@@ -2,6 +2,7 @@ package com.github.catvod.spider;
 
 import android.content.Context;
 import android.util.Base64;
+import android.util.Log;
 
 import com.github.catvod.crawler.Spider;
 
@@ -68,6 +69,7 @@ public class GMSubs extends Spider {
     private static OkHttpClient http;
     private static OkHttpClient stream;
     private Spider gm;
+    private boolean diagnostic;
 
     private static OkHttpClient http() {
         if (http == null) http = new OkHttpClient.Builder().callTimeout(SUBTITLE_HTTP_TIMEOUT_MS, TimeUnit.MILLISECONDS).build();
@@ -177,6 +179,11 @@ public class GMSubs extends Spider {
 
     @Override
     public void init(Context context, String extend) throws Exception {
+        try {
+            diagnostic = new JSONObject(extend).optBoolean("nbd022Diagnostic");
+        } catch (Exception ignored) {
+            diagnostic = false;
+        }
         gm = (Spider) Class.forName("com.github.catvod.spider.GM", true, getClass().getClassLoader()).getDeclaredConstructor().newInstance();
         gm.siteKey = siteKey;
         gm.init(context, extend);
@@ -218,7 +225,9 @@ public class GMSubs extends Spider {
         String result = gm.playerContent(flag, id, vipFlags);
         try {
             JSONObject play = new JSONObject(result);
-            if (play.optString("url").isEmpty()) return result;
+            String original = play.optString("url");
+            diag("event=player_result empty=" + original.isEmpty() + " host=" + host(original));
+            if (original.isEmpty()) return result;
             boolean changed = resolveFc2Embed(play, stream());
             changed = proxyFakePngHls(play) || proxyTokenMaster(play) || changed;
             String code = codeFromPlay(flag, id);
@@ -231,10 +240,21 @@ public class GMSubs extends Spider {
                 play.put("subs", subs);
                 changed = true;
             }
+            diag("event=wrapper_result changed=" + changed + " host=" + host(play.optString("url")));
             return changed ? play.toString() : result;
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            diag("event=wrapper_error type=" + e.getClass().getSimpleName());
             return result;
         }
+    }
+
+    private void diag(String message) {
+        if (diagnostic) Log.i("NBD022", message);
+    }
+
+    private static String host(String url) {
+        HttpUrl parsed = HttpUrl.parse(url == null ? "" : url);
+        return parsed == null ? "none" : parsed.host();
     }
 
     static boolean hasSubtitleLookupBudget(long startedAtNanos, long nowNanos) {

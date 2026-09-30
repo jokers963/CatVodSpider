@@ -12,6 +12,7 @@
       "filterable": 1,
       "timeout": 60,
       "ext": {
+        "nbd022Diagnostic": true,
         "userScript": "https://jokers963.github.io/CatVodSpider/js/supjav.user.js?v=34",
         "debug": false,
         "webViewSettings": {
@@ -73,7 +74,7 @@
         "type": "rect",
         "ratio": 1.5
       },
-      "jar": "https://jokers963.github.io/CatVodSpider/jar/diagnostic/gm_subs-nbd022-v3.jar?v=3"
+      "jar": "https://jokers963.github.io/CatVodSpider/jar/diagnostic/gm_subs-nbd022-v4.jar?v=4"
     },
     {
       "key": "missav",
