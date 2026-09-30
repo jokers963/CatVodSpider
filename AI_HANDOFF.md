@@ -4,6 +4,16 @@
 
 这是 Android 播放器“落雨秋”及其远程点播接口。用户不是开发人员，希望新 AI 能直接接手开发、自己构建和验证；不要让用户重复解释架构，也不要把单条视频成功写成整站稳定。本文下方多处“最新”“当前”是写入时的历史快照，**与本节冲突时以重新核对的远程状态和本节为准**。交接只记录事实，不替代用户对下一项改动的授权。
 
+### 本轮：搜索封面放大、封面失败重试与接口自动校验（2026-09-30）
+
+播放器功能提交 `e19bff97d` 已推送到 `jokers963/TV:luoyuqiu`。
+
+用户要求自行处理接口和播放器剩余改进，随后明确反馈搜索封面完整但太小。播放器继续在隔离工作树 `D:\CodexWorkspace\Android\TV563Release` / `jokers963/TV:luoyuqiu` 操作，原始脏目录 `D:\CodexWorkspace\Android\影视\TV` 未动。搜索/收藏共用的 `adapter_search.xml` 把封面框由 96×128dp 增至 160×160dp；现有 `FIT_CENTER` 不变，横竖封面仍保持比例、不裁切。`ImgUtil` 原来把失败 URL 永久记入集合，网络恢复后同一封面不再请求；现在最多记录 512 项且 2 分钟后自动过期。定制版版本改为 `5.6.3-lyq.2` / 56302。这些都不改变播放链路或站点脚本。
+
+已验证：`:app:assembleMobileRelease --no-daemon` 完整成功；arm64 APK `app/build/outputs/apk/mobile/release/mobile-arm64_v8a.apk` 的 SHA-256 为 `97068D9202808773A207AAB88018C98200DAFD940485B11CC4F9220889950B9B`。ADB `install -r` 成功，手机报告 56302，`firstInstallTime` 未变，说明未清应用数据。启动未见本轮 `FATAL EXCEPTION` / `VerifyError`。从手机现有搜索历史选 `ABF-381`，结果页出现 SupJav、AV01、Jable 等卡片；画面确认封面区域明显放大、图像仍完整，标题可显示并截断。只观察这一个搜索词和当时可见卡片，**不等于用户视觉验收或六站搜索回归通过**。手机安全系统拦截了 Maestro 测试辅助组件安装，没有修改系统安全设置；本轮画面通过既有 ADB 截屏核对。
+
+接口仓库没有改正式 `luoyuqiu.json`、兼容 `supjav.json`、脚本或 JAR 的运行内容；新增 GitHub Actions 工作流在 push/PR 时运行已有三组 Node 测试，覆盖正式/兼容配置相等及前四站样式断言。三组测试和 `git diff --check` 本机通过。**仍未验证/未完成：**CI 云端首次运行状态须在推送后核对；失败封面是否在实际网络故障后恢复尚未实机注入故障验证；未复测详情、播放、快进与六站完整分类。当前仍是旧 5.6.3 AAR 基线、Debug keystore 签名的独立定制包，不能称为上游 5.6.8 功能等同；永久签名和上游新版配套 AAR 仍需单独解决，不能为此卸载现有包或清数据。
+
 ### 本轮：建立可追踪的落雨秋 5.6.3 定制分支并覆盖安装（2026-09-30）
 
 用户授权自行决定后续改进且暂不参与。本轮没有改动原目录 `D:\CodexWorkspace\Android\影视\TV`；继续在短路径隔离工作树 `D:\CodexWorkspace\Android\TV563Release` 处理，并将分支改名为 `luoyuqiu`。提交 `23ec57576` 已推送到 `jokers963/TV:luoyuqiu`，基线仍是旧版 `4afc4473e`，不是上游当前 `fongmi`。该提交把此前能实际构建的定制源码、启动图和搜索封面修正纳入版本控制；19 个被忽略的 `lib-*.aar` 仍不上传，只新增 `app/libs/luoyuqiu-media3.sha256` 固定其文件名与 SHA-256。线上源码因此可审计，但全新电脑仍需取得完全匹配的 AAR 才能复现构建。
