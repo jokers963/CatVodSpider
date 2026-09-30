@@ -12,7 +12,7 @@
 
 已验证：`:app:assembleMobileRelease --no-daemon` 完整成功；arm64 APK `app/build/outputs/apk/mobile/release/mobile-arm64_v8a.apk` 的 SHA-256 为 `97068D9202808773A207AAB88018C98200DAFD940485B11CC4F9220889950B9B`。ADB `install -r` 成功，手机报告 56302，`firstInstallTime` 未变，说明未清应用数据。启动未见本轮 `FATAL EXCEPTION` / `VerifyError`。从手机现有搜索历史选 `ABF-381`，结果页出现 SupJav、AV01、Jable 等卡片；画面确认封面区域明显放大、图像仍完整，标题可显示并截断。只观察这一个搜索词和当时可见卡片，**不等于用户视觉验收或六站搜索回归通过**。手机安全系统拦截了 Maestro 测试辅助组件安装，没有修改系统安全设置；本轮画面通过既有 ADB 截屏核对。
 
-接口仓库没有改正式 `luoyuqiu.json`、兼容 `supjav.json`、脚本或 JAR 的运行内容；新增 GitHub Actions 工作流在 push/PR 时运行已有三组 Node 测试，覆盖正式/兼容配置相等及前四站样式断言。三组测试和 `git diff --check` 本机通过。**仍未验证/未完成：**CI 云端首次运行状态须在推送后核对；失败封面是否在实际网络故障后恢复尚未实机注入故障验证；未复测详情、播放、快进与六站完整分类。当前仍是旧 5.6.3 AAR 基线、Debug keystore 签名的独立定制包，不能称为上游 5.6.8 功能等同；永久签名和上游新版配套 AAR 仍需单独解决，不能为此卸载现有包或清数据。
+接口仓库没有改正式 `luoyuqiu.json`、兼容 `supjav.json`、脚本或 JAR 的运行内容；新增 GitHub Actions 工作流在 push/PR 时运行已有三组 Node 测试，覆盖正式/兼容配置相等及前四站样式断言。三组测试和 `git diff --check` 本机通过；首次云端 [Check interface](https://github.com/jokers963/CatVodSpider/actions/runs/36656681789) 与 [Pages 部署](https://github.com/jokers963/CatVodSpider/actions/runs/36656680237) 均成功，两个正式地址 HTTP 200、各有六站。**仍未验证/未完成：**失败封面是否在实际网络故障后恢复尚未实机注入故障验证；未复测详情、播放、快进与六站完整分类。当前仍是旧 5.6.3 AAR 基线、Debug keystore 签名的独立定制包，不能称为上游 5.6.8 功能等同；永久签名和上游新版配套 AAR 仍需单独解决，不能为此卸载现有包或清数据。
 
 ### 本轮：建立可追踪的落雨秋 5.6.3 定制分支并覆盖安装（2026-09-30）
 
