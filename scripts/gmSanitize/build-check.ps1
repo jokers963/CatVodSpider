@@ -1,8 +1,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$OutputDir,
     [string]$JdkBin = 'E:\DevTools\Gradle.gradle\jdks\jetbrains_s_r_o_-21-amd64-windows.2\bin',
-    [string]$Sdk = 'E:\DevTools\Android\sdk',
-    [switch]$Quiet
+    [string]$Sdk = 'E:\DevTools\Android\sdk'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -50,24 +49,6 @@ foreach ($file in $sourceFiles) {
             $after = [regex]::Replace($after, $pattern, '${1}    .locals 0' + "`n    return-void`n.end method")
         }
     }
-    if (-not $Quiet -and $file.FullName -eq (Join-Path $smali 'com\github\catvodspidergm\WebViewFactory.smali')) {
-        if ($after -match '\.method public Diagnostic\(') { throw 'Diagnostic bridge already exists' }
-        $after += @'
-
-.method public Diagnostic(Ljava/lang/String;Ljava/lang/String;)V
-    .locals 0
-    .annotation runtime Landroid/webkit/JavascriptInterface;
-    .end annotation
-    invoke-static {p1, p2}, Lcom/github/catvodspidergm/SafeDiagnosticLog;->probe(Ljava/lang/String;Ljava/lang/String;)V
-    return-void
-.end method
-'@
-    }
-    if (-not $Quiet -and $file.FullName -eq (Join-Path $smali 'com\github\catvodspidergm\webmonkey\WebViewClientGmHook.smali')) {
-        $call = 'invoke-virtual {p0, p1}, Lcom/github/catvodspidergm/webmonkey/WebViewClientGmHook;->SetSpiderResult(Landroid/webkit/WebResourceRequest;)V'
-        if ([regex]::Matches($after, [regex]::Escape($call)).Count -ne 1) { throw 'Matched-request call precondition changed' }
-        $after = $after.Replace($call, 'invoke-static {p1}, Lcom/github/catvodspidergm/SafeDiagnosticLog;->inspect(Landroid/webkit/WebResourceRequest;)V' + "`n    " + $call)
-    }
     if ($before -ne $after) {
         # Mechanical rewrite of generated smali only; no checkout runtime files are overwritten.
         [IO.File]::WriteAllText($file.FullName, $after, [Text.UTF8Encoding]::new($false))
@@ -82,21 +63,15 @@ foreach ($file in $sourceFiles) {
         throw 'Telemetry SDK entry call remains outside the SDK'
     }
 }
-& "$JdkBin\javac.exe" --release 17 -cp $android -d $classes "$PSScriptRoot\SafeDiagnosticLog.java" "$PSScriptRoot\SafeDiagnosticLogTest.java" "$PSScriptRoot\test\android\util\Log.java"
-if ($LASTEXITCODE) { throw 'Diagnostic helper compilation failed' }
-& "$JdkBin\java.exe" -cp "$classes;$android" com.github.catvodspidergm.SafeDiagnosticLogTest
-if ($LASTEXITCODE) { throw 'Sanitizer tests failed' }
-if ($Quiet) {
-    & "$JdkBin\javac.exe" --release 17 -d $classes "$PSScriptRoot\release\SafeDiagnosticLog.java"
-    if ($LASTEXITCODE) { throw 'Release log sink compilation failed' }
-}
+& "$JdkBin\javac.exe" --release 17 -d $classes "$PSScriptRoot\SafeDiagnosticLog.java"
+if ($LASTEXITCODE) { throw 'Release log sink compilation failed' }
 & $d8 --min-api 24 --lib $android --output $dex "$classes\com\github\catvodspidergm\SafeDiagnosticLog.class"
-if ($LASTEXITCODE) { throw 'Diagnostic D8 failed' }
+if ($LASTEXITCODE) { throw 'Log sink D8 failed' }
 $rebuilt = Join-Path $work 'rebuilt.jar'
 & "$JdkBin\java.exe" -jar $apktool b $decoded -o $rebuilt
 if ($LASTEXITCODE) { throw 'Patched primary DEX assembly failed' }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$candidate = Join-Path $work 'gm_subs-diagnostic.jar'
+$candidate = Join-Path $work 'gm_subs-sanitized.jar'
 Copy-Item -LiteralPath $base -Destination $candidate
 function Replace-ZipEntry([string]$zipPath, [string]$entryName, [byte[]]$bytes) {
     $archive = [IO.Compression.ZipFile]::Open($zipPath, [IO.Compression.ZipArchiveMode]::Update)
@@ -142,7 +117,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $verified 'smali_classes3\com\github
     throw 'Diagnostic helper missing from third DEX'
 }
 $helperText = [IO.File]::ReadAllText((Join-Path $verified 'smali_classes3\com\github\catvodspidergm\SafeDiagnosticLog.smali'))
-if ($Quiet -and $helperText -match 'Landroid/util/Log;|Ljava/net/|->probe\(|->inspect\(') { throw 'Release helper retained logging/network diagnostics' }
+if ($helperText -match 'Landroid/util/Log;|Ljava/net/|->probe\(|->inspect\(') { throw 'Release helper retained logging/network diagnostics' }
 $helperMethods = @([regex]::Matches($helperText, '(?m)^\.method[^\r\n]* ([^ \r\n]+)\r?$') | ForEach-Object { $_.Groups[1].Value })
 foreach ($file in Get-ChildItem -LiteralPath (Join-Path $verified 'smali') -Recurse -Filter '*.smali') {
     foreach ($reference in [regex]::Matches([IO.File]::ReadAllText($file.FullName), 'Lcom/github/catvodspidergm/SafeDiagnosticLog;->([^\r\n ]+)')) {

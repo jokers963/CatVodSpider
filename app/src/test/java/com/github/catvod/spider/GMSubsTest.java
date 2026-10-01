@@ -134,7 +134,7 @@ public class GMSubsTest {
     }
 
     @Test
-    public void supJavTvProxyPreservesMasterVariantsHeadersRelativeUrisAndSeekTags() throws Exception {
+    public void proxyPreservesMasterVariantsHeadersRelativeUrisAndSeekTags() throws Exception {
         String master = "#EXTM3U\n#EXT-X-VERSION:6\n"
                 + "#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"audio\",NAME=\"Audio\",URI=\"audio/index.m3u8\"\n"
                 + "#EXT-X-STREAM-INF:BANDWIDTH=52800,RESOLUTION=854x480\n480.m3u8\n"
@@ -146,10 +146,10 @@ public class GMSubsTest {
                 + "shared.ts\n#EXTINF:4.0,\nsegments/003.ts\n#EXT-X-ENDLIST\n";
         Map<String, String> headers = new LinkedHashMap<>();
         headers.put("User-Agent", "TV-UA");
-        headers.put("Referer", "https://turbovidhls.com/");
+        headers.put("Referer", "https://rou.video/");
         headers.put("Cookie", "session=tv");
         GMSubs spider = new GMSubs();
-        spider.siteKey = "SupJav";
+        spider.siteKey = "rou";
         String proxyBase = "http://127.0.0.1:9978/proxy";
 
         String proxiedMaster = spider.rewriteProxyPlaylist(master,
@@ -158,14 +158,14 @@ public class GMSubsTest {
         assertTrue(proxiedMaster.contains("RESOLUTION=1280x720\n"));
         assertTrue(proxiedMaster.contains("RESOLUTION=1920x1080\n"));
         assertEquals(3, proxiedMaster.lines().filter(line -> !line.startsWith("#")).count());
-        assertTrue(proxiedMaster.contains("URI=\"" + proxyBase + "?do=csp&siteKey=SupJav&type=m3u8"));
+        assertTrue(proxiedMaster.contains("URI=\"" + proxyBase + "?do=csp&siteKey=rou&type=m3u8"));
         String audioLink = proxiedMaster.substring(proxiedMaster.indexOf("URI=\"") + 5).split("\"", 2)[0];
         assertEquals("https://cdn.example/hls/audio/index.m3u8", HttpUrl.parse(audioLink).queryParameter("url"));
         HttpUrl variant = HttpUrl.parse(proxiedMaster.lines().filter(line -> !line.startsWith("#")).findFirst().orElseThrow());
         assertEquals("https://cdn.example/hls/480.m3u8", variant.queryParameter("url"));
         JSONObject variantHeaders = new JSONObject(variant.queryParameter("h"));
         assertEquals("TV-UA", variantHeaders.getString("User-Agent"));
-        assertEquals("https://turbovidhls.com/", variantHeaders.getString("Referer"));
+        assertEquals("https://rou.video/", variantHeaders.getString("Referer"));
         assertEquals("session=tv", variantHeaders.getString("Cookie"));
 
         String proxiedMedia = spider.rewriteProxyPlaylist(media,
@@ -237,57 +237,24 @@ public class GMSubsTest {
     }
 
     @Test
-    public void tvAndFstKeepEveryAdaptiveQuality() {
+    public void proxyKeepsEveryAdaptiveQuality() {
         String master = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=500000,RESOLUTION=640x360\nlow.m3u8\n"
                 + "#EXT-X-STREAM-INF:BANDWIDTH=1500000,RESOLUTION=1280x720\nmid.m3u8\n"
                 + "#EXT-X-STREAM-INF:BANDWIDTH=3103220,RESOLUTION=1920x1080\nhigh.m3u8\n";
         GMSubs spider = new GMSubs();
-        spider.siteKey = "supjav";
-        String fst = spider.rewriteProxyPlaylist(master, "https://fc2stream.tv/sample/master.m3u8", "http://127.0.0.1:9978/proxy", Map.of());
-        assertTrue(fst.contains("RESOLUTION=640x360"));
-        assertTrue(fst.contains("RESOLUTION=1280x720"));
-        assertTrue(fst.contains("RESOLUTION=1920x1080"));
-        assertTrue(spider.rewriteProxyPlaylist(master, "https://cdn3.turboviplay.com/sample/master.m3u8", "http://127.0.0.1:9978/proxy", Map.of()).contains("RESOLUTION=1920x1080"));
+        spider.siteKey = "rou";
+        String result = spider.rewriteProxyPlaylist(master, "https://rou.video/api/hls/sample", "http://127.0.0.1:9978/proxy", Map.of());
+        assertTrue(result.contains("RESOLUTION=640x360"));
+        assertTrue(result.contains("RESOLUTION=1280x720"));
+        assertTrue(result.contains("RESOLUTION=1920x1080"));
     }
 
     @Test
-    public void fstPlaylistsReuseThePngProxyWithoutChangingOtherSites() {
-        assertTrue(GMSubs.needsPngProxy("https://fc2stream.tv/video/master.m3u8?token=test"));
-        assertTrue(GMSubs.needsPngProxy("https://cdn3.turboviplay.com/video/master.m3u8"));
-        assertTrue(GMSubs.needsPngProxy("https://media.cdn-centaurus.com/hls/master.m3u8?token=test"));
-        assertTrue(GMSubs.needsPngProxy("https://edge.premilkyway.com/hls/master.m3u8?token=test"));
+    public void rouPlaylistsUseThePngProxyWithoutChangingOtherSites() {
         assertTrue(GMSubs.needsPngProxy("https://rou.video/api/hls/video-id"));
-        for (String url : new String[]{null, "https://fc2stream.tv.attacker.example/a.m3u8", "https://user@fc2stream.tv/a.m3u8",
-                "http://fc2stream.tv/a.m3u8", "https://fc2stream.tv/ad.mp4", "https://www.av01.media/master.m3u8",
-                "https://cdn-centaurus.com.attacker.example/a.m3u8", "https://premilkyway.com.attacker.example/a.m3u8",
+        for (String url : new String[]{null, "https://www.av01.media/master.m3u8",
                 "http://rou.video/api/hls/id", "https://user@rou.video/api/hls/id", "https://rou.video.evil.example/api/hls/id"}) {
             assertFalse(GMSubs.needsPngProxy(url));
-        }
-    }
-
-    @Test
-    public void resolvesFc2EmbedFromItsPackedPlayerWithoutLeakingSiteCredentials() throws Exception {
-        String packed = "<script>eval(function(p,a,c,k,e,d){while(c--)if(k[c])p=p.replace(new RegExp('\\\\b'+c.toString(a)+'\\\\b','g'),k[c]);return p}('0 1=\\\"2://3.4.10/5/6.7?8=9\\\";',10,11,'const|url|https|media|cdn-centaurus|hls|master|m3u8|token|safe|com'.split('|')))</script>";
-        okhttp3.OkHttpClient client = new okhttp3.OkHttpClient.Builder().addInterceptor(chain -> {
-            assertEquals("https://lk1.supremejav.com/", chain.request().header("Referer"));
-            return new okhttp3.Response.Builder().request(chain.request()).protocol(okhttp3.Protocol.HTTP_1_1)
-                    .code(200).message("OK").body(okhttp3.ResponseBody.create(packed, okhttp3.MediaType.parse("text/html"))).build();
-        }).build();
-        JSONObject play = new JSONObject().put("url", "https://fc2stream.tv/e/test_123")
-                .put("header", new JSONObject().put("User-Agent", "UA").put("Cookie", "private"));
-
-        assertTrue(GMSubs.resolveFc2Embed(play, client));
-        assertEquals("https://media.cdn-centaurus.com/hls/master.m3u8?token=safe", play.getString("url"));
-        assertEquals("https://edge.premilkyway.com/hls/master.m3u8?token=safe",
-                GMSubs.extractFc2Playlist(packed.replace("media|cdn-centaurus", "edge|premilkyway")));
-        JSONObject header = play.getJSONObject("header");
-        assertEquals("UA", header.getString("User-Agent"));
-        assertEquals("https://fc2stream.tv/e/test_123", header.getString("Referer"));
-        assertEquals("https://fc2stream.tv", header.getString("Origin"));
-        assertFalse(header.has("Cookie"));
-        for (String url : new String[]{"http://fc2stream.tv/e/test", "https://user@fc2stream.tv/e/test",
-                "https://fc2stream.tv.attacker.example/e/test", "https://fc2stream.tv/watch/test"}) {
-            assertFalse(GMSubs.isFc2Embed(url));
         }
     }
 
@@ -322,7 +289,7 @@ public class GMSubsTest {
 
     @Test
     public void segmentRequestsDropRefererOriginAndCookie() {
-        Map<String, String> headers = GMSubs.headers("{\"User-Agent\":\"UA\",\"Referer\":\"https://turbovidhls.com/\",\"origin\":\"https://x\",\"Cookie\":\"a=b\"}");
+        Map<String, String> headers = GMSubs.headers("{\"User-Agent\":\"UA\",\"Referer\":\"https://rou.video/\",\"origin\":\"https://x\",\"Cookie\":\"a=b\"}");
         assertEquals(4, headers.size());
         Map<String, String> segment = GMSubs.segmentHeaders(headers);
         assertEquals(1, segment.size());

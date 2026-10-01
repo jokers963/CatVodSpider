@@ -2,48 +2,6 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-function supjav(method, scriptStartedAt = 0) {
-    let now = scriptStartedAt;
-    let tick;
-    let shows = 0;
-    let result;
-    const document = {title: 'Just a moment', querySelector: () => null};
-    const chain = {ready: fn => fn(), on() {}};
-    const bridge = {
-        GetSpiderArgs: () => JSON.stringify([method, ['sample']]),
-        ShowWebview: () => shows++, HideWebview() {},
-        SetSpiderResult: text => { result = JSON.parse(text); }
-    };
-    vm.runInNewContext(fs.readFileSync(__dirname + '/supjav.user.js', 'utf8'), {
-        document, location: {hostname: 'supjav.com'}, unsafeWindow: {}, GmSpiderInject: bridge, $: () => chain,
-        Date: {now: () => now}, performance: {timeOrigin: 0}, setInterval: fn => { tick = fn; return 1; }, clearInterval() {}
-    });
-    tick(); tick();
-    assert.equal(shows, 1, 'verification must not repeatedly reset scrolling');
-    assert.equal(result, undefined);
-    now = 25000; tick();
-    assert.ok(result, 'verification must not leave the request waiting forever');
-    tick(); assert.equal(shows, 1);
-    return result;
-}
-assert.deepEqual(supjav('detailContent').list, []);
-assert.deepEqual(supjav('homeContent').list, [], 'unavailable SupJav home must not create a recommendation tab');
-assert.match(supjav('detailContent').msg, /验证/);
-assert.match(supjav('detailContent', 20000).msg, /验证未完成/, 'page time before script start counts toward the wait limit');
-assert.equal(supjav('playerContent').type, 'url', 'an unavailable page must not wait for a media match');
-let playerTick;
-const calls = [];
-vm.runInNewContext(fs.readFileSync(__dirname + '/supjav.user.js', 'utf8'), {
-    location: {hostname: 'turbovidhls.com'},
-    GmSpiderInject: {GetSpiderArgs: () => '["playerContent"]'},
-    unsafeWindow: {jwplayer: () => ({
-        getPlaylistItem: () => ({sources: [{file: 'https://cdn.example/test.m3u8'}]}),
-        setMute: value => calls.push(['mute', value]), play: value => calls.push(['play', value])
-    })},
-    setInterval: fn => { playerTick = fn; return 1; }, clearInterval() {}, setTimeout() {}
-});
-playerTick(); playerTick();
-assert.deepEqual(calls, [['mute', true], ['play', true]], 'start the TV embed once without changing native-player volume');
 let jableResult;
 vm.runInNewContext(fs.readFileSync(__dirname + '/jable.user.js', 'utf8'), {
     document: {
@@ -71,9 +29,6 @@ function home(name, document, extra = {}) {
     });
     return result;
 }
-const supjavHome = home('supjav', {title: 'SupJav', querySelector: selector => selector === '.post' ? {} : null});
-assert.ok(supjavHome.class.length > 0);
-assert.deepEqual(supjavHome.list, []);
 const missavHome = home('missav', {title: 'MissAV', querySelector: () => null, addEventListener() {}});
 assert.ok(missavHome.class.length > 0);
 assert.deepEqual(missavHome.list, []);

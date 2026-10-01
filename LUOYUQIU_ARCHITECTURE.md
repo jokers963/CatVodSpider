@@ -9,7 +9,7 @@
 - 本仓库 fork 自 [FongMi/CatVodSpider](https://github.com/FongMi/CatVodSpider)，研究基线为 `1d97a24cab319345218cc58b80091b9b1c1af879`，分支 `main`。
 - 上游 CatVodSpider 对照基线为 `db4cf26356fa59d1331769f11cbbfb2a779227e6`。
 - 配套 TV fork 研究基线为 `4afc4473e22a7ed3d98ee12233e0c2a490061000`，分支 `fongmi`。
-- 研究时读取了正式远程 JSON，并核对本地定制源码和 GM 的关键反汇编调用链。没有因此重新构建、安装 APK 或进行四站完整手机回归。
+- 研究时读取了正式远程 JSON，并核对本地定制源码和 GM 的关键反汇编调用链。没有因此重新构建、安装 APK 或进行全部站点手机回归。
 - 版本号、站点结构、网站域名和上游代码可能变化；维护时应重新核对，不能将本文的日期快照当成永久现状。
 
 ## 2. 仓库职责与完整链路
@@ -37,7 +37,7 @@ TV 是播放器宿主，提供界面、配置加载、插件运行、内置播�
 https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json
 ```
 
-[打开正式配置](https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json) · [查看仓库中的配置文件](json/luoyuqiu.json)。旧 `json/supjav.json` 保持兼容，后续发布需同步。
+[打开正式配置](https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json) · [查看仓库中的配置文件](json/luoyuqiu.json)。
 
 手机应填写完整 JSON 地址，而不是 GitHub 的 `blob/main/...` 查看页面、GitHub Pages 根目录或 JAR 地址。电脑上的本地文件改变不等于远程发布完成；需要确认远程仓库、Pages 部署和实际 HTTP 返回内容。
 
@@ -45,14 +45,13 @@ https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json
 
 | 项目 | 快照 |
 | --- | --- |
-| Spider JAR | `jar/gm_subs.jar?v=33` |
-| 站点 | SupJav、MissAV、Jable、AV01 |
-| SupJav 脚本 | URL `v=32`，userscript `1.0.25` |
-| MissAV 脚本 | URL `v=6`，userscript `1.2.3` |
-| Jable 脚本 | URL `v=6`，userscript `1.0.5` |
-| AV01 脚本 | URL `v=3`，userscript `1.0.2` |
-
-SupJav 当前脚本不提供 ST、VOE 两条线路。存在某个脚本文件不代表站点仍被正式配置启用；启用状态以 `sites` 和实际详情返回的线路为准。
+| Spider JAR | `jar/gm_subs-v37.jar?v=37` |
+| 站点 | MissAV、Jable、AV01、肉视频、Hanime1 |
+| MissAV 脚本 | URL `v=8` |
+| Jable 脚本 | URL `v=8` |
+| AV01 脚本 | URL `v=5` |
+| 肉视频脚本 | URL `v=6` |
+| Hanime1 脚本 | URL `v=3` |
 
 JSON、JAR URL 版本、脚本 URL 版本、userscript 元数据版本和 APK 版本是不同层。URL 查询参数会影响宿主插件缓存键，但不是部署成功或缓存已刷新的证明。GM 初始化时会下载脚本，并可能在下载失败时使用本地脚本缓存。
 
@@ -100,7 +99,6 @@ GM 的详情扩展 `vod_play_data` 会被转换为宿主认识的线路/集数�
 
 | 站点 | 当前主要实现 | 容易变化的边界 |
 | --- | --- | --- |
-| [SupJav](js/supjav.user.js) | 详情生成线路描述；播放页面触发目标线路，GM 捕获媒体请求 | 页面结构、嵌入播放器、验证、媒体匹配规则 |
 | [MissAV](js/missav.user.js) | 详情页读取 `unsafeWindow.hls.url`，返回 HLS 直链 | 变量生成时机、网站域名、地址时效 |
 | [Jable](js/jable.user.js) | 读取 `hlsUrl` 或内嵌脚本中的 HLS 地址 | HTML 结构、验证、脚本变量格式 |
 | [AV01](js/av01.user.js) | 网站 API 查询内容与播放授权，构造主清单地址 | 授权、域名、子清单参数与可用画质 |
@@ -110,12 +108,6 @@ MissAV 当前采用普通直链的 `vod_play_url`，不要擅自改回带 `name`
 ## 6. GMSubs：媒体代理与字幕
 
 `GMSubs` 大部分方法委托 GM；`playerContent` 在 GM 返回后增加有限的媒体适配与字幕候选。
-
-### SupJav TV 相关 HLS
-
-对匹配的 TurboVIPlay/TurboSPlayer 地址，改写清单，将相对 URI 解析成绝对地址，通过手机 `/proxy?do=csp&siteKey=...` 转回当前 Spider。特定分片带有伪 PNG 前缀，代理通过 MPEG-TS 的 188 字节同步特征识别并去掉前缀。当前主清单路径选择最高分辨率，其次比较带宽。
-
-分片请求按当前适配规则去掉 Referer、Origin、Cookie；这是针对特定来源的实现，不是所有站点通用的正确请求头。只匹配限定来源，不应把该处理无条件扩展到全部媒体。
 
 ### AV01 授权主清单
 
@@ -137,7 +129,7 @@ MissAV 当前采用普通直链的 `vod_play_url`，不要擅自改回带 `name`
 
 ## 7. 等待、取消与验证的边界
 
-当前研究到的 TV 基线中，获取首页、详情与播放结果的外层任务通常限时 30 秒。站点 `timeout: 60` 主要传给播放器准备阶段，不自动改变 GM 或外层解析任务的限时。GM 本身另有约 40 秒超时处理；SupJav/MissAV 脚本可能等待普通页面 35 秒、验证页面 55 秒。
+当前研究到的 TV 基线中，获取首页、详情与播放结果的外层任务通常限时 30 秒。站点 `timeout: 60` 主要传给播放器准备阶段，不自动改变 GM 或外层解析任务的限时。GM 本身另有约 40 秒超时处理；部分站点脚本可能等待普通页面或验证页面。
 
 这些限时可能相互冲突：外层取消后，脚本预设的等待不一定有机会完成。这是源码层面的风险，不应未经手机验证就认定为某次失败的根因。实际 APK 的构建来源也需核对。
 

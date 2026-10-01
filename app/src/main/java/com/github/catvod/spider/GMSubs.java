@@ -2,7 +2,6 @@ package com.github.catvod.spider;
 
 import android.content.Context;
 import android.util.Base64;
-import android.util.Log;
 
 import com.github.catvod.crawler.Spider;
 
@@ -43,17 +42,13 @@ import okhttp3.Response;
 public class GMSubs extends Spider {
 
     private static final Pattern CODE = Pattern.compile("(?i)(?<![a-z0-9])([a-z]{2,8})[-_.](\\d{2,6})(?!\\d)");
-    /** TurboVIPlay HLS whose segments are MPEG-TS behind a fake PNG header on a host that rejects a Referer. */
-    private static final Pattern FAKE_PNG_HLS = Pattern.compile("(?i)^https?://[^/]*\\b(turboviplay|turbosplayer)\\.com/");
     /** AV01 master whose relative variant URIs must carry the master's access_token, as the site's own HLS loader does. */
     private static final Pattern TOKEN_MASTER = Pattern.compile("(?i)^https://www\\.av01\\.media/api/v1/videos/\\d+/manifest/master\\.m3u8\\?(.*&)?access_token=");
-    private static final Pattern WEB_URL = Pattern.compile("https?://[^'\\\"\\s<>]+");
     private static final Pattern URI_ATTR = Pattern.compile("URI=\"([^\"]+)\"");
     private static final String HLS = "application/x-mpegURL";
     private static final int TS_PACKET = 188;
     private static final int SNIFF_BYTES = 64 * 1024;
     private static final int MAX_PLAYLIST_BYTES = 8 * 1024 * 1024;
-    private static final int MAX_EMBED_BYTES = 1024 * 1024;
     private static final long MAX_INFLATED_BYTES = 64L * 1024 * 1024;
     static final long SUBTITLE_CACHE_TTL_MS = TimeUnit.MINUTES.toMillis(5);
     static final int SUBTITLE_CACHE_SIZE = 100;
@@ -69,7 +64,6 @@ public class GMSubs extends Spider {
     private static OkHttpClient http;
     private static OkHttpClient stream;
     private Spider gm;
-    private boolean diagnostic;
 
     private static OkHttpClient http() {
         if (http == null) http = new OkHttpClient.Builder().callTimeout(SUBTITLE_HTTP_TIMEOUT_MS, TimeUnit.MILLISECONDS).build();
@@ -159,7 +153,7 @@ public class GMSubs extends Spider {
         return id == null ? "" : id;
     }
 
-    /** SupJav puts the title in the play id. Direct-address sites put it in the line name. */
+    /** Some adapters put the title in the play id; direct-address sites put it in the line name. */
     static String codeFromPlay(String flag, String id) {
         String fromId = codeFromPlayId(id);
         return fromId.isEmpty() ? codeFromTitle(flag) : fromId;
@@ -179,11 +173,6 @@ public class GMSubs extends Spider {
 
     @Override
     public void init(Context context, String extend) throws Exception {
-        try {
-            diagnostic = new JSONObject(extend).optBoolean("nbd022Diagnostic");
-        } catch (Exception ignored) {
-            diagnostic = false;
-        }
         gm = (Spider) Class.forName("com.github.catvod.spider.GM", true, getClass().getClassLoader()).getDeclaredConstructor().newInstance();
         gm.siteKey = siteKey;
         gm.init(context, extend);
@@ -225,11 +214,8 @@ public class GMSubs extends Spider {
         String result = gm.playerContent(flag, id, vipFlags);
         try {
             JSONObject play = new JSONObject(result);
-            String original = play.optString("url");
-            diag("event=player_result empty=" + original.isEmpty() + " host=" + host(original));
-            if (original.isEmpty()) return result;
-            boolean changed = resolveFc2Embed(play, stream());
-            changed = proxyFakePngHls(play) || proxyTokenMaster(play) || changed;
+            if (play.optString("url").isEmpty()) return result;
+            boolean changed = proxyFakePngHls(play) || proxyTokenMaster(play);
             String code = codeFromPlay(flag, id);
             JSONArray subs = cachedSubtitles(code);
             if (subs == null && hasSubtitleLookupBudget(startedAt, System.nanoTime())) {
@@ -240,21 +226,10 @@ public class GMSubs extends Spider {
                 play.put("subs", subs);
                 changed = true;
             }
-            diag("event=wrapper_result changed=" + changed + " host=" + host(play.optString("url")));
             return changed ? play.toString() : result;
-        } catch (Exception e) {
-            diag("event=wrapper_error type=" + e.getClass().getSimpleName());
+        } catch (Exception ignored) {
             return result;
         }
-    }
-
-    private void diag(String message) {
-        if (diagnostic) Log.i("NBD022", message);
-    }
-
-    private static String host(String url) {
-        HttpUrl parsed = HttpUrl.parse(url == null ? "" : url);
-        return parsed == null ? "none" : parsed.host();
     }
 
     static boolean hasSubtitleLookupBudget(long startedAtNanos, long nowNanos) {
@@ -339,11 +314,9 @@ public class GMSubs extends Spider {
     static boolean needsPngProxy(String url) {
         if (url == null) return false;
         HttpUrl parsed = HttpUrl.parse(url);
-        return FAKE_PNG_HLS.matcher(url).find() || parsed != null && parsed.isHttps()
+        return parsed != null && parsed.isHttps()
                 && parsed.username().isEmpty() && parsed.password().isEmpty()
-                && (parsed.host().equals("fc2stream.tv") && parsed.encodedPath().endsWith(".m3u8")
-                || isFc2MediaHost(parsed.host()) && parsed.encodedPath().endsWith(".m3u8")
-                || parsed.host().equals("rou.video") && parsed.encodedPath().startsWith("/api/hls/"));
+                && parsed.host().equals("rou.video") && parsed.encodedPath().startsWith("/api/hls/");
     }
 
     private boolean proxyFakePngHls(JSONObject play) throws Exception {
@@ -643,123 +616,6 @@ public class GMSubs extends Spider {
             if (ts > 0) offset = ts;
         }
         return new SequenceInputStream(new ByteArrayInputStream(head, offset, length - offset), in);
-    }
-
-    static boolean isFc2Embed(String url) {
-        HttpUrl parsed = url == null ? null : HttpUrl.parse(url);
-        return parsed != null && parsed.isHttps() && parsed.username().isEmpty() && parsed.password().isEmpty()
-                && parsed.host().equals("fc2stream.tv") && parsed.encodedPath().matches("/e/[A-Za-z0-9_-]+");
-    }
-
-    private static boolean isFc2MediaHost(String host) {
-        return host.equals("cdn-centaurus.com") || host.endsWith(".cdn-centaurus.com")
-                || host.equals("premilkyway.com") || host.endsWith(".premilkyway.com");
-    }
-
-    static boolean resolveFc2Embed(JSONObject play, OkHttpClient client) throws Exception {
-        String embed = play.optString("url");
-        if (!isFc2Embed(embed)) return false;
-        Map<String, String> requestHeaders = headers(play.opt("header"));
-        if (requestHeaders.keySet().stream().noneMatch(key -> key.equalsIgnoreCase("Referer"))) {
-            requestHeaders.put("Referer", "https://lk1.supremejav.com/");
-        }
-        try (Response response = client.newCall(request(embed, requestHeaders)).execute()) {
-            if (!response.isSuccessful() || response.body() == null) return false;
-            String html = new String(readAll(response.body().byteStream(), MAX_EMBED_BYTES), StandardCharsets.UTF_8);
-            String playlist = extractFc2Playlist(html);
-            if (playlist.isEmpty()) return false;
-            Map<String, String> mediaHeaders = new LinkedHashMap<>();
-            for (Map.Entry<String, String> entry : requestHeaders.entrySet()) {
-                if (!entry.getKey().matches("(?i)referer|origin|cookie|authorization|proxy-authorization")) {
-                    mediaHeaders.put(entry.getKey(), entry.getValue());
-                }
-            }
-            mediaHeaders.put("Referer", embed);
-            mediaHeaders.put("Origin", "https://fc2stream.tv");
-            play.put("url", playlist);
-            play.put("header", new JSONObject(mediaHeaders));
-            return true;
-        }
-    }
-
-    static String extractFc2Playlist(String html) {
-        if (html == null) return "";
-        String marker = "eval(function(p,a,c,k,e,d)";
-        for (int search = 0; (search = html.indexOf(marker, search)) >= 0; search += marker.length()) {
-            int args = html.indexOf("}('", search + marker.length());
-            if (args < 0) break;
-            int payloadStart = args + 3;
-            int payloadEnd = jsQuoteEnd(html, payloadStart);
-            if (payloadEnd < 0 || payloadEnd + 1 >= html.length() || html.charAt(payloadEnd + 1) != ',') continue;
-            int baseEnd = html.indexOf(',', payloadEnd + 2);
-            int countEnd = baseEnd < 0 ? -1 : html.indexOf(',', baseEnd + 1);
-            if (countEnd < 0 || countEnd + 1 >= html.length() || html.charAt(countEnd + 1) != '\'') continue;
-            int wordsStart = countEnd + 2;
-            int wordsEnd = jsQuoteEnd(html, wordsStart);
-            if (wordsEnd < 0 || !html.startsWith(".split('|')))", wordsEnd + 1)) continue;
-            int base;
-            int count;
-            try {
-                base = Integer.parseInt(html.substring(payloadEnd + 2, baseEnd).trim());
-                count = Integer.parseInt(html.substring(baseEnd + 1, countEnd).trim());
-            } catch (NumberFormatException ignored) {
-                continue;
-            }
-            if (base < 2 || base > 36 || count < 1 || count > 2048) continue;
-            String code = decodeJsString(html.substring(payloadStart, payloadEnd));
-            String[] words = decodeJsString(html.substring(wordsStart, wordsEnd)).split("\\|", -1);
-            for (int i = Math.min(count, words.length) - 1; i >= 0; i--) {
-                if (!words[i].isEmpty()) code = code.replaceAll("\\b" + Integer.toString(i, base) + "\\b", Matcher.quoteReplacement(words[i]));
-            }
-            Matcher urls = WEB_URL.matcher(code);
-            while (urls.find()) {
-                HttpUrl url = HttpUrl.parse(urls.group().replace("&amp;", "&"));
-                if (url != null && url.isHttps() && url.username().isEmpty() && url.password().isEmpty()
-                        && isFc2MediaHost(url.host())
-                        && url.encodedPath().endsWith(".m3u8")) return url.toString();
-            }
-        }
-        return "";
-    }
-
-    private static int jsQuoteEnd(String value, int start) {
-        for (int i = start; i < value.length(); i++) {
-            if (value.charAt(i) == '\\') i++;
-            else if (value.charAt(i) == '\'') return i;
-        }
-        return -1;
-    }
-
-    private static String decodeJsString(String value) {
-        StringBuilder out = new StringBuilder(value.length());
-        for (int i = 0; i < value.length(); i++) {
-            char c = value.charAt(i);
-            if (c != '\\' || ++i >= value.length()) {
-                out.append(c);
-                continue;
-            }
-            char escaped = value.charAt(i);
-            if ((escaped == 'x' || escaped == 'u')) {
-                int digits = escaped == 'x' ? 2 : 4;
-                if (i + digits < value.length()) {
-                    try {
-                        out.append((char) Integer.parseInt(value.substring(i + 1, i + 1 + digits), 16));
-                        i += digits;
-                        continue;
-                    } catch (NumberFormatException ignored) {
-                    }
-                }
-            }
-            out.append(switch (escaped) {
-                case 'n' -> '\n';
-                case 'r' -> '\r';
-                case 't' -> '\t';
-                case 'b' -> '\b';
-                case 'f' -> '\f';
-                default -> escaped;
-            });
-        }
-        return out.toString();
     }
 
     /** Rou stores the real HLS bytes in a PNG roUd chunk; bit 0 means zlib-compressed. */

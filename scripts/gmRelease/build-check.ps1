@@ -3,12 +3,12 @@ $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $work = [IO.Path]::GetFullPath($OutputDir)
 $wrapper = Join-Path $work 'wrapper'
-$quiet = Join-Path $work 'quiet'
+$sanitized = Join-Path $work 'sanitized'
 & "$root\scripts\gmSubsManual\build-check.ps1" -OutputDir $wrapper
-& "$root\scripts\gmDiagnostic\build-check.ps1" -OutputDir $quiet -Quiet
+& "$root\scripts\gmSanitize\build-check.ps1" -OutputDir $sanitized
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$base = Join-Path $quiet 'gm_subs-diagnostic.jar'
-$candidate = Join-Path $work 'gm_subs-v35.jar'
+$base = Join-Path $sanitized 'gm_subs-sanitized.jar'
+$candidate = Join-Path $work 'gm_subs-v37.jar'
 $dex = Join-Path $wrapper 'codex-update\classes2.dex'
 Copy-Item -LiteralPath $base -Destination $candidate
 $zip = [IO.Compression.ZipFile]::Open($candidate, [IO.Compression.ZipArchiveMode]::Update)
@@ -35,4 +35,4 @@ try {
 [IO.File]::WriteAllText("$candidate.md5", (Get-FileHash -LiteralPath $candidate -Algorithm MD5).Hash.ToLowerInvariant())
 Write-Output "Release candidate: $candidate"
 Write-Output "SHA256 $((Get-FileHash -LiteralPath $candidate).Hash)"
-Write-Output 'Quiet primary/helper retained; only tested wrapper DEX replaced; no checkout runtime overwritten.'
+Write-Output 'Sanitized primary/helper retained; only tested wrapper DEX replaced; no checkout runtime overwritten.'

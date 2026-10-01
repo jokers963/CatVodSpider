@@ -6,8 +6,7 @@ const source = fs.readFileSync(__dirname + '/diagnostic/hanime1-home-v3.user.js'
 const config = JSON.parse(fs.readFileSync(__dirname + '/../json/new-sites-test.json', 'utf8'));
 const site = config.sites.find(item => item.key === 'hanime1');
 const formalSource = fs.readFileSync(__dirname + '/hanime1.user.js', 'utf8');
-const formalConfig = JSON.parse(fs.readFileSync(__dirname + '/../json/supjav.json', 'utf8'));
-const canonicalConfig = JSON.parse(fs.readFileSync(__dirname + '/../json/luoyuqiu.json', 'utf8'));
+const formalConfig = JSON.parse(fs.readFileSync(__dirname + '/../json/luoyuqiu.json', 'utf8'));
 const formalSite = formalConfig.sites.find(item => item.key === 'hanime1');
 let result;
 const link = {
@@ -62,8 +61,7 @@ assert.equal(formalSite.filterable, 1);
 assert.equal(formalSite.ext.userScript.endsWith('/js/hanime1.user.js?v=3'), true);
 assert.deepEqual(formalSite.ext.webViewSettings, site.ext.webViewSettings);
 assert.deepEqual(formalSite.ext.spider, site.ext.spider);
-assert.deepEqual(formalConfig, canonicalConfig, 'legacy and canonical configs must stay equivalent');
-for (const key of ['supjav', 'missav', 'jable', 'av01']) {
+for (const key of ['missav', 'jable', 'av01']) {
     assert.deepEqual(formalConfig.sites.find(item => item.key === key).style, {type: 'rect', ratio: 1.5});
 }
 const route = new URL(site.ext.spider.categoryContent.loadUrl

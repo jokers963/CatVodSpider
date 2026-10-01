@@ -16,7 +16,7 @@
 https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json
 ```
 
-[点击查看接口配置](https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json)。旧地址 `json/supjav.json` 保留，兼容已配置的手机。
+[点击查看接口配置](https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json)。
 
 只填写上面的完整 JSON 地址，不要填写 GitHub 文件页面地址或 JAR 地址。
 
