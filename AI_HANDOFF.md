@@ -1,6 +1,55 @@
 # 落雨秋 AI 接手与协作记录
 
-## 给下一位 AI 的最新交接（2026-09-30；本节优先）
+## 给下一位 AI 的最新交接（2026-10-01；本节优先）
+
+**当前结论：SupJav 已按用户要求移除，NBD-022 排查已取消。不要根据下方旧记录恢复 SupJav、ST/VOE/FST、旧配置地址或继续 NBD-022。下一项工作由用户另行指定。**下方 2026-09-30 及更早章节中的“当前”“下一步”和权限描述均为历史；以本节和用户最新请求为准。
+
+### 当前入口、版本与工作目录
+
+- 接口仓库：`jokers963/CatVodSpider`，分支 `main`；清理与运行发布提交 [ae4eb8c6f799374f75d3d08283b2b45093ead409](https://github.com/jokers963/CatVodSpider/commit/ae4eb8c6f799374f75d3d08283b2b45093ead409)。后续文档提交可能使 HEAD 前进，接手时重新核对。
+- 接口工作目录：`C:/Users/Administrator/Documents/Codex/2026-09-28/https-github-com-jokers963-catvodspider-blob/work/CatVodSpider`。
+- 唯一正式手机配置：`https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json`。旧 `json/supjav.json` 已删除，不再是兼容入口；不要照抄下方历史链接。
+- 当前全局 JAR：`jar/gm_subs-v37.jar?v=37`，5 站共用；已移除肉视频的 v36 站点覆写。SHA-256：`03B7BBA54A47C958B5B11B04E96382A4687B01825EADE40295976443B5AF0021`；MD5：`004df47ae36384de6fe14d5e31f23ff7`。
+
+| 顺序 | 站点 key / 名称 | 正式脚本 |
+| --- | --- | --- |
+| 1 | `missav` / 🎬 MissAV | `js/missav.user.js?v=8` |
+| 2 | `jable` / 🎬 Jable | `js/jable.user.js?v=8` |
+| 3 | `av01` / 🎬 AV01 | `js/av01.user.js?v=5` |
+| 4 | `rou` / 📺 肉视频 | `js/rou.user.js?v=6` |
+| 5 | `hanime1` / 🎨 Hanime1 | `js/hanime1.user.js?v=3` |
+
+### 清理范围与保留范围
+
+删除了 SupJav userscript、`SupJav.java`、旧正式别名、SupJav/NBD 独立诊断 JSON/JS/测试和 `jar/diagnostic/` 内全部 16 个诊断 JAR/校验文件。共享 `GMSubs.java` 已移除 NBD 日志开关、FC2 嵌入解析及 SupJav 媒体域名匹配；肉视频 PNG/HLS、AV01 授权清单、迅雷字幕和 GM 委托保留。正式与封面测试 JSON 均为上述 5 站。
+
+正式发布所需的关闭遥测/日志出口保留为 `scripts/gmSanitize/`，SupJav 网络探针和诊断注入已删除；`scripts/gmRelease/build-check.ps1` 改为调用该脚本并输出 v37。仍复用 `scripts/gmSubsManual/build-check.ps1`，构建前完整阅读脚本，使用新的独立输出目录；依赖本机 JDK/SDK/Gradle 缓存及生成类文件，新 clone 不保证直接能构建。
+
+当前任务目录 `C:/Users/Administrator/Documents/Codex/2026-09-30/https-github-com-jokers963-tv-https-2/work` 中 SupJav/NBD 构建物、临时媒体地址/样本及两张旧手机截图已删除，现场只剩 `TV` 工作树。未扫描或删除其他旧工作树、全部系统临时目录或手机的散列缓存。Git 历史、历史交接记录及旧共享正式 JAR 保留；它们不是当前运行配置，旧 JAR 可能仍含历史适配代码，不要重新启用。仓库内已跟踪删除可从 Git 恢复；已删除的本地临时样本未作备份。
+
+### 已验证与未验证
+
+- 本地三组 Node 检查通过：`node js/adapters.test.cjs`、`node js/new-sites.test.cjs`、`node js/hanime1.nav.test.cjs`。
+- 手动发布脚本完成 javac、22 项 JUnit、D8、JAR 结构及主 DEX/日志出口校验。最终 v37 再反编译扫描，无 SupJav/NBD/FC2/FST 专属域名与字符串。
+- 完整 Gradle `:app:testDebugUnitTest --no-daemon` 因守护进程首响应为空失败；上述手动验证成功不等于完整 Gradle 构建成功。
+- [Check interface](https://github.com/jokers963/CatVodSpider/actions/runs/36868779723) 与 [Pages 发布](https://github.com/jokers963/CatVodSpider/actions/runs/36868778677) 均成功。正式 JSON HTTP 200、5 个 key/顺序及 v37 已核对；远程 MD5 与本地一致。旧 `json/supjav.json`、`js/supjav.user.js`、`json/diagnostic/supjav-nbd022.json` 返回 404；其他删除资源以提交清单为准，没有逐一请求所有 URL。
+- 手机 `com.jokers963.luoyuqiu` 的 `config_0` 已从 NBD 诊断入口改为裸正式 URL，并删除搜索词 NBD-022；没有清应用数据或安装新 APK。正确启动组件为 `com.jokers963.luoyuqiu/com.fongmi.android.tv.ui.activity.HomeActivity`，冷启动 `Status: ok`、433ms，前台与进程均核对，未见该次应用崩溃。
+- **未完成本轮 5 站菜单/播放实机回归，也未确认手机已下载并加载 v37 的运行哈希。**无图 UI 层级未提供站点菜单证据；不能把保存配置、冷启动或单元测试写成 5 站全部可播。
+- 用户明确要求**不要截图**；后续继续遵守。手机最后在 HomeActivity，清理/日志观察已结束，当前无进行中的手机验证任务。
+
+### 播放器与未提交内容
+
+本轮未改 TV 源码、APK 或签名材料。实际定制播放器基线在 `jokers963/TV:luoyuqiu`，本机 `D:/CodexWorkspace/Android/TV563Release`，HEAD `6767d26604f385237ba304b895d2a4c4028904d2`；2026-10-01 文档复核发现该目录有原有 `README.md` 未提交，必须保留。`fongmi` 是另一分支，不是该 APK 的构建分支。当前任务 `work/TV` 工作树检查无未提交项。
+
+已安装 APK 的上次核对版本是 `5.6.3-lyq.3` / 56303；本轮清理没有重新核对版本号。最终 APK 路径、19 个本机 Media3 AAR、永久签名及尚未追平 5.6.8 的限制，见下方 2026-09-30 历史总览的构建章节；使用前检查实际文件与 hash。密钥/密码不上传。
+
+接口 `AI_HANDOFF.md` 原有两处未提交的 2026-09-30 复核改动已保留，本次仅提交新交接与入口更正，不把原有改动混入提交。下一位 AI 先核对 `git status`，不要将这些历史残留当成新的待办。
+
+### 下一位 AI 的最短接手流程
+
+先读 `AGENTS.md` 与本节，再核对接口 `main`、本地未提交改动、正式远程 JSON；需要播放器开发时再读实际 `luoyuqiu` 分支的规则、签名说明和依赖校验。原理文档按具体任务阅读。用户尚未指定下一项开发工作，不要自动恢复已取消任务。若用户要求验证保留站点，从正式 URL 加载后确认菜单和 JAR，再逐站记录验证范围。
+
+## 历史交接（2026-09-30；已被上方最新交接覆盖）
 
 这是 Android 播放器“落雨秋”及其远程点播接口。用户不是开发人员，希望新 AI 能直接接手开发、自己构建和验证；不要让用户重复解释架构，也不要把单条视频成功写成整站稳定。本文下方多处“最新”“当前”是写入时的历史快照，**与本节冲突时以重新核对的远程状态和本节为准**。交接只记录事实，不替代用户对下一项改动的授权。
 
@@ -307,7 +356,7 @@ Rou、AirAV、Hanime1 的动态列表中曾出现年龄身份暗示的性化条�
 ### 5. 给新 AI 的开场消息（用户复制这一段即可）
 
 ```text
-请接手“落雨秋”项目。先读 jokers963/CatVodSpider 仓库 main 分支的 AGENTS.md 与 AI_HANDOFF.md 顶部“给下一位 AI 的最新交接”，按任务再看 LUOYUQIU_ARCHITECTURE.md 和实际源码。另一个 fork 是 jokers963/TV 的 fongmi 分支，本地 TV 工作树严格只读。正式接口是 https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json；旧 supjav.json 兼容保留。
+请接手“落雨秋”项目。先读 jokers963/CatVodSpider 仓库 main 分支的 AGENTS.md 与 AI_HANDOFF.md 顶部 2026-10-01 最新交接，再按具体任务看原理和源码。播放器定制分支是 jokers963/TV:luoyuqiu；正式接口是 https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json，当前共 5 站、JAR v37。SupJav 已移除，旧 supjav.json 已退役，NBD-022 排查已取消。
 先核对远程版本、Git 状态和未提交文件，再说明你准备处理的具体问题；不要覆盖用户改动，不要把测试入口、本地地址或单条视频成功当成正式验收。当前我交给你的具体任务是：<由我填写>。完成后请更新交接、列出已验证与未验证结果，方便再交给下一位 AI。
 ```
 
@@ -550,10 +599,11 @@ https://jokers963.github.io/CatVodSpider/json/supjav.json
 
 ### 当前任务登记
 
-截至 2026-09-30：用户明确要求新开对话，移交整个项目。当前正式版本、工作树与手机现场以本文顶部“整个项目移交总览”为准；旧对话停止开发/发布并释放手机，收尾未确认手机恢复正式配置，新接手对话先安全核对/恢复。下表第一行为当前移交，后面三个 2026-09-27 任务是已结束的历史登记，不再代表占用或正在开发；不另建一份互相冲突的任务表。
+截至 2026-10-01：SupJav 清理及发布完成，NBD-022 任务取消，手机正式地址已恢复。当前事实以本文顶部最新交接为准。下表首行为本次任务，其余行是历史登记，不代表占用、授权或应继续的工作；没有自动安排后续开发。
 
 | 任务 | 负责人/发布人 | 仓库与基线 | 文件/共享资源范围 | 状态与下一步 | 验证证据 |
 | --- | --- | --- | --- | --- | --- |
+| SupJav 清理与最新交接（2026-10-01） | 当前主对话；单独执行并发布 | CatVodSpider main：运行提交 `ae4eb8c`；后续文档提交见 git log | 5 站配置、GMSubs、SupJav 独占资源、v37、当前任务临时文件；TV 源码未改 | 清理/发布完成；NBD 排查取消；手机无正在执行的验证；下一项由用户指定 | 顶部记录：3 组 Node、22 项 JUnit、DEX 扫描、CI/Pages、HTTP/MD5、手机配置与冷启动；5 站实播未测 |
 | 整个项目移交（2026-09-30） | 用户请求的新接手对话；旧对话停止开发/实机操作 | CatVodSpider main `e25bc44` 后本次文档提交；TV luoyuqiu `6767d2660` | 本文整体交接；正式运行资源不变；手机释放，恢复正式配置未确认；旧脏目录保护 | 先确认手机配置，再继续 NBD-022 FST。失败诊断 v5 禁止提升正式；不同时向 main 发布 | 顶部总览：双正式 URL HTTP/版本、三组Node测试、APK/hash、源码注入限制和失败实验 |
 | 四站稳定性复核/源码同步 | Codex 子任务；原对话主负责人复核 | CatVodSpider；源码同步 `574e2aa` 已推送；运行基线 `ee3637d` | 本轮仅 `AI_HANDOFF.md` 未提交实机记录；原脏工作树 `main` / `1d97a24` 保留；手机当前暂停于 ABF-381 TV `150621 ms` 并开启外挂字幕；TV 只读 | 不发布运行资源；字幕两时间点/同帧开关已实机验证；FST 跨层根因与字幕 HTTP 失败隔离仍未知；交回主负责人复核 | 正式 JSON v34/v33/v7/v7/v4；进度原始字段、cue 时间和未验证项见第 3 节 |
 | 独立隐私诊断验收 | 原对话主负责人，子对话已停止 | CatVodSpider；诊断资源 `5d3e281`，正式运行仍 `ee3637d` / v34 | 两份独立测试资源已推送；`scripts/gmDiagnostic/` 与本文仅本地；TV 只读；手机已恢复正式地址并释放 | TV 对照/持续播放/快进/切回恢复通过；FST 两次失败，媒体摘要不足以定位根因；返回重播及恢复后的 TV 重播未做；辅助工具正常安装成功 | 最新授权、远程哈希、日志出口实机证明、进度和未完成项见本文开头 |
@@ -584,10 +634,12 @@ https://jokers963.github.io/CatVodSpider/json/supjav.json
 这是落雨秋项目。先读两个 fork 根目录的 AGENTS.md，
 再读 https://github.com/jokers963/CatVodSpider/blob/main/AI_HANDOFF.md。
 原理文档均为根目录 LUOYUQIU_ARCHITECTURE.md，按任务选章节。
-接口仓库 jokers963/CatVodSpider（main）；播放器 jokers963/TV（fongmi）。
+接口仓库 jokers963/CatVodSpider（main）；播放器定制分支 jokers963/TV（luoyuqiu）。
+按 AI_HANDOFF.md 顶部 2026-10-01 最新交接接手：SupJav 已移除，NBD-022 取消。
+正式配置 json/luoyuqiu.json 当前共 5 站、共享 JAR v37；旧 supjav.json 已退役。
 先核对当前代码、未提交改动和正式远程配置与交接的差异，不重复全仓研究。
 保护用户改动；TV 运行代码/本地工作树只读，除非我另行明确授权。
-双 AI 工作前先登记文件范围、手机操作者和唯一发布人。
+如我明确要求多 AI 协作，再登记文件范围、手机操作者和唯一发布人；手机不要截图。
 本次具体任务与授权范围：<在这里填写>。
 先报告你理解的当前状态与下一步，再继续；未实机验证的结果不要说已修好。
 ```
