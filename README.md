@@ -6,7 +6,7 @@
 
 ## 落雨秋项目原理
 
-[播放器、配置与维护说明](LUOYUQIU_ARCHITECTURE.md) · [配套播放器原理](https://github.com/jokers963/TV/blob/fongmi/LUOYUQIU_ARCHITECTURE.md)
+[播放器、配置与维护说明](LUOYUQIU_ARCHITECTURE.md) · [定制播放器开发入口](https://github.com/jokers963/TV/blob/luoyuqiu/README.md) · [历史播放器原理](https://github.com/jokers963/TV/blob/fongmi/LUOYUQIU_ARCHITECTURE.md)
 
 ## 落雨秋点播接口
 

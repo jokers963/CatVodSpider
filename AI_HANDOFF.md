@@ -4,6 +4,12 @@
 
 **当前结论：SupJav 已按用户要求移除，NBD-022 排查已取消。不要根据下方旧记录恢复 SupJav、ST/VOE/FST、旧配置地址或继续 NBD-022。下一项工作由用户另行指定。**下方 2026-09-30 及更早章节中的“当前”“下一步”和权限描述均为历史；以本节和用户最新请求为准。
 
+### 简单整理补充（2026-10-01）
+
+用户要求先处理仓库审查中的简单项；本轮主对话单独整理 Markdown，不修改运行源码、配置、JAR、APK、依赖或签名，不操作手机。TV 的 `fongmi` 入口已更正正式 URL、取消任务与历史快照标识；`luoyuqiu` 已补齐 [README](https://github.com/jokers963/TV/blob/luoyuqiu/README.md) 与 [AGENTS.md](https://github.com/jokers963/TV/blob/luoyuqiu/AGENTS.md)，文档提交为 `7cc80f223`，运行源码仍基于 `6767d2660`。接口入口指向实际定制分支，并校正字幕一秒超时、历史 DEX 哈希及正式/测试构建区别。三组 Node 检查、Markdown 本地链接与差异检查通过；本轮不重新构建或声称新增实机验收。完整交接拆分归档、AAR 获取/构建可复现、CI 扩充和旧资源/分支清理未做。
+
+播放器文档使用干净独立工作树 `C:/Users/Administrator/Documents/Codex/2026-09-30/https-github-com-jokers963-tv-https-2/work/TV-docs-luoyuqiu` 提交；原 `D:/CodexWorkspace/Android/TV563Release` 保留在运行基线及原有 README 未提交状态，不强行更新或覆盖。后续开发先核对远程文档提交与该目录的差异。接口原有两处历史复核改动仍保留、不纳入本轮提交。
+
 ### 当前入口、版本与工作目录
 
 - 接口仓库：`jokers963/CatVodSpider`，分支 `main`；清理与运行发布提交 [ae4eb8c6f799374f75d3d08283b2b45093ead409](https://github.com/jokers963/CatVodSpider/commit/ae4eb8c6f799374f75d3d08283b2b45093ead409)。后续文档提交可能使 HEAD 前进，接手时重新核对。

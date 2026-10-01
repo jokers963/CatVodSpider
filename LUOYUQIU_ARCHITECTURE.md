@@ -1,8 +1,8 @@
 # 落雨秋：配置、Spider 与网站脚本原理
 
-记录日期：2026-09-27。本文是源码研究与维护说明，不是全部站点稳定性验收报告。
+原始研究日期：2026-09-27；入口、正式版本与字幕超时说明更新于 2026-10-01。本文是源码研究与维护说明，不是全部站点稳定性验收报告。
 
-配套文档：[播放器底层原理](https://github.com/jokers963/TV/blob/fongmi/LUOYUQIU_ARCHITECTURE.md)。
+配套文档：[定制播放器开发入口](https://github.com/jokers963/TV/blob/luoyuqiu/README.md) · [历史播放器底层原理](https://github.com/jokers963/TV/blob/fongmi/LUOYUQIU_ARCHITECTURE.md)。实际定制源码在 `luoyuqiu`，下方 TV 的 `fongmi` 基线仅用于解释原始研究。
 
 ## 1. 研究范围与版本边界
 
@@ -41,7 +41,7 @@ https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json
 
 手机应填写完整 JSON 地址，而不是 GitHub 的 `blob/main/...` 查看页面、GitHub Pages 根目录或 JAR 地址。电脑上的本地文件改变不等于远程发布完成；需要确认远程仓库、Pages 部署和实际 HTTP 返回内容。
 
-截至记录日期，正式配置为：
+截至 2026-10-01 文档复核，正式配置为：
 
 | 项目 | 快照 |
 | --- | --- |
@@ -117,15 +117,17 @@ MissAV 当前采用普通直链的 `vod_play_url`，不要擅自改回带 `name`
 
 从播放描述的标题或线路名称提取编号，查询迅雷字幕，按名称相关性排序、去重，保留 HTTPS 的 SRT/ASS/SSA/VTT 候选，转换成 `subs`。
 
-匹配是名称相关性，不代表时间轴已验证；查询失败或没有字幕时仍返回原播放结果。当前查询是同步的，客户端总调用超时为三秒，可能增加启动等待；“失败不阻断”不等于“后台异步”。
+匹配是名称相关性，不代表时间轴已验证；查询失败或没有字幕时仍返回原播放结果。当前查询是同步的，客户端总调用超时为一秒（`SUBTITLE_HTTP_TIMEOUT_MS = 1000`），可能增加启动等待；“失败不阻断”不等于“后台异步”。
 
-`gm_subs.jar` 保留 GM 的原始 `classes.dex`，新增包装层为 `classes2.dex`。研究时原始 DEX 在两个 JAR 中均为 SHA256：
+历史 `gm_subs.jar` 保留 GM 的原始 `classes.dex`，新增包装层为 `classes2.dex`。研究时原始 DEX 在两个 JAR 中均为 SHA256（不是当前 v37 主 DEX 的校验值）：
 
 ```text
 3126F4FD736073F8A47DDB7844CC00BCC6EF68EDF2D63DF3863493060D380D09
 ```
 
-构建入口见 [build.gradle](build.gradle)；测试见 [GMSubsTest.java](app/src/test/java/com/github/catvod/spider/GMSubsTest.java)。构建、单元测试、脚本语法检查都不能替代手机播放验收。
+正式 v37 的构建入口是 [scripts/gmRelease/build-check.ps1](scripts/gmRelease/build-check.ps1)，它组合包装层测试与关闭遥测/日志出口的处理。该入口仍依赖本机 JDK/SDK/Gradle 缓存及已有编译文件，新 clone 不保证直接可构建。
+
+[build.gradle](build.gradle) 中的 `gmSubsJar` 是基于原始 `gm.jar` 的隔离测试候选，没有执行上述关闭遥测/日志出口处理，不能当成等价正式产物发布。`gm.jar` 和 `gm_subs.jar` 仍是构建输入，不能作为旧版本垃圾直接删除。测试见 [GMSubsTest.java](app/src/test/java/com/github/catvod/spider/GMSubsTest.java)；构建、单元测试、脚本语法检查都不能替代手机播放验收。
 
 ## 7. 等待、取消与验证的边界
 
