@@ -1,6 +1,6 @@
 # 落雨秋：配置、Spider 与网站脚本原理
 
-原始研究日期：2026-09-27；入口、正式版本与字幕超时说明更新于 2026-10-01。本文是源码研究与维护说明，不是全部站点稳定性验收报告。
+原始研究日期：2026-09-27；入口、正式版本与站点索引更新于 2026-10-02。本文是源码研究与维护说明，不是全部站点稳定性验收报告。
 
 配套文档：[定制播放器开发入口](https://github.com/jokers963/TV/blob/luoyuqiu/README.md) · [历史播放器底层原理](https://github.com/jokers963/TV/blob/fongmi/LUOYUQIU_ARCHITECTURE.md)。实际定制源码在 `luoyuqiu`，下方 TV 的 `fongmi` 基线仅用于解释原始研究。
 
@@ -41,17 +41,18 @@ https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json
 
 手机应填写完整 JSON 地址，而不是 GitHub 的 `blob/main/...` 查看页面、GitHub Pages 根目录或 JAR 地址。电脑上的本地文件改变不等于远程发布完成；需要确认远程仓库、Pages 部署和实际 HTTP 返回内容。
 
-截至 2026-10-01 文档复核，正式配置为：
+截至 2026-10-02 文档复核，正式配置为：
 
 | 项目 | 快照 |
 | --- | --- |
 | Spider JAR | `jar/gm_subs-v37.jar?v=37` |
-| 站点 | MissAV、Jable、AV01、肉视频、Hanime1 |
-| MissAV 脚本 | URL `v=8` |
-| Jable 脚本 | URL `v=8` |
+| 站点 | MissAV、Jable、AV01、肉视频、Hanime1、JavGuru |
+| MissAV 脚本 | URL `v=9` |
+| Jable 脚本 | URL `v=12` |
 | AV01 脚本 | URL `v=5` |
 | 肉视频脚本 | URL `v=6` |
 | Hanime1 脚本 | URL `v=3` |
+| JavGuru 脚本 | URL `v=3` |
 
 JSON、JAR URL 版本、脚本 URL 版本、userscript 元数据版本和 APK 版本是不同层。URL 查询参数会影响宿主插件缓存键，但不是部署成功或缓存已刷新的证明。GM 初始化时会下载脚本，并可能在下载失败时使用本地脚本缓存。
 
@@ -102,8 +103,13 @@ GM 的详情扩展 `vod_play_data` 会被转换为宿主认识的线路/集数�
 | [MissAV](js/missav.user.js) | 详情页读取 `unsafeWindow.hls.url`，返回 HLS 直链 | 变量生成时机、网站域名、地址时效 |
 | [Jable](js/jable.user.js) | 读取 `hlsUrl` 或内嵌脚本中的 HLS 地址 | HTML 结构、验证、脚本变量格式 |
 | [AV01](js/av01.user.js) | 网站 API 查询内容与播放授权，构造主清单地址 | 授权、域名、子清单参数与可用画质 |
+| [肉视频](js/rou.user.js) | 解码 hydration 地址，GMSubs 解包伪 PNG HLS | 页面数据格式、自定义 PNG chunk、代理边界 |
+| [Hanime1](js/hanime1.user.js) | 搜索页抓列表，详情页返回多清晰度 MP4 | DOM、筛选原值、source 属性 |
+| [JavGuru](js/javguru.user.js) | 顶层运行 Upload18 网页播放器并嗅探 HLS | 播放器运行时、匹配规则、短期地址 |
 
 MissAV 当前采用普通直链的 `vod_play_url`，不要擅自改回带 `name` 的 GM `finalUrl` 描述。验证页面是真实访问条件；不应伪造验证成功或自动点击验证来掩盖问题。
+
+六站的逐站实现过程、路由、播放原理和可复用经验见 [站点实现档案](docs/sites/README.md)。
 
 ## 6. GMSubs：媒体代理与字幕
 

@@ -14,7 +14,7 @@
 
 **最新进展（2026-10-02 晚）**：JavGuru 播放已修复并完成手机 App 实播。此前 App 直接返回 `PLAYER_CONFIG.m3u8` 时出现 `Bad HTTP Status`，而同机 IceRaven 网页播放器可持续播放，证明差异在网页播放器的请求环境。提交 `b92a158` 删除直链分支，让 `playerContent` 固定返回 `{type:"match"}`，复用已有 `helvid.com/m/*` 规则捕获网页播放器实际请求；脚本升至 1.0.2，正式配置升至 `?v=3`。三组 Node 检查及 JSON 校验通过，Pages 发布内容已核对。手机落雨秋 `5.6.3-lyq.3` 实播 IPZZ-975：MediaSession 持续为 `state=3`、`speed=1.0`、`error=null`，位置在 10 秒观察窗从 `63089` 增至 `70687 ms`，缓冲从 `116798` 增至 `125140 ms`；首次无扩展名识别错误由 TV 现有 HLS 重试正常恢复。测试结束后已停止 App；未截图、未清应用数据、未改变 VPN/DNS/代理或其他系统设置。详细证据见 [docs/handovers/2026-10-02-doubao-to-codex-javguru-exoplayer.md](docs/handovers/2026-10-02-doubao-to-codex-javguru-exoplayer.md)。
 
-**最新进展（2026-10-02 晚）**：新增 JavGuru 站（`javguru`，main `8926230`）；分类、翻页、搜索和详情已在手机确认，播放修复见上一段。起因：ren 发来 `https://javguru.fit/` 问是否为 JavGuru 镜像；核查发现它与 missavtv.blog 等 10 个"Friends"站内容完全同源（同排序、同 upload18.cc 图床），均借用知名站牌子，视频实际由 `upload18.org` 的 iframe 播放器提供。jav.guru 官网底部无此域名，不认其为官方镜像。当前实现使用 `playerContent` + `playUrlMatch` 的 WebView 嗅探路线：playerContent 直指 `upload18.org/play/index/${slug}` 使其成顶层 frame，脚本自动点播 JW Player 并捕获 `helvid.com/m/*` 请求。站内无多线路（仅 "Stable"）。
+**最新进展（2026-10-02 晚）**：新增 JavGuru 站（`javguru`，main `8926230`）；分类、翻页、搜索和详情已在手机确认，播放修复见上一段。起因：ren 发来 `https://javguru.fit/` 问是否为 JavGuru 镜像；核查发现它与 missavtv.blog 等 10 个"Friends"站内容完全同源（同排序、同 upload18.cc 图床），均借用知名站牌子，视频实际由 `upload18.org` 的 iframe 播放器提供。jav.guru 官网底部无此域名，不认其为官方镜像。当前实现使用 `playerContent` + `playUrlMatch` 的 WebView 嗅探路线：playerContent 直指 `upload18.org/play/index/${slug}` 使其成顶层 frame，脚本自动点播 JW Player 并捕获 `helvid.com/m/*` 请求。站内无多线路（仅 "Stable"）。六站的接入过程、页面路由、播放原理、测试和可复用经验已整理到 [站点实现档案](docs/sites/README.md)。
 
 ## 当前结论与用户边界
 
@@ -44,7 +44,7 @@ v37 SHA-256：`03B7BBA54A47C958B5B11B04E96382A4687B01825EADE40295976443B5AF0021`
 
 - 完整旧交接搬入历史快照，原有两处未提交复核记录一并归档；其中旧“诊断配置未恢复”等描述仍按历史保留，不覆盖当前事实。
 - 原 TV README 本地补充先用 stash `10660a9fd805f122750dd8791185e3bd97856a4a` 保留，再快进合入远程文档；定制版本、构建、依赖、签名限制已在当前 README 中，开发目录说明本轮归并。stash 不删除，不需要重复 apply 造成重复段落。
-- 旧 `json/new-sites-test.json` 与重复 Hanime1 诊断脚本退役，测试直接复用正式脚本和配置；无引用的 v35/v36 JAR/校验文件清理。正式 JSON、五站脚本、v37 及构建输入 `gm.jar`/`gm_subs.jar` 保留。
+- 旧 `json/new-sites-test.json` 与重复 Hanime1 诊断脚本退役，测试直接复用正式脚本和配置；无引用的 v35/v36 JAR/校验文件清理。正式 JSON、当前站点脚本、v37 及构建输入 `gm.jar`/`gm_subs.jar` 保留。
 - 旧 TV 预览分支已用远程标签 `archive/luoyuqiu-preview-2026-10-02` 保存完整提交后删除；封面修复分支也有归档标签，但因 [PR #1](https://github.com/jokers963/TV/pull/1) 仍打开，分支保留，不擅自关闭/合并 PR。详情见 [分支整理记录](https://github.com/jokers963/TV/blob/luoyuqiu/BRANCH_ARCHIVE.md)。
 - 旧 `TV-cover-sync` 工作树仍有原有 staged/unstaged 定制，未移植或清除；本轮归并仅针对两个实际工作目录的记录/文档差异，不能宣布所有旧工作树干净。
 
