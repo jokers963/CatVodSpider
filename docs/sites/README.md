@@ -4,14 +4,16 @@
 
 ## 当前站点
 
-| 站点 | 主要接入模式 | 播放模式 | 实现档案 |
-| --- | --- | --- | --- |
-| MissAV | DOM 抓取 + 页面全局变量 | 详情页 HLS 直链 | [MissAV](missav.md) |
-| Jable | DOM 抓取 + AJAX 分页 + 验证页兼容 | 详情页 HLS 直链 | [Jable](jable.md) |
-| AV01 | JSON API + 地区/授权接口 | 带 token 的 HLS 主清单 | [AV01](av01.md) |
-| 肉视频（Rou） | DOM + 页面内编码 hydration | 本地代理解包伪 PNG HLS | [肉视频](rou.md) |
-| Hanime1 | DOM 抓取 + 固定分类/筛选 | 多清晰度 MP4 直链 | [Hanime1](hanime1.md) |
-| JavGuru | DOM + 第三方网页播放器 | WebView 启播后嗅探 HLS | [JavGuru](javguru.md) |
+核心作者栏按项目所有者的直接确认记录，不替代各文档中的后续协作提交历史。
+
+| 站点 | 核心作者 | 主要接入模式 | 播放模式 | 实现档案 |
+| --- | --- | --- | --- | --- |
+| MissAV | Codex | DOM 抓取 + 页面全局变量 | 详情页 HLS 直链 | [MissAV](missav.md) |
+| Jable | Codex | DOM 抓取 + AJAX 分页 + 验证页兼容 | 详情页 HLS 直链 | [Jable](jable.md) |
+| AV01 | Claude Opus 5.5 | JSON API + 地区/授权接口 | 带 token 的 HLS 主清单 | [AV01](av01.md) |
+| 肉视频（Rou） | Codex | DOM + 页面内编码 hydration | 本地代理解包伪 PNG HLS | [肉视频](rou.md) |
+| Hanime1 | Codex | DOM 抓取 + 固定分类/筛选 | 多清晰度 MP4 直链 | [Hanime1](hanime1.md) |
+| JavGuru | Codex | DOM + 第三方网页播放器 | WebView 启播后嗅探 HLS | [JavGuru](javguru.md) |
 
 ## 共用运行链路
 
