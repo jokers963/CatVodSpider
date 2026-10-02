@@ -43,7 +43,7 @@
         "userScript": "https://jokers963.github.io/CatVodSpider/js/jable.user.js?v=10",
         "debug": false,
         "webViewSettings": {
-          "blockNetworkImage": false,
+          "blockNetworkImage": true,
           "blockList": [
             "https://*.mnaspm.com/*",
             "https://*.greentrafsa.com/*",
