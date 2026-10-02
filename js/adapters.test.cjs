@@ -103,6 +103,52 @@ assert.equal(delayedMissResult, undefined);
 delayedMissNow = 25000; delayedMissTick();
 assert.match(delayedMissResult.msg, /未获取到/, 'slow navigation time counts toward the wait limit');
 
+function jableCategory(videoCount, href, paginationLinks = []) {
+    let result;
+    const links = [];
+    for (let i = 1; i <= videoCount; i++) {
+        const code = 'abf-' + String(i).padStart(3, '0');
+        links.push({
+            href: 'https://jable.tv/videos/' + code + '/',
+            closest: () => null,
+            parentElement: null,
+            querySelector: () => ({
+                dataset: {},
+                src: '',
+                getAttribute: () => null,
+                textContent: 'Test video ' + code
+            })
+        });
+    }
+    const pageLinks = paginationLinks.map(page => ({href: 'https://jable.tv/categories/jav/?page=' + page}));
+    vm.runInNewContext(fs.readFileSync(__dirname + '/jable.user.js', 'utf8'), {
+        document: {
+            title: 'Jable', readyState: 'complete',
+            querySelector: () => null,
+            querySelectorAll: selector => selector === 'a[href*="/videos/"]' ? links : pageLinks
+        },
+        location: {href},
+        unsafeWindow: {},
+        URL, Date, performance: {timeOrigin: 0},
+        GmSpiderInject: {
+            GetSpiderArgs: () => '["categoryContent"]',
+            HideWebview() {}, ShowWebview() {},
+            SetSpiderResult: text => { result = JSON.parse(text); }
+        },
+        setInterval: () => 1, clearInterval() {}, setTimeout: fn => fn()
+    });
+    return result;
+}
+
+const JABLE_ASYNC = 'https://jable.tv/categories/jav/?mode=async&function=get_block&block_id=list_videos_common_videos_list&sort_by=post_date&from=01';
+const jableFullBatch = jableCategory(24, JABLE_ASYNC);
+assert.equal(jableFullBatch.list.length, 24);
+assert.equal(jableFullBatch.pagecount, 9999, 'async fragment with a full batch must report more pages');
+const jableShortBatch = jableCategory(5, JABLE_ASYNC);
+assert.equal(jableShortBatch.pagecount, 1, 'async fragment with a short batch stays single-page');
+const jablePaged = jableCategory(24, 'https://jable.tv/categories/jav/', [3, 7]);
+assert.equal(jablePaged.pagecount, 7, 'page links on a full page are still honored');
+
 function av01(method, fetch, callArgs = ['latest', '1']) {
     let result, complete;
     const timers = [];

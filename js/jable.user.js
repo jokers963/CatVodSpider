@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Jable
 // @namespace    luoyuqiuspider
-// @version      1.0.6
+// @version      1.0.7
 // @description  Jable WebView adapter for the open-source GM spider runtime.
 // @match        https://jable.tv/*
 // @match        https://*.jable.tv/*
@@ -56,18 +56,33 @@
         return list;
     }
 
-    function pageCount() {
+    function isAsyncFragment() {
+        try {
+            return /(^|[?&])mode=async([&#]|$)/.test(new URL(location.href).search);
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function pageCount(total) {
         let count = 1;
         document.querySelectorAll(".pagination a[href], a[href*='page=']").forEach(function (link) {
             const match = new URL(link.href, location.href).searchParams.get("page");
             if (match && /^\d+$/.test(match)) count = Math.max(count, Number(match));
         });
+        if (count === 1 && isAsyncFragment() && total >= 20) {
+            // KVS async block endpoint returns raw video HTML with no pagination UI,
+            // so pagecount would stay 1 and the player would never request page 2+.
+            // A full batch (~24 videos per block on jable) implies more blocks exist:
+            // report a large count and let the empty last block terminate pagination.
+            count = 9999;
+        }
         return count;
     }
 
     const spider = {
         homeContent: function () { return {class: classes(), list: []}; },
-        categoryContent: function () { return {list: videos(), pagecount: pageCount()}; },
+        categoryContent: function () { const list = videos(); return {list: list, pagecount: pageCount(list.length)}; },
         searchContent: function () { return {list: videos(), pagecount: pageCount()}; },
         detailContent: function (ids) {
             const title = document.querySelector('meta[property="og:title"]')?.content || document.title;
