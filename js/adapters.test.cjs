@@ -74,6 +74,68 @@ assert.match(jableLoadFailure.result().msg, /页面加载超时/);
 const jableEmpty = jableWait(false, 'complete');
 jableEmpty.tick(25000);
 assert.match(jableEmpty.result().msg, /没有匹配内容/);
+// Jable search pagination is AJAX-driven (URL never changes): the userscript
+// drives ul.pagination in-page. Mock: pages render "01".."03", clicking a
+// page link swaps the active page and its video anchors.
+function jableSearch(targetPg, totalPages = 3) {
+    let now = 0, tick, result;
+    let activePage = 1;
+    const pad = n => String(n).padStart(2, '0');
+    const videoAnchor = id => ({
+        href: 'https://jable.tv/videos/' + id + '/',
+        closest: () => null, parentElement: null,
+        querySelector: () => ({dataset: {}, getAttribute: () => null, textContent: 'Video ' + id})
+    });
+    const pageLink = n => ({textContent: pad(n), getAttribute: () => null, click() { activePage = n; }});
+    const document = {
+        title: 'Jable', readyState: 'loading',
+        querySelector(selector) {
+            if (selector === 'ul.pagination li.page-item span.page-link.active') {
+                return activePage <= totalPages ? {textContent: pad(activePage)} : null;
+            }
+            return null;
+        },
+        querySelectorAll(selector) {
+            if (selector === 'ul.pagination li.page-item a.page-link'
+                || selector === 'ul.pagination a.page-link') {
+                const links = [];
+                for (let n = 1; n <= totalPages; n++) if (n !== activePage) links.push(pageLink(n));
+                return links;
+            }
+            if (selector === 'a[href*="/videos/"]') {
+                return [videoAnchor('p' + activePage + 'a'), videoAnchor('p' + activePage + 'b')];
+            }
+            return [];
+        }
+    };
+    vm.runInNewContext(fs.readFileSync(__dirname + '/jable.user.js', 'utf8'), {
+        document, location: {href: 'https://jable.tv/search/test/'}, URL,
+        unsafeWindow: {addEventListener() {}}, Date: {now: () => now}, performance: {timeOrigin: 0},
+        GmSpiderInject: {
+            GetSpiderArgs: () => JSON.stringify(['searchContent', 'test', true, String(targetPg)]),
+            ShowWebview() {}, HideWebview() {},
+            SetSpiderResult: text => { result = JSON.parse(text); }
+        },
+        setInterval: fn => { tick = fn; return 1; }, clearInterval() {}, setTimeout: fn => fn()
+    });
+    return {tick: value => { now = value; tick(); }, result: () => result};
+}
+const jableSearchP2 = jableSearch(2);
+jableSearchP2.tick(0); // clicks "02"
+assert.equal(jableSearchP2.result(), undefined, 'driving to page 2 must not send page-1 content');
+jableSearchP2.tick(1000); // lets the AJAX-swapped DOM settle
+assert.equal(jableSearchP2.result(), undefined);
+jableSearchP2.tick(2000);
+assert.equal(jableSearchP2.result().list[0].vod_id, 'p2a', 'page 2 must return page-2 videos');
+assert.equal(jableSearchP2.result().pagecount, 3, 'pagecount comes from the pagination labels');
+const jableSearchP1 = jableSearch(1);
+jableSearchP1.tick(0);
+assert.equal(jableSearchP1.result().list[0].vod_id, 'p1a', 'page 1 keeps the direct scrape path');
+const jableSearchDead = jableSearch(2, 1); // single-page result, no pagination to drive
+jableSearchDead.tick(0);
+assert.equal(jableSearchDead.result(), undefined);
+jableSearchDead.tick(25000);
+assert.deepEqual(jableSearchDead.result().list, [], 'an unreachable page must end the list, not duplicate page 1');
 let missNow = 0, missTick, missResult, missShows = 0;
 vm.runInNewContext(fs.readFileSync(__dirname + '/missav.user.js', 'utf8'), {
     document: {title: 'Just a moment', querySelector: () => null, addEventListener() {}},

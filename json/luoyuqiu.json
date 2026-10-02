@@ -40,7 +40,7 @@
       "filterable": 0,
       "timeout": 60,
       "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/jable.user.js?v=9",
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/jable.user.js?v=10",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": false,
