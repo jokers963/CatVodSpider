@@ -10,9 +10,9 @@
 
 第 4～6 项已发布完成，封面分支因打开的 PR 保留。第 7 项已确认手机实际加载 v37；MissAV、AV01、肉视频、Hanime1、Jable 五站的内置播放、持续进度和快进通过，返回后再次进入均可播放，肉视频同集从接近开头重播。签名离机备份、AAR 获取/可复现构建和 CI 扩充未做；它们不是自动启动的任务。
 
-**最新进展（2026-10-02 晚）**：用户报告 jable 分类下滑不翻页，豆宝定位为 `pageCount()` 在 KVS 异步分片下恒返回 1，已修复并经 PR #1 合并（main `50ec836`）；详细交接见 [docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md](docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md)。✅ 用户已在手机上验证：jable 分类下滑翻页正常，本项闭环。
+**最新进展（2026-10-02 晚）**：用户报告 jable 分类下滑不翻页，豆宝定位为 `pageCount()` 在 KVS 异步分片下恒返回 1，已修复并经 PR #1 合并（合并提交 `749163b`；交接文档提交 `50ec836`）；详细交接见 [docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md](docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md)。✅ 用户已在手机上验证：jable 分类下滑翻页正常，本项闭环。
 
-**最新进展（2026-10-02 晚）**：JavGuru 播放失败转交播放器侧。ren 手机点播进播放页后转圈失败；豆宝已排除接口侧：第一轮把嗅探改为 playerContent 直接取 `window.PLAYER_CONFIG.m3u8` 返回 `{type:"url"}`（javguru.user.js 1.0.1，json `?v=2`，main `603b9da`），复测依然失败；云电脑实测该 HLS 地址有效（playlist 200、分片 200、无需特殊头）。根因判断：该地址 URL 路径无 `.m3u8` 扩展名（base64 编码藏在路径里），EXO 按后缀判格式会当成 progressive/MP4 解析 `#EXTM3U` 而失败；接口侧因签名覆盖路径无法修复，需播放器侧加 Content-Type 嗅探或域名映射。rou 站 `/api/hls/{id}` 同类隐患。详细交接见 [docs/handovers/2026-10-02-doubao-to-codex-javguru-exoplayer.md](docs/handovers/2026-10-02-doubao-to-codex-javguru-exoplayer.md)，ren 将转交 Codex。
+**最新进展（2026-10-02 晚）**：JavGuru 播放失败待继续定位。ren 手机点播进播放页后转圈失败；第一轮把嗅探改为 playerContent 直接取 `window.PLAYER_CONFIG.m3u8` 返回 `{type:"url"}`（javguru.user.js 1.0.1，json `?v=2`，main `603b9da`），复测依然失败；云电脑实测该 HLS 地址有效（playlist 200、分片 200、无需特殊头）。无 `.m3u8` 后缀可能影响 EXO 初次格式推断，但尚不是已确认根因：当前 TV 代码已对多类容器/清单解析错误重试 HLS，且同样无扩展名的 rou 已通过实机播放。下一步先采集实际 `PlaybackException.errorCode`、底层 cause 与媒体 HTTP 结果，再决定修接口格式提示还是播放器。详细交接见 [docs/handovers/2026-10-02-doubao-to-codex-javguru-exoplayer.md](docs/handovers/2026-10-02-doubao-to-codex-javguru-exoplayer.md)。
 
 **最新进展（2026-10-02 晚）**：新增 JavGuru 站（`javguru`，main `8926230`，待 ren 手机验证）。起因：ren 发来 `https://javguru.fit/` 问是否为 JavGuru 镜像；核查发现它与 missavtv.blog 等 10 个"Friends"站内容完全同源（同排序、同 upload18.cc 图床），均借用知名站牌子，视频实际由 `upload18.org` 的 iframe 播放器提供（Upload18 免费视频托管，HLS，经浏览器实测 1080P、点播无广告、无 Cloudflare）。jav.guru 官网底部无此域名，不认其为官方镜像。实现：`js/javguru.user.js` v1.0.0（导航分类：最新/无码/无码破解/有码/国产/素人/Hentai；`?page=` 分页；`?keyword=` 搜索；详情页取 iframe 的 upload18 slug，走 `playerContent` + `playUrlMatch` 的 WebView 嗅探路线——playerContent 直指 `upload18.org/play/index/${slug}` 使其成顶层 frame，脚本自动点播 JW Player 触发 HLS 请求；此前 supjav 嵌套 iframe 的顶层注入限制在此不成立），json 入口 `javguru.fit`，5 组新单测全过。已知局限：站内无多线路（仅 "Stable"）；部分 upload18.org 历史播放器页报 Playback error，片源存活率待实机检验。
 
@@ -33,10 +33,10 @@
 | 播放器目录 | `D:/CodexWorkspace/Android/TV563Release` |
 | 上游参考 | `TV:fongmi`；不是当前 APK 的构建分支，不盲目合并 |
 | 正式配置 | `https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json` |
-| 正式 JAR | `jar/gm_subs-v37.jar?v=37`，五站共用，无站点 JAR 覆写 |
+| 正式 JAR | `jar/gm_subs-v37.jar?v=37`，六站共用，无站点 JAR 覆写 |
 | 手机实装 | 2026-10-02 ADB 核对 `com.jokers963.luoyuqiu`，`5.6.3-lyq.3` / `56303`，Android 13 |
 
-正式站点与脚本版本：`missav` v8、`jable` v8、`av01` v5、`rou` v6、`hanime1` v3。旧 `json/supjav.json` 已退役，不作为兼容入口。
+正式站点与脚本 URL 版本：`missav` v9、`jable` v12、`av01` v5、`rou` v6、`hanime1` v3、`javguru` v2。旧 `json/supjav.json` 已退役，不作为兼容入口。
 
 v37 SHA-256：`03B7BBA54A47C958B5B11B04E96382A4687B01825EADE40295976443B5AF0021`；MD5：`004df47ae36384de6fe14d5e31f23ff7`。
 
@@ -74,6 +74,7 @@ v37 SHA-256：`03B7BBA54A47C958B5B11B04E96382A4687B01825EADE40295976443B5AF0021`
 | Jable 搜索翻页（JS 驱动） | 豆宝执行/发布，用户验证 | ✅ 已闭环：jable 搜索翻页不换 URL（用户浏览器确认第 2 页地址与第 1 页相同），模板加参数无效。改为 userscript 内驱动站内分页：`searchContent(pg>1)` 时点击 `ul.pagination` 对应页码（"01"式标签），等 `span.page-link.active` 落到目标页再抓取；`pageCount` 补 JS 分页的页码解析（data-page/标签文字，逐页重算随窗口前移）；不可达的页返回空列表让播放器干净收尾。`js/jable.user.js` @version 1.0.7→1.0.8，`json/luoyuqiu.json` 中 `?v=9`→`?v=10`，`js/adapters.test.cjs` 新增三组单测（翻页驱动/首页直抓/不可达收尾）。三组 Node 测试通过。**用户手机验证：jable 搜索翻页正常** |
 | Jable blockNetworkImage 改 true | 豆宝执行/发布，用户验证 | ✅ 已闭环：`json/luoyuqiu.json` 里 jable 的 `blockNetworkImage` false→true，与其余四站统一；抓页面时不下载图片（只拿 HTML 文字），封面地址以文字形式提取不受影响，播放器封面另行加载。JSON 校验通过，五站全 true；三组 Node 测试通过。**用户手机验证：封面显示无异常** |
 | 验证页"卡住"修复 | 豆宝执行/发布，用户验证 | ✅ 已直接推 main：根因是 Cloudflare 验证框在用户点完后仍留在 DOM 里，jable/missav 的脚本认不出"已验证完"，一直不上报结果（WebView 也不消失）。改为内容优先：只要抓到真实内容就立即上报并隐藏 WebView，不再被残留验证标记卡住；jable 的验证等待从"导航开始 25 秒"改为"首次发现验证起 60 秒"（jable 验证最慢）。`js/jable.user.js` 1.0.8→1.0.10、`js/missav.user.js` 1.2.4→1.2.5，`json/luoyuqiu.json` 中 jable `?v=10`→`?v=12`、missav `?v=8`→`?v=9`；`js/adapters.test.cjs` 更新超时断言并新增回归测试（残留验证标记/未知 method 兜底）。三组 Node 测试通过 |
+| JavGuru 新站与播放 | 豆宝执行/发布，Codex 待定位播放失败 | 分类、翻页、搜索、详情已可用；播放页转圈失败。接口已改为直接返回服务端 HLS 地址，但手机复测仍失败；无扩展名仅是候选原因，必须先取得播放器实际错误码与底层 cause，不能直接写成播放器根因 |
 
 ## 下一位 AI 的最短接手流程
 

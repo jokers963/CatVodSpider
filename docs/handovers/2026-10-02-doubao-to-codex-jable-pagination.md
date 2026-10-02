@@ -50,15 +50,15 @@ PR 由 ren 手动创建（#1），豆宝经 ren 要求代点 Merge。
 - 本次不涉及 Cloudflare/验证码处理
 - 每笔 push 前均给 ren 看过 diff 并经确认
 
-## 六、待办事项
+## 六、收尾状态与后续候选
 
-1. **等 ren 手机实机验证 jable 翻页** → 若正常则闭环；若仍不行，继续查（候选方向：`from` 零填充语义、`pagecount` 阈值）。
-2. **其余优化项尚未开工**（2026-10-02 已向 ren 列出，待排期）：
+1. **Jable 分类翻页已闭环**：2026-10-02 用户手机实机验证正常，无需继续等待。
+2. 下列内容是当时列出的历史候选，其中多项后来已经完成或回退；是否仍待办以最新 `AI_HANDOFF.md` 为准，不从本清单自动恢复任务：
    - hanime1 / jable 的 `searchContent` 缺分页参数
    - rou / hanime1 缺 `style: {rect, 1.5}` 卡片块（与前三站不一致）
    - `rules` 全空（可加全局嗅探规则）
    - AV01 的 `categoryContent`/`searchContent` 模板是裸首页（疑似未写完，需实机验证）
    - jable 的 `blockNetworkImage: false` 与其他站不一致（需确认有意还是遗漏）
    - 五站域名全硬编码（缓解需 spider 侧支持备用域名，要动 JAR，需 ren 批准）
-3. **GitHub 权限现状**：豆宝的 push 通道已打通（token 经 ren 批准存于云电脑 gh 登录态，只用于批准过的 push，可随时撤销）；当前 token **无 Pull requests 权限**，以后开 PR 仍需手动，或下次建 token 时加上 `Pull requests → Read and write`。
+3. **GitHub 权限记录（当时状态）**：豆宝的 push 通道已打通；权限可能随时变化，后续操作前重新核对，不把本记录当成当前授权。
 4. 协作登记：后续工作继续走 `AI_HANDOFF.md` 任务表，同一文件不同时改。
