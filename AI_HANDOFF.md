@@ -68,7 +68,7 @@ v37 SHA-256：`03B7BBA54A47C958B5B11B04E96382A4687B01825EADE40295976443B5AF0021`
 | rou/hanime1 补 style 卡片 | 豆宝执行/发布，用户逐项确认 | ✅ 已闭环：PR #2 合并后用户验证发现两站封面被裁切；查历史记录确认此前故意不给这两站加 style（其封面比例与 1.5:1 不符）。已直接回退到 PR #2 前状态并推 main（`3caeb01`），三组 Node 测试通过，**用户手机验证封面恢复正常** |
 | Hanime1 搜索加分页 | 豆宝执行/发布，用户验证 | ✅ 已闭环：`json/luoyuqiu.json` 里 hanime1 的 searchContent 模板补 `&page=${pg:-1}`；`js/hanime1.nav.test.cjs` 新增搜索 URL 断言；三组 Node 测试通过。**用户手机验证：搜索翻页正常** |
 | Jable 搜索翻页（JS 驱动） | 豆宝执行/发布，用户验证 | ✅ 已闭环：jable 搜索翻页不换 URL（用户浏览器确认第 2 页地址与第 1 页相同），模板加参数无效。改为 userscript 内驱动站内分页：`searchContent(pg>1)` 时点击 `ul.pagination` 对应页码（"01"式标签），等 `span.page-link.active` 落到目标页再抓取；`pageCount` 补 JS 分页的页码解析（data-page/标签文字，逐页重算随窗口前移）；不可达的页返回空列表让播放器干净收尾。`js/jable.user.js` @version 1.0.7→1.0.8，`json/luoyuqiu.json` 中 `?v=9`→`?v=10`，`js/adapters.test.cjs` 新增三组单测（翻页驱动/首页直抓/不可达收尾）。三组 Node 测试通过。**用户手机验证：jable 搜索翻页正常** |
-| Jable blockNetworkImage 改 true | 豆宝执行/发布，用户验证 | ✅ 已直接推 main：`json/luoyuqiu.json` 里 jable 的 `blockNetworkImage` false→true，与其余四站统一；抓页面时不下载图片（只拿 HTML 文字），封面地址以文字形式提取不受影响，播放器封面另行加载。JSON 校验通过，五站全 true；三组 Node 测试通过 |
+| Jable blockNetworkImage 改 true | 豆宝执行/发布，用户验证 | ✅ 已闭环：`json/luoyuqiu.json` 里 jable 的 `blockNetworkImage` false→true，与其余四站统一；抓页面时不下载图片（只拿 HTML 文字），封面地址以文字形式提取不受影响，播放器封面另行加载。JSON 校验通过，五站全 true；三组 Node 测试通过。**用户手机验证：封面显示无异常** |
 
 ## 下一位 AI 的最短接手流程
 
