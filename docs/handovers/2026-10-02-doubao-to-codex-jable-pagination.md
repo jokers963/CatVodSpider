@@ -41,7 +41,7 @@ PR 由 ren 手动创建（#1），豆宝经 ren 要求代点 Merge。
 - ✅ `node js/adapters.test.cjs`（含 3 项新断言）、`js/new-sites.test.cjs`、`js/hanime1.nav.test.cjs` 全过
 - ✅ JSON 解析、JS 语法校验通过
 - ✅ GitHub Pages 已随 main 更新重新发布
-- ⏳ **未验证**：手机实机翻页（等 ren 在手机上进 jable 分类下滑确认）
+- ✅ **已验证**：2026-10-02 用户在手机上确认 jable 分类下滑翻页正常，本项闭环
 
 ## 五、红线遵守情况
 

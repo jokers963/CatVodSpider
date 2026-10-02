@@ -10,7 +10,7 @@
 
 第 4～6 项已发布完成，封面分支因打开的 PR 保留。第 7 项已确认手机实际加载 v37；MissAV、AV01、肉视频、Hanime1、Jable 五站的内置播放、持续进度和快进通过，返回后再次进入均可播放，肉视频同集从接近开头重播。签名离机备份、AAR 获取/可复现构建和 CI 扩充未做；它们不是自动启动的任务。
 
-**最新进展（2026-10-02 晚）**：用户报告 jable 分类下滑不翻页，豆宝定位为 `pageCount()` 在 KVS 异步分片下恒返回 1，已修复并经 PR #1 合并（main `50ec836`）；详细交接见 [docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md](docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md)。待用户手机实机验证翻页后反馈。
+**最新进展（2026-10-02 晚）**：用户报告 jable 分类下滑不翻页，豆宝定位为 `pageCount()` 在 KVS 异步分片下恒返回 1，已修复并经 PR #1 合并（main `50ec836`）；详细交接见 [docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md](docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md)。✅ 用户已在手机上验证：jable 分类下滑翻页正常，本项闭环。
 
 ## 当前结论与用户边界
 
@@ -64,7 +64,7 @@ v37 SHA-256：`03B7BBA54A47C958B5B11B04E96382A4687B01825EADE40295976443B5AF0021`
 | --- | --- | --- |
 | 第 4～6 项 | 原主对话单独执行/发布，已结束 | 接口 `572dae8`、TV `45149355d`；归档、去重/旧资源退役、文档差异归并及恢复标签已发布，检查通过；封面分支因打开 PR 保留。不改运行源码或 APK |
 | 第 7 项 | 当前主对话单独执行/发布，已结束 | 已完成：v37 实际加载及 MissAV、AV01、肉视频、Hanime1、Jable 五站核心播放链路通过；Jable 在系统 WebView 原位更新至 `155.0.8059.30` 后恢复；当前无进行中的实机任务 |
-| Jable 分类翻页修复 | 豆宝执行/发布，用户逐项确认 | PR #1（`doubao/jable-pagination`→main）已合并，main 现为 `50ec836`。范围：`js/jable.user.js`（pageCount 适配 async 分片：整批返回时报 9999 页，`@version` 1.0.6→1.0.7）、`json/luoyuqiu.json`（jable.user.js `?v=8`→`?v=9`）、`js/adapters.test.cjs`（新增三项 pagecount 断言）。三组 Node 测试、JSON/JS 校验通过。详细交接（根因/改动/验证/待办）：[docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md](docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md)。**待办**：用户在手机上验证 jable 分类翻页后反馈 |
+| Jable 分类翻页修复 | 豆宝执行/发布，用户逐项确认 | ✅ 已闭环：PR #1 已合并；三组 Node 测试通过；**2026-10-02 用户手机实机验证：jable 分类下滑翻页正常**。范围：`js/jable.user.js`（pageCount 适配 async 分片：整批返回时报 9999 页，`@version` 1.0.6→1.0.7）、`json/luoyuqiu.json`（jable.user.js `?v=8`→`?v=9`）、`js/adapters.test.cjs`（新增三项 pagecount 断言）。详细交接（根因/改动/验证/待办）：[docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md](docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md) |
 
 ## 下一位 AI 的最短接手流程
 
