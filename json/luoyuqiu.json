@@ -171,14 +171,15 @@
       "filterable": 0,
       "timeout": 60,
       "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/javguru.user.js?v=1",
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/javguru.user.js?v=2",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": true,
           "blockList": []
         },
         "playUrlMatch": [
-          "https://*.helvid.com/*m3u8*",
+          "https://helvid.com/m/*",
+          "https://*.helvid.com/*",
           "https://upload18.org/*m3u8*"
         ],
         "spider": {

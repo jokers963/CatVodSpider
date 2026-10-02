@@ -167,7 +167,17 @@ assert.equal(jgDetail.list[0].vod_id, 'ipzz-961');
 const jgMedia = jgDetail.list[0].vod_play_data[0].media[0];
 assert.equal(jgMedia.type, 'webview', 'upload18 iframe goes through WebView sniffing, not a direct url');
 assert.equal(jgMedia.ext.replace.slug, 'ipzz-961');
+const jgPlayerCfg = {m3u8: 'https://helvid.com/m/QUdNWC0yNzEvcGxheWxpc3QubTN1OA'};
 const jgPlayer = await run('javguru', 'playerContent', '', {
+    title: 'AGMX-271', readyState: 'complete',
+    querySelector: () => null, querySelectorAll: () => []
+}, {
+    location: {origin: 'https://upload18.org', href: 'https://upload18.org/play/index/agmx-271'},
+    unsafeWindow: {PLAYER_CONFIG: jgPlayerCfg}
+});
+assert.equal(jgPlayer.type, 'url', 'server-rendered m3u8 is returned directly, no sniffing needed');
+assert.equal(jgPlayer.ext.url, jgPlayerCfg.m3u8);
+const jgPlayerFallback = await run('javguru', 'playerContent', '', {
     title: 'AGMX-271', readyState: 'complete',
     querySelector: () => null, querySelectorAll: () => []
 }, {
@@ -176,7 +186,7 @@ const jgPlayer = await run('javguru', 'playerContent', '', {
         play() {}, setMute() {}, getPlaylistItem: () => ({file: 'https://cdn.example/x.m3u8'})
     })}
 });
-assert.equal(jgPlayer.type, 'match', 'player page reports match mode so the runtime sniffs the HLS request');
+assert.equal(jgPlayerFallback.type, 'match', 'without PLAYER_CONFIG falls back to sniff mode');
 console.log('New-site adapter checks passed.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
