@@ -2,12 +2,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-const source = fs.readFileSync(__dirname + '/diagnostic/hanime1-home-v3.user.js', 'utf8');
-const config = JSON.parse(fs.readFileSync(__dirname + '/../json/new-sites-test.json', 'utf8'));
+const source = fs.readFileSync(__dirname + '/hanime1.user.js', 'utf8');
+const config = JSON.parse(fs.readFileSync(__dirname + '/../json/luoyuqiu.json', 'utf8'));
 const site = config.sites.find(item => item.key === 'hanime1');
-const formalSource = fs.readFileSync(__dirname + '/hanime1.user.js', 'utf8');
-const formalConfig = JSON.parse(fs.readFileSync(__dirname + '/../json/luoyuqiu.json', 'utf8'));
-const formalSite = formalConfig.sites.find(item => item.key === 'hanime1');
 let result;
 const link = {
     href: 'https://hanime1.me/watch?v=sample',
@@ -51,18 +48,12 @@ assert.deepEqual(home.class.map(item => decodeURIComponent(item.type_id)), [
 assert.equal(home.list.length, 0);
 assert.equal(home.filters[home.class[0].type_id].length, 3);
 assert.equal(site.filterable, 1);
-assert.equal(site.ext.userScript.endsWith('diagnostic/hanime1-home-v3.user.js?v=3'), true);
+assert.equal(site.ext.userScript.endsWith('/js/hanime1.user.js?v=3'), true);
 assert.equal(site.ext.webViewSettings.blockList.includes('https://*.googletagmanager.com/*'), true);
 assert.match(site.ext.spider.homeContent.loadUrl, /search\?page=1&sort=/);
 assert.match(site.ext.spider.categoryContent.loadUrl, /genre=\$\{tid\}.*page=\$\{pg:-1\}/);
-assert.equal(formalSource.slice(formalSource.indexOf('(function')).replaceAll('\r\n', '\n'),
-    source.slice(source.indexOf('(function')).replaceAll('\r\n', '\n'));
-assert.equal(formalSite.filterable, 1);
-assert.equal(formalSite.ext.userScript.endsWith('/js/hanime1.user.js?v=3'), true);
-assert.deepEqual(formalSite.ext.webViewSettings, site.ext.webViewSettings);
-assert.deepEqual(formalSite.ext.spider, site.ext.spider);
 for (const key of ['missav', 'jable', 'av01']) {
-    assert.deepEqual(formalConfig.sites.find(item => item.key === key).style, {type: 'rect', ratio: 1.5});
+    assert.deepEqual(config.sites.find(item => item.key === key).style, {type: 'rect', ratio: 1.5});
 }
 const route = new URL(site.ext.spider.categoryContent.loadUrl
     .replace('${tid}', home.class[3].type_id)
