@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JavGuru
 // @namespace    luoyuqiuspider
-// @version      1.0.1
+// @version      1.0.2
 // @description  JavGuru (upload18) WebView adapter for the open-source GM spider runtime.
 // @match        https://javguru.fit/*
 // @match        https://upload18.org/*
@@ -109,19 +109,7 @@
                 }]
             }]};
         },
-        playerContent: function () {
-            // Primary: the server renders window.PLAYER_CONFIG.m3u8 in the
-            // page HTML (https://helvid.com/m/... — no "m3u8" in the URL, so
-            // pattern sniffing can't see it). Return it directly, no click needed.
-            try {
-                const cfg = unsafeWindow.PLAYER_CONFIG;
-                if (cfg && typeof cfg.m3u8 === "string" && /^https:\/\//.test(cfg.m3u8)) {
-                    return {type: "url", ext: {url: cfg.m3u8, header: {}}};
-                }
-            } catch (_) {}
-            // Fallback: sniff mode — the auto-start timer fires the HLS request.
-            return {type: "match"};
-        }
+        playerContent: function () { return {type: "match"}; }
     };
 
     // upload18.org is loaded as the top frame in playerContent mode
@@ -171,24 +159,16 @@
     function sendResult() {
         if (sent) return;
         if (isPlayerHost) {
-            // Player frame: prefer the server-rendered m3u8 (direct URL, no
-            // click needed); fall back to sniffing once the player exists.
+            // Player frame: report match mode once the player exists; the
+            // auto-start timer keeps running independently to fire the request.
             if (method !== "playerContent") return;
-            const pc = spider.playerContent();
-            if (pc.type === "url" && pc.ext && pc.ext.url) {
-                sent = true;
-                clearInterval(poller);
-                try { GmSpiderInject.HideWebview(); } catch (_) {}
-                GmSpiderInject.SetSpiderResult(JSON.stringify(pc));
-                return;
-            }
             let ready = false;
             try { ready = !!unsafeWindow.jwplayer || !!document.querySelector("video, .jwplayer"); } catch (_) {}
             if (!ready && Date.now() - startedAt < 20000) return;
             sent = true;
             clearInterval(poller);
             try { GmSpiderInject.HideWebview(); } catch (_) {}
-            GmSpiderInject.SetSpiderResult(JSON.stringify(pc));
+            GmSpiderInject.SetSpiderResult(JSON.stringify(spider.playerContent()));
             return;
         }
         if (!spider[method]) {

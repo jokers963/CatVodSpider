@@ -173,20 +173,11 @@ const jgPlayer = await run('javguru', 'playerContent', '', {
     querySelector: () => null, querySelectorAll: () => []
 }, {
     location: {origin: 'https://upload18.org', href: 'https://upload18.org/play/index/agmx-271'},
-    unsafeWindow: {PLAYER_CONFIG: jgPlayerCfg}
-});
-assert.equal(jgPlayer.type, 'url', 'server-rendered m3u8 is returned directly, no sniffing needed');
-assert.equal(jgPlayer.ext.url, jgPlayerCfg.m3u8);
-const jgPlayerFallback = await run('javguru', 'playerContent', '', {
-    title: 'AGMX-271', readyState: 'complete',
-    querySelector: () => null, querySelectorAll: () => []
-}, {
-    location: {origin: 'https://upload18.org', href: 'https://upload18.org/play/index/agmx-271'},
-    unsafeWindow: {jwplayer: () => ({
-        play() {}, setMute() {}, getPlaylistItem: () => ({file: 'https://cdn.example/x.m3u8'})
+    unsafeWindow: {PLAYER_CONFIG: jgPlayerCfg, jwplayer: () => ({
+        play() {}, setMute() {}, getPlaylistItem: () => ({file: jgPlayerCfg.m3u8})
     })}
 });
-assert.equal(jgPlayerFallback.type, 'match', 'without PLAYER_CONFIG falls back to sniff mode');
+assert.equal(jgPlayer.type, 'match', 'player stays in browser sniff mode even when PLAYER_CONFIG exposes a URL');
 console.log('New-site adapter checks passed.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
