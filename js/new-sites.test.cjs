@@ -142,8 +142,13 @@ const jgCard = (id, name) => ({
 const jgListDoc = cards => ({
     title: 'JavGuru', readyState: 'complete',
     querySelector: () => null,
-    querySelectorAll: selector => selector === 'a[href*="/video/"]' ? cards
+    querySelectorAll: selector => selector === 'a[href*="/video/"], a[href*="video.php"]' ? cards
         : selector === 'a[href*="page="]' ? [{href: 'https://javguru.fit/uncensored?page=42'}] : []
+});
+const jgCardPhp = (slug, name) => ({
+    href: 'https://javguru.fit/video.php?slug=' + slug, getAttribute: () => '',
+    querySelector: () => ({getAttribute: k => k === 'alt' ? name : null, src: '', dataset: {}}),
+    textContent: ''
 });
 const jgCat = await run('javguru', 'categoryContent', 'uncensored',
     jgListDoc([jgCard('ipzz-961', 'IPZZ-961 title'), jgCard('ipzz-950', 'IPZZ-950 title')]));
@@ -152,6 +157,10 @@ assert.equal(jgCat.list[0].vod_name, 'IPZZ-961 title');
 assert.equal(jgCat.list[0].vod_pic, 'https://upload18.cc/v/IPZZ-961/poster.jpg');
 assert.equal(jgCat.list.length, 2, 'duplicate video links are deduped by id');
 assert.equal(jgCat.pagecount, 42);
+const jgCatPhp = await run('javguru', 'categoryContent', 'amateur',
+    jgListDoc([jgCardPhp('fc2-ppv-4954946', 'FC2-PPV-4954946 title')]));
+assert.equal(jgCatPhp.list[0].vod_id, 'fc2-ppv-4954946', 'video.php?slug= cards are parsed too');
+assert.equal(jgCatPhp.list[0].vod_name, 'FC2-PPV-4954946 title');
 const jgSearch = await run('javguru', 'searchContent', 'IPZZ', jgListDoc([jgCard('ipzz-961', 'IPZZ-961 title')]));
 assert.equal(jgSearch.list[0].vod_id, 'ipzz-961');
 assert.equal(jgSearch.pagecount, 42);

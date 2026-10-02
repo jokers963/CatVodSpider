@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JavGuru
 // @namespace    luoyuqiuspider
-// @version      1.0.2
+// @version      1.0.3
 // @description  JavGuru (upload18) WebView adapter for the open-source GM spider runtime.
 // @match        https://javguru.fit/*
 // @match        https://upload18.org/*
@@ -29,8 +29,14 @@
     function videos() {
         const list = [];
         const seen = new Set();
-        document.querySelectorAll('a[href*="/video/"]').forEach(function (link) {
-            const id = pathId(link.href, "video");
+        // The site uses two card link formats: /video/{slug} and video.php?slug={slug}
+        // (uncensored/amateur/hentai use the latter).
+        document.querySelectorAll('a[href*="/video/"], a[href*="video.php"]').forEach(function (link) {
+            let id = pathId(link.href, "video");
+            if (!id) {
+                try { id = new URL(link.href, location.href).searchParams.get("slug") || ""; }
+                catch (_) { id = ""; }
+            }
             if (!id || seen.has(id)) return;
             const image = link.querySelector("img");
             const name = (image && (image.getAttribute("alt") || image.getAttribute("title")) || "").trim()
