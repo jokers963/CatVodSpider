@@ -12,7 +12,7 @@
       "filterable": 0,
       "timeout": 60,
       "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/missav.user.js?v=8",
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/missav.user.js?v=9",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": true
@@ -40,7 +40,7 @@
       "filterable": 0,
       "timeout": 60,
       "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/jable.user.js?v=10",
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/jable.user.js?v=11",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": true,

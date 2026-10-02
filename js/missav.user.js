@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MissAV
 // @namespace    luoyuqiuspider
-// @version      1.2.4
+// @version      1.2.5
 // @description  MissAV WebView adapter for the open-source GM spider runtime.
 // @match        https://missav.ws/*
 // @grant        unsafeWindow
@@ -117,7 +117,7 @@
             verificationShown = true;
             GmSpiderInject.ShowWebview();
         }
-        const result = challenged ? null : spider[method].apply(spider, args);
+        const result = spider[method].apply(spider, args);
         const ready = result && (method === "homeContent" ? result.class.length
                 : method === "detailContent" ? result.list[0].vod_play_url : result.list.length);
         if (!ready && Date.now() - startedAt < 25000) return;

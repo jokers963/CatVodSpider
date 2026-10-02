@@ -69,6 +69,7 @@ v37 SHA-256：`03B7BBA54A47C958B5B11B04E96382A4687B01825EADE40295976443B5AF0021`
 | Hanime1 搜索加分页 | 豆宝执行/发布，用户验证 | ✅ 已闭环：`json/luoyuqiu.json` 里 hanime1 的 searchContent 模板补 `&page=${pg:-1}`；`js/hanime1.nav.test.cjs` 新增搜索 URL 断言；三组 Node 测试通过。**用户手机验证：搜索翻页正常** |
 | Jable 搜索翻页（JS 驱动） | 豆宝执行/发布，用户验证 | ✅ 已闭环：jable 搜索翻页不换 URL（用户浏览器确认第 2 页地址与第 1 页相同），模板加参数无效。改为 userscript 内驱动站内分页：`searchContent(pg>1)` 时点击 `ul.pagination` 对应页码（"01"式标签），等 `span.page-link.active` 落到目标页再抓取；`pageCount` 补 JS 分页的页码解析（data-page/标签文字，逐页重算随窗口前移）；不可达的页返回空列表让播放器干净收尾。`js/jable.user.js` @version 1.0.7→1.0.8，`json/luoyuqiu.json` 中 `?v=9`→`?v=10`，`js/adapters.test.cjs` 新增三组单测（翻页驱动/首页直抓/不可达收尾）。三组 Node 测试通过。**用户手机验证：jable 搜索翻页正常** |
 | Jable blockNetworkImage 改 true | 豆宝执行/发布，用户验证 | ✅ 已闭环：`json/luoyuqiu.json` 里 jable 的 `blockNetworkImage` false→true，与其余四站统一；抓页面时不下载图片（只拿 HTML 文字），封面地址以文字形式提取不受影响，播放器封面另行加载。JSON 校验通过，五站全 true；三组 Node 测试通过。**用户手机验证：封面显示无异常** |
+| 验证页"卡住"修复 | 豆宝执行/发布，用户验证 | ✅ 已直接推 main：根因是 Cloudflare 验证框在用户点完后仍留在 DOM 里，jable/missav 的脚本认不出"已验证完"，一直不上报结果（WebView 也不消失）。改为内容优先：只要抓到真实内容就立即上报并隐藏 WebView，不再被残留验证标记卡住；jable 的验证等待从"导航开始 25 秒"改为"首次发现验证起 60 秒"（jable 验证最慢）。`js/jable.user.js` 1.0.8→1.0.9、`js/missav.user.js` 1.2.4→1.2.5，`json/luoyuqiu.json` 中 `?v=10`→`?v=11`、`?v=8`→`?v=9`；`js/adapters.test.cjs` 更新超时断言并新增"残留验证标记下有内容直接发"回归测试。三组 Node 测试通过 |
 
 ## 下一位 AI 的最短接手流程
 

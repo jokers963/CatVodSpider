@@ -57,16 +57,17 @@ function jableWait(challenged, readyState, method = 'homeContent', navigationSta
     return {tick: value => { now = value; tick(); }, result: () => result, shows: () => shows};
 }
 const jableChallenge = jableWait(true, 'loading');
-jableChallenge.tick(0); jableChallenge.tick(24999);
+jableChallenge.tick(0); jableChallenge.tick(59999);
 assert.equal(jableChallenge.shows(), 1); assert.equal(jableChallenge.result(), undefined);
-jableChallenge.tick(25000);
+jableChallenge.tick(60000);
 assert.match(jableChallenge.result().msg, /验证未完成/);
 for (const method of ['homeContent', 'categoryContent', 'searchContent']) {
     const delayedJableChallenge = jableWait(true, 'loading', method, 0, 20000);
-    delayedJableChallenge.tick(24999);
-    assert.equal(delayedJableChallenge.result(), undefined, `${method} keeps verification visible until the navigation budget ends`);
-    delayedJableChallenge.tick(25000);
-    assert.match(delayedJableChallenge.result().msg, /验证未完成/, `${method} uses navigation time after late script injection`);
+    delayedJableChallenge.tick(20000); // challenge first seen here
+    delayedJableChallenge.tick(79999);
+    assert.equal(delayedJableChallenge.result(), undefined, `${method} keeps verification visible while the user works on the challenge`);
+    delayedJableChallenge.tick(80000);
+    assert.match(delayedJableChallenge.result().msg, /验证未完成/, `${method} gives up 60s after the challenge was first shown`);
 }
 const jableLoadFailure = jableWait(false, 'loading');
 jableLoadFailure.tick(25000);
@@ -136,6 +137,43 @@ jableSearchDead.tick(0);
 assert.equal(jableSearchDead.result(), undefined);
 jableSearchDead.tick(25000);
 assert.deepEqual(jableSearchDead.result().list, [], 'an unreachable page must end the list, not duplicate page 1');
+// Content wins over stale challenge markers: a completed Cloudflare widget
+// often stays in the DOM, which must not block real results.
+function jableStaleChallenge() {
+    let now = 0, tick, result;
+    const document = {
+        title: 'Jable', readyState: 'loading',
+        querySelector(selector) {
+            if (selector.includes('cf-turnstile-response')) return {name: 'cf-turnstile-response'};
+            return null;
+        },
+        querySelectorAll(selector) {
+            if (selector === 'a[href*="/videos/"]') {
+                return [{
+                    href: 'https://jable.tv/videos/abc123/',
+                    closest: () => null, parentElement: null,
+                    querySelector: () => ({dataset: {src: 'https://pic.example/a.jpg'}, getAttribute: () => null, textContent: 'Video ABC'})
+                }];
+            }
+            return [];
+        }
+    };
+    vm.runInNewContext(fs.readFileSync(__dirname + '/jable.user.js', 'utf8'), {
+        document, location: {href: 'https://jable.tv/search/test/'}, URL,
+        unsafeWindow: {addEventListener() {}}, Date: {now: () => now}, performance: {timeOrigin: 0},
+        GmSpiderInject: {
+            GetSpiderArgs: () => JSON.stringify(['searchContent', 'test', true, '1']),
+            ShowWebview() {}, HideWebview() {},
+            SetSpiderResult: text => { result = JSON.parse(text); }
+        },
+        setInterval: fn => { tick = fn; return 1; }, clearInterval() {}, setTimeout: fn => fn()
+    });
+    return {tick: value => { now = value; tick(); }, result: () => result};
+}
+const stale = jableStaleChallenge();
+stale.tick(0);
+assert.equal(stale.result().list[0].vod_id, 'abc123', 'real content must be sent even with a stale challenge widget in the DOM');
+assert.equal(stale.result().msg, undefined);
 let missNow = 0, missTick, missResult, missShows = 0;
 vm.runInNewContext(fs.readFileSync(__dirname + '/missav.user.js', 'utf8'), {
     document: {title: 'Just a moment', querySelector: () => null, addEventListener() {}},

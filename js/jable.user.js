@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Jable
 // @namespace    luoyuqiuspider
-// @version      1.0.8
+// @version      1.0.9
 // @description  Jable WebView adapter for the open-source GM spider runtime.
 // @match        https://jable.tv/*
 // @match        https://*.jable.tv/*
@@ -178,25 +178,42 @@
 
     let sent = false;
     let verificationShown = false;
+    let challengeSeenAt = 0;
     const startedAt = navigationStartedAt();
     function sendResult() {
         if (sent || !spider[method]) return;
         const challenged = document.querySelector("#challenge-stage, #challenge-form, #cf-challenge-running, input[name='cf-turnstile-response']")
                 || /just a moment|checking your browser|verify you are human|请稍候|验证您是否为真人/i.test(document.title);
         const waiting = Date.now() - startedAt;
+        const result = spider[method].apply(spider, args);
+        const hasContent = method === "homeContent" ? result.class.length > 0
+                : method === "detailContent" ? !!(result.list[0] && result.list[0].vod_play_url)
+                : result.list.length > 0;
+        if (hasContent) {
+            // Content wins over challenge markers: Cloudflare leaves the
+            // turnstile widget in the DOM after the user completes verification,
+            // so "challenged" can stay true while real content is already there.
+            sent = true;
+            clearInterval(poller);
+            GmSpiderInject.HideWebview();
+            GmSpiderInject.SetSpiderResult(JSON.stringify(result));
+            return;
+        }
         if (challenged) {
             if (!verificationShown) {
                 verificationShown = true;
+                challengeSeenAt = Date.now();
                 GmSpiderInject.ShowWebview();
             }
-            if (waiting < 25000) return;
+            // Once the user is working on the challenge, give them more time:
+            // budget runs from first challenge detection, not navigation start.
+            if (Date.now() - challengeSeenAt < 60000) return;
             sent = true;
             clearInterval(poller);
             GmSpiderInject.HideWebview();
             GmSpiderInject.SetSpiderResult(JSON.stringify({list: [], msg: "站点验证未完成，请在页面完成验证后重试"}));
             return;
         }
-        const result = spider[method].apply(spider, args);
         if (method === "detailContent" && !result.list[0].vod_play_url && waiting < 12000) return;
         if ((method === "homeContent" ? !result.class.length
                 : (method === "categoryContent" || method === "searchContent") && !result.list.length)
