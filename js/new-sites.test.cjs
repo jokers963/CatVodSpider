@@ -113,6 +113,70 @@ const fetched = await run('rou', 'detailContent', 'v/sample', {
 }, {location: {origin: 'https://rou.video', pathname: '/v/sample', href: 'https://rou.video/v/sample'},
     fetch: async () => ({ok: true, text: async () => 'ev:$R[99]={d:"' + encoded + '",k:' + shift + '}'})});
 assert.equal(fetched.list[0].vod_play_url, '播放$https://rou.video/api/hls/sample.m3u8');
+
+// JavGuru (upload18 skin): categories from nav, video cards, upload18 iframe -> webview sniffing.
+const jgHome = await run('javguru', 'homeContent', '', {
+    title: 'JavGuru', readyState: 'complete',
+    querySelector: () => null,
+    querySelectorAll: selector => selector === 'header a[href], nav a[href]' ? [
+        {href: 'https://javguru.fit/'},
+        {href: 'https://javguru.fit/uncensored'},
+        {href: 'https://javguru.fit/uncensored-leaked'},
+        {href: 'https://javguru.fit/censored'},
+        {href: 'https://javguru.fit/chinese'},
+        {href: 'https://javguru.fit/amateur'},
+        {href: 'https://javguru.fit/hentai'}
+    ] : []
+});
+assert.deepEqual(Array.from(jgHome.class, c => c.type_name),
+    ['最新', '无码', '无码破解', '有码', '国产', '素人', 'Hentai']);
+assert.deepEqual(jgHome.list, []);
+const jgCard = (id, name) => ({
+    href: 'https://javguru.fit/video/' + id,
+    getAttribute: () => '', textContent: '',
+    querySelector: sel => sel === 'img' ? {
+        getAttribute: attr => attr === 'alt' ? name : '',
+        src: 'https://upload18.cc/v/' + id.toUpperCase() + '/poster.jpg'
+    } : null
+});
+const jgListDoc = cards => ({
+    title: 'JavGuru', readyState: 'complete',
+    querySelector: () => null,
+    querySelectorAll: selector => selector === 'a[href*="/video/"]' ? cards
+        : selector === 'a[href*="page="]' ? [{href: 'https://javguru.fit/uncensored?page=42'}] : []
+});
+const jgCat = await run('javguru', 'categoryContent', 'uncensored',
+    jgListDoc([jgCard('ipzz-961', 'IPZZ-961 title'), jgCard('ipzz-950', 'IPZZ-950 title')]));
+assert.equal(jgCat.list[0].vod_id, 'ipzz-961');
+assert.equal(jgCat.list[0].vod_name, 'IPZZ-961 title');
+assert.equal(jgCat.list[0].vod_pic, 'https://upload18.cc/v/IPZZ-961/poster.jpg');
+assert.equal(jgCat.list.length, 2, 'duplicate video links are deduped by id');
+assert.equal(jgCat.pagecount, 42);
+const jgSearch = await run('javguru', 'searchContent', 'IPZZ', jgListDoc([jgCard('ipzz-961', 'IPZZ-961 title')]));
+assert.equal(jgSearch.list[0].vod_id, 'ipzz-961');
+assert.equal(jgSearch.pagecount, 42);
+const jgDetail = await run('javguru', 'detailContent', 'ipzz-961', {
+    title: 'IPZZ-961 title | JavGuru', readyState: 'complete',
+    querySelector: selector => selector === 'meta[property="og:title"]' ? {content: 'IPZZ-961 title'}
+        : selector === 'meta[property="og:image"]' ? {content: 'https://upload18.cc/v/IPZZ-961/poster.jpg'}
+        : selector === "iframe[src*='upload18.org/play']" ? {src: 'https://upload18.org/play/index/ipzz-961'}
+        : null,
+    querySelectorAll: () => []
+});
+assert.equal(jgDetail.list[0].vod_id, 'ipzz-961');
+const jgMedia = jgDetail.list[0].vod_play_data[0].media[0];
+assert.equal(jgMedia.type, 'webview', 'upload18 iframe goes through WebView sniffing, not a direct url');
+assert.equal(jgMedia.ext.replace.slug, 'ipzz-961');
+const jgPlayer = await run('javguru', 'playerContent', '', {
+    title: 'AGMX-271', readyState: 'complete',
+    querySelector: () => null, querySelectorAll: () => []
+}, {
+    location: {origin: 'https://upload18.org', href: 'https://upload18.org/play/index/agmx-271'},
+    unsafeWindow: {jwplayer: () => ({
+        play() {}, setMute() {}, getPlaylistItem: () => ({file: 'https://cdn.example/x.m3u8'})
+    })}
+});
+assert.equal(jgPlayer.type, 'match', 'player page reports match mode so the runtime sniffs the HLS request');
 console.log('New-site adapter checks passed.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
