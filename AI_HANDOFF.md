@@ -12,6 +12,8 @@
 
 **最新进展（2026-10-02 晚）**：用户报告 jable 分类下滑不翻页，豆宝定位为 `pageCount()` 在 KVS 异步分片下恒返回 1，已修复并经 PR #1 合并（main `50ec836`）；详细交接见 [docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md](docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md)。✅ 用户已在手机上验证：jable 分类下滑翻页正常，本项闭环。
 
+**最新进展（2026-10-02 晚）**：JavGuru 播放失败转交播放器侧。ren 手机点播进播放页后转圈失败；豆宝已排除接口侧：第一轮把嗅探改为 playerContent 直接取 `window.PLAYER_CONFIG.m3u8` 返回 `{type:"url"}`（javguru.user.js 1.0.1，json `?v=2`，main `603b9da`），复测依然失败；云电脑实测该 HLS 地址有效（playlist 200、分片 200、无需特殊头）。根因判断：该地址 URL 路径无 `.m3u8` 扩展名（base64 编码藏在路径里），EXO 按后缀判格式会当成 progressive/MP4 解析 `#EXTM3U` 而失败；接口侧因签名覆盖路径无法修复，需播放器侧加 Content-Type 嗅探或域名映射。rou 站 `/api/hls/{id}` 同类隐患。详细交接见 [docs/handovers/2026-10-02-doubao-to-codex-javguru-exoplayer.md](docs/handovers/2026-10-02-doubao-to-codex-javguru-exoplayer.md)，ren 将转交 Codex。
+
 **最新进展（2026-10-02 晚）**：新增 JavGuru 站（`javguru`，main `8926230`，待 ren 手机验证）。起因：ren 发来 `https://javguru.fit/` 问是否为 JavGuru 镜像；核查发现它与 missavtv.blog 等 10 个"Friends"站内容完全同源（同排序、同 upload18.cc 图床），均借用知名站牌子，视频实际由 `upload18.org` 的 iframe 播放器提供（Upload18 免费视频托管，HLS，经浏览器实测 1080P、点播无广告、无 Cloudflare）。jav.guru 官网底部无此域名，不认其为官方镜像。实现：`js/javguru.user.js` v1.0.0（导航分类：最新/无码/无码破解/有码/国产/素人/Hentai；`?page=` 分页；`?keyword=` 搜索；详情页取 iframe 的 upload18 slug，走 `playerContent` + `playUrlMatch` 的 WebView 嗅探路线——playerContent 直指 `upload18.org/play/index/${slug}` 使其成顶层 frame，脚本自动点播 JW Player 触发 HLS 请求；此前 supjav 嵌套 iframe 的顶层注入限制在此不成立），json 入口 `javguru.fit`，5 组新单测全过。已知局限：站内无多线路（仅 "Stable"）；部分 upload18.org 历史播放器页报 Playback error，片源存活率待实机检验。
 
 ## 当前结论与用户边界
