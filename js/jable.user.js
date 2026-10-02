@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Jable
 // @namespace    luoyuqiuspider
-// @version      1.0.9
+// @version      1.0.10
 // @description  Jable WebView adapter for the open-source GM spider runtime.
 // @match        https://jable.tv/*
 // @match        https://*.jable.tv/*
@@ -181,7 +181,16 @@
     let challengeSeenAt = 0;
     const startedAt = navigationStartedAt();
     function sendResult() {
-        if (sent || !spider[method]) return;
+        if (sent) return;
+        if (!spider[method]) {
+            // Defensive: unknown method (e.g. args lost after a challenge
+            // redirect) must not spin forever with the WebView up.
+            sent = true;
+            clearInterval(poller);
+            try { GmSpiderInject.HideWebview(); } catch (_) {}
+            try { GmSpiderInject.SetSpiderResult(JSON.stringify({list: [], msg: "请求参数异常，请重试"})); } catch (_) {}
+            return;
+        }
         const challenged = document.querySelector("#challenge-stage, #challenge-form, #cf-challenge-running, input[name='cf-turnstile-response']")
                 || /just a moment|checking your browser|verify you are human|请稍候|验证您是否为真人/i.test(document.title);
         const waiting = Date.now() - startedAt;

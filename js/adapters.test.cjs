@@ -174,6 +174,23 @@ const stale = jableStaleChallenge();
 stale.tick(0);
 assert.equal(stale.result().list[0].vod_id, 'abc123', 'real content must be sent even with a stale challenge widget in the DOM');
 assert.equal(stale.result().msg, undefined);
+// Unknown method (e.g. args lost after a challenge redirect) must fail fast
+// instead of spinning forever with the WebView up.
+let unknownHidden = 0, unknownResult, unknownTick;
+vm.runInNewContext(fs.readFileSync(__dirname + '/jable.user.js', 'utf8'), {
+    document: {title: 'Jable', readyState: 'loading', querySelector: () => null, querySelectorAll: () => []},
+    location: {href: 'https://jable.tv/'}, URL,
+    unsafeWindow: {addEventListener() {}}, Date: {now: () => 0}, performance: {timeOrigin: 0},
+    GmSpiderInject: {
+        GetSpiderArgs: () => JSON.stringify(['bogusMethod']),
+        ShowWebview() {}, HideWebview: () => unknownHidden++,
+        SetSpiderResult: text => { unknownResult = JSON.parse(text); }
+    },
+    setInterval: fn => { unknownTick = fn; return 1; }, clearInterval() {}, setTimeout: fn => fn()
+});
+unknownTick();
+assert.equal(unknownHidden, 1, 'unknown method must hide the WebView instead of spinning');
+assert.match(unknownResult.msg, /参数异常/);
 let missNow = 0, missTick, missResult, missShows = 0;
 vm.runInNewContext(fs.readFileSync(__dirname + '/missav.user.js', 'utf8'), {
     document: {title: 'Just a moment', querySelector: () => null, addEventListener() {}},
