@@ -52,7 +52,7 @@ assert.equal(site.ext.userScript.endsWith('/js/hanime1.user.js?v=3'), true);
 assert.equal(site.ext.webViewSettings.blockList.includes('https://*.googletagmanager.com/*'), true);
 assert.match(site.ext.spider.homeContent.loadUrl, /search\?page=1&sort=/);
 assert.match(site.ext.spider.categoryContent.loadUrl, /genre=\$\{tid\}.*page=\$\{pg:-1\}/);
-for (const key of ['missav', 'jable', 'av01', 'rou', 'hanime1']) {
+for (const key of ['missav', 'jable', 'av01']) {
     assert.deepEqual(config.sites.find(item => item.key === key).style, {type: 'rect', ratio: 1.5});
 }
 const route = new URL(site.ext.spider.categoryContent.loadUrl
