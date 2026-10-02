@@ -156,7 +156,7 @@
           "homeContent": {"loadUrl": "https://hanime1.me/search?page=1&sort=%E6%9C%80%E6%96%B0%E4%B8%8A%E5%B8%82"},
           "categoryContent": {"loadUrl": "https://hanime1.me/search?genre=${tid}&page=${pg:-1}&sort=${sort:-%E6%9C%80%E6%96%B0%E4%B8%8A%E5%B8%82}&date=${date:-}&duration=${duration:-}"},
           "detailContent": {"loadUrl": "https://hanime1.me/watch?v=${id}"},
-          "searchContent": {"loadUrl": "https://hanime1.me/search?query=${key}"}
+          "searchContent": {"loadUrl": "https://hanime1.me/search?query=${key}&page=${pg:-1}"}
         }
       }
     }
