@@ -1,6 +1,6 @@
 # 自有公开字幕库：实现与部署
 
-2026-10-03 字幕数据已上传 R2，云端全量及公开样本校验通过；播放器接入仍为本地候选，尚未发布新 JAR 或修改正式配置，也未验证手机自动加载和时间轴。候选基于 main `7914a24`，复用已有 TV `Result.subs` → `Sub` → `MediaItem.SubtitleConfiguration` 链路，无需修改 TV 或重签 APK。
+2026-10-03 字幕数据已上传 R2，云端全量及公开样本校验通过；候选 JAR/配置只发布在隔离测试分支。手机已验证候选加载、库字幕轨道自动选择、候选切换和未命中仍可播放；用户确认字幕实际显示，但样本存在时间偏移。当前播放器经目视反馈临时校准为 -6 秒，调整后同步待复核，正式入口未改。候选基于 main `7914a24`，复用已有 TV `Result.subs` → `Sub` → `MediaItem.SubtitleConfiguration` 链路，无需修改 TV 或重签 APK。
 
 ## 播放与匹配
 
@@ -121,11 +121,27 @@ Standard 桶 `luoyuqiu-subtitles` 的公开根地址为 [字幕库开发地址](
 
 公网 HTTP 检查中，`107SYBI001` 的单候选及 `10MU1080` 的全部 17 个候选均可下载，18 份字幕的 SHA256 和严格 UTF-8 检查通过；不存在的番号返回 404。字幕和索引的 Content-Type、Cache-Control 与上传设置一致。这里的缓存头不代表 `r2.dev` 已提供自定义域名的边缘缓存能力。
 
-检查报告保留在本机 `outputs/r2-public-validation-20261003`。这些是电脑端验证，不是手机实播；正式配置、v37 JAR、TV 源码和 APK 均未修改，自动加载及时间轴仍需按下节验收。
+云端检查报告保留在本机 `outputs/r2-public-validation-20261003`；它们不替代下节的手机测试。正式配置、v37 JAR、TV 源码和 APK 均未修改。
 
 ## 发布与验收
 
-用户已授权下一阶段测试。隔离入口为 [字幕测试配置](https://raw.githubusercontent.com/jokers963/CatVodSpider/feat/public-subtitles/json/luoyuqiu-subtitles-test.json)，只在 `feat/public-subtitles` 分支发布候选 JAR 和配置，不替换 main 或正式 Pages 入口。配置内含候选 MD5，六站沿用最新正式 userscript；`node scripts/subtitles/test_config.cjs` 检查候选校验值、六站库地址以及除此之外与正式配置完全相同。手机需要先手动解锁，实际加载及自动字幕仍待验证。
+隔离入口为 [字幕测试配置](https://raw.githubusercontent.com/jokers963/CatVodSpider/feat/public-subtitles/json/luoyuqiu-subtitles-test.json)，只在 `feat/public-subtitles` 分支发布候选 JAR 和配置，不替换 main 或正式 Pages 入口。配置内含候选 MD5，六站沿用最新正式 userscript；`node scripts/subtitles/test_config.cjs` 检查候选校验值、六站库地址以及除此之外与正式配置完全相同。
+
+### 本轮手机抽样（2026-10-03）
+
+用户授权正常解锁和开启手机现有代理后，沿用现有配置/节点启用 Clash。App 通过本地 cast API 和接收确认界面加载远程测试入口，没有直接改私有配置文件。手机缓存 JAR 的 SHA256 与候选和公网一致；只正常重启 App，没有清数据、截图、安装 APK 或修改方向锁定。
+
+- MissAV IPX343：菜单自动选中“字幕库 · IPX343 · SRT · 01”；持续播放位置 `21196→57234 ms`，快进后的准备状态恢复至 `145330 ms` 正常播放。
+- MissAV IPX005：菜单列出 3 个 SRT 和 1 个 VTT。切换 SRT 03、快进后 `116610→165369 ms` 正常播放，重新打开菜单确认 SRT 03 selected；切换 VTT 04，返回再进入仍 selected VTT 04，播放恢复。
+- CJOD538：库索引 HTTP 404，仍正常播放 `45→29123 ms`，没有错误提示或字幕按钮；这不证明迅雷命中，只证明此未命中样本不阻断媒体。
+
+正常播放样本均 `state=3`、`speed=1.0`、`error=null`；所查日志未见播放/字幕解码异常。轨道名称和 selected 状态不能单独证明实际绘制或同步；用户随后以 IPX005 内嵌字幕作参照，确认外挂字幕已显示但晚约 7 秒。复核时当前选中 SRT 02、原偏移 +0.0s，现已在播放器字幕设置中读回确认 -7.0s（提前 7 秒），恢复正常播放，待用户对照确认。偏移只调用当前 player 的 `setTextOffsetMs`，没有改字幕原文件或全库；其他影片测试前应归零，不保证此临时值跨影片不会继承，也不把它写为统一校正。
+
+手机保留测试入口和 IPX005 供复核；尚未验收六站全部字幕、库网络异常或所有时间轴，不正式发布。手机报告在本机 `outputs/public-subtitles-phone-test-20261003/verification.json`。
+
+用户随后反馈 -7 秒时外挂反而提前约 1 秒，已减为提前 6 秒，界面核对 `-6.0s` 并恢复播放（`581314 ms`、state=3、speed=1.0、error=null）。这是当前播放器的临时校准，是否同步待再次确认；原库不改，不能将 -6 秒推广到其他候选或影片。测试结束前应清理临时控制转发，后续其他影片前偏移归零。
+
+### 完整验收流程
 
 1. 生成、编码审计及 `--verify` 通过，确定真实公开根地址。
 2. 上传字幕和索引，验证一个单字幕番号、一个多字幕番号以及不存在的番号；确认所有候选地址可下载且内容是 UTF-8。
