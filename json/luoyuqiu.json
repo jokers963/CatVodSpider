@@ -1,5 +1,5 @@
 {
-  "spider": "https://jokers963.github.io/CatVodSpider/jar/gm_subs-v37.jar?v=37",
+  "spider": "https://jokers963.github.io/CatVodSpider/jar/gm_subs-v38.jar?v=38;md5;817f14e37e342691a5d0cab2fabd5b73",
   "sites": [
     {
       "key": "missav",
@@ -13,6 +13,7 @@
       "timeout": 60,
       "ext": {
         "userScript": "https://jokers963.github.io/CatVodSpider/js/missav.user.js?v=9",
+        "subtitleLibrary": "https://pub-662c4b411cfb4cf69f52f71f22140341.r2.dev/",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": true
@@ -41,6 +42,7 @@
       "timeout": 60,
       "ext": {
         "userScript": "https://jokers963.github.io/CatVodSpider/js/jable.user.js?v=12",
+        "subtitleLibrary": "https://pub-662c4b411cfb4cf69f52f71f22140341.r2.dev/",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": true,
@@ -81,6 +83,7 @@
       "timeout": 60,
       "ext": {
         "userScript": "https://jokers963.github.io/CatVodSpider/js/av01.user.js?v=5",
+        "subtitleLibrary": "https://pub-662c4b411cfb4cf69f52f71f22140341.r2.dev/",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": true,
@@ -116,6 +119,7 @@
       "timeout": 60,
       "ext": {
         "userScript": "https://jokers963.github.io/CatVodSpider/js/rou.user.js?v=6",
+        "subtitleLibrary": "https://pub-662c4b411cfb4cf69f52f71f22140341.r2.dev/",
         "debug": false,
         "webViewSettings": {"blockNetworkImage": true},
         "spider": {
@@ -138,6 +142,7 @@
       "timeout": 60,
       "ext": {
         "userScript": "https://jokers963.github.io/CatVodSpider/js/hanime1.user.js?v=3",
+        "subtitleLibrary": "https://pub-662c4b411cfb4cf69f52f71f22140341.r2.dev/",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": true,
@@ -172,6 +177,7 @@
       "timeout": 60,
       "ext": {
         "userScript": "https://jokers963.github.io/CatVodSpider/js/javguru.user.js?v=4",
+        "subtitleLibrary": "https://pub-662c4b411cfb4cf69f52f71f22140341.r2.dev/",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": true,

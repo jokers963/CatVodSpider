@@ -12,7 +12,7 @@
 
 - 本仓库负责远程配置、GMSubs、站点 userscript 与运行 JAR；配套播放器实际开发入口为 [jokers963/TV:luoyuqiu](https://github.com/jokers963/TV/tree/luoyuqiu)，先读该分支 [AGENTS.md](https://github.com/jokers963/TV/blob/luoyuqiu/AGENTS.md)。默认分支 `fongmi` 仅作上游同步参考。
 - 正式手机入口是 `https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json`。不要填写电脑本地文件或 GitHub blob 页面。
-- 2026-10-01 起 SupJav 已移除、NBD-022 排查取消，旧 `json/supjav.json` 已退役；正式配置为 MissAV、Jable、AV01、肉视频、Hanime1，共享 JAR v37。先读 AI_HANDOFF 顶部最新交接，下方旧记录不能作为恢复任务的依据。
+- SupJav 已移除、NBD-022 排查取消，旧 `json/supjav.json` 已退役；MemoJav 亦已按用户要求取消，不恢复。2026-10-03 用户确认发布公开字幕库，六站 MissAV、Jable、AV01、肉视频、Hanime1、JavGuru 共用 v38，v37 保留供回退；部署完成与未验收范围以 AI_HANDOFF 顶部为准，下方旧记录不能作为恢复任务的依据。
 - 实际播放器定制分支为 `jokers963/TV:luoyuqiu`，本机工作目录为 `D:/CodexWorkspace/Android/TV563Release`；`fongmi` 是另一分支。手机遵守用户“不要截图”的要求。
 - 保护用户未提交改动；旧 `交接.md` 不删除/覆盖，其历史内容不能代替当前源码。禁止破坏性 Git 操作、强推或未经请求同步上游。
 - TV 本地工作树及运行文件保持只读；文档不授予运行修改或发布权限，权限以用户当次明确授权为准。
