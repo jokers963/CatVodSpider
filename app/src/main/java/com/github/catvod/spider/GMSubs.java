@@ -251,7 +251,8 @@ public class GMSubs extends Spider {
     }
 
     private static final Pattern CUE_TIME = Pattern.compile("(?m)^\\s*(\\d{1,3}:\\d{2}:\\d{2}[,.]\\d{1,3}|\\d{2}:\\d{2}[,.]\\d{1,3})\\s*-->\\s*(\\d{1,3}:\\d{2}:\\d{2}[,.]\\d{1,3}|\\d{2}:\\d{2}[,.]\\d{1,3})[^\\r\\n]*$");
-    private static final Pattern SUBTITLE_TAGS = Pattern.compile("<[^>]*>|\\{[^}]*}");
+    // Literal braces must be explicit: Android's ICU rejects an unescaped closing brace.
+    private static final Pattern SUBTITLE_TAGS = Pattern.compile("<[^>]*>|[{][^}]*[}]");
     private static final Pattern NOISE_TEXT = Pattern.compile("^[\\[（(【].*(?:呼吸|吸气|呼气|喘|呻吟|吐息|鼻息|声|音|脚步|笑い|泣き|息遣い|息を).*[\\]）)】]$");
     private static final Pattern REPEATED_TEXT = Pattern.compile("(.)\\1{7,}");
     private static final Pattern AD_TEXT = Pattern.compile("(?i)https?://|www\\.|字幕.{0,6}(?:制作|听译|校对)|(?:色花堂|98堂).{0,12}(?:出品|字幕|听译)|广告|推广|公众号");
