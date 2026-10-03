@@ -139,6 +139,8 @@ Standard 桶 `luoyuqiu-subtitles` 的公开根地址为 [字幕库开发地址](
 
 以下手机段落为过程记录，旧“待确认”和“仅本地”描述以当时为准。完整六站字幕验收及全库自动同步未完成；不新增偏移持久化、不更改整库时间轴，正式发布须另行获得用户授权。
 
+记录/回归测试提交 `b5e4149` 已推送测试分支。随后只读复核发现其他维护者将 main 推进至 `1336ed8`，新增 MemoJav（`4bb9dba`），未在本轮合并或覆盖。字幕测试配置仍基于 `7914a24` 的六站快照；下述配置隔离检查只与本测试分支的 `json/luoyuqiu.json` 比较，不是最新七站 main 的一致性证明。正式发布前另行协调、对齐最新配置并复核，不能用旧六站配置覆盖新站。
+
 隔离入口为 [字幕测试配置](https://raw.githubusercontent.com/jokers963/CatVodSpider/feat/public-subtitles/json/luoyuqiu-subtitles-test.json)，只在 `feat/public-subtitles` 分支发布候选 JAR 和配置，不替换 main 或正式 Pages 入口。配置内含候选 MD5，六站沿用最新正式 userscript；`node scripts/subtitles/test_config.cjs` 检查候选校验值、六站库地址以及除此之外与正式配置完全相同。
 
 ### 本轮手机抽样（2026-10-03）

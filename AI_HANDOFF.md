@@ -6,6 +6,8 @@
 
 以下为此前各阶段证据，阶段中的“待确认”“仅本地”及手机位置描述以记录当时为准；本次不重新操作手机，当前决定以上段及唯一任务表为准。
 
+**并行远程变更核对**：记录/回归测试提交 `b5e4149` 已推送至 `feat/public-subtitles`。推送后发现 main 被其他提交推进至 `1336ed8`：`4bb9dba` 新增 MemoJav 脚本和正式配置条目，`1336ed8` 补充其交接，交接写明手机验收尚待用户确认。本轮只读核对，未合并、回退或覆盖对方改动，也不承接新站任务。字幕候选仍基于 `7914a24` 的六站配置，不包含 MemoJav；配置隔离测试只比较本测试分支内的正式配置快照，不能据其通过声称与最新七站 main 完全一致。未来正式发布前须核对最新 main、协调并行维护者后对齐配置及重跑检查，不能把六站旧配置整份覆盖正式入口。
+
 收尾复核：提交前测试分支 local/remote 均 `e492d88`、main 远程 `7914a24`、TV local/remote `45149355d` 且干净；26 项 Java/JUnit、D8/JAR 结构、三组站点 Node、配置隔离、两份 Markdown 的 12 个本地链接及 `git diff --check` 均通过。JVM 中 OkHttp 初始化打印 Android Log 原生方法不可用警告，但 JUnit 最终 `OK (26 tests)`、构建检查退出 0；不把该警告记为手机故障，也不宣称完整 Gradle 测试通过。本轮输出仅在 `outputs/subtitles-records-closeout-20261003/wrapper`，是本机原始包装层测试产物，不上传或替换候选/正式 JAR。本机续测 JSON 同步标注用户跳过/暂缓，报告不上传；Git 提交仅含本文件、字幕档案及既有回归测试文件。
 
 **最新续测（2026-10-03，其他样本及真实故障兜底通过，等待 Jable 手动验证）**：用户手动重新打开 App 后继续授权测试。AV01/IPX343（网站 API 核对 id 28330）和 JavGuru/IPX343 均在字幕菜单自动选中库 SRT 01，设置界面读回偏移 `+0.0s`，未继承先前 -6 秒。JavGuru 持续播放 `65587→133340 ms`，快进至 `1576221 ms` 后 state=3、speed=1、error=null，菜单同一库轨道仍 selected。AV01 首次持续播放 `17306→37879 ms`；复测快进至 `1609750 ms` 时 state=6，随后恢复 `1682738 ms`、state=3、speed=1、error=null，库 SRT 01 仍 selected。中途一轮 AV01 菜单出现迅雷候选，触发原因未取证，不能据此推断 R2 故障；另行做明确故障测试如下。轨道菜单只能证明匹配/加载及选择，不替代新样本字幕实际绘制或对白同步的目视确认。
@@ -63,10 +65,10 @@ Hanime1、肉视频各一个首页无可识别番号样本正常播放：Hanime1
 | 播放器目录 | `D:/CodexWorkspace/Android/TV563Release` |
 | 上游参考 | `TV:fongmi`；不是当前 APK 的构建分支，不盲目合并 |
 | 正式配置 | `https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json` |
-| 正式 JAR | `jar/gm_subs-v37.jar?v=37`，六站共用，无站点 JAR 覆写 |
+| 正式 JAR | `jar/gm_subs-v37.jar?v=37`，最新 main 七站共用，无站点 JAR 覆写；字幕候选仍为六站 |
 | 手机实装 | 2026-10-02 ADB 核对 `com.jokers963.luoyuqiu`，`5.6.3-lyq.3` / `56303`，Android 13 |
 
-正式站点与脚本 URL 版本：`missav` v9、`jable` v12、`av01` v5、`rou` v6、`hanime1` v3、`javguru` v4。旧 `json/supjav.json` 已退役，不作为兼容入口。
+最新 main 正式站点与脚本 URL 版本：`missav` v9、`jable` v12、`av01` v5、`rou` v6、`hanime1` v3、`javguru` v4、`memojav` v1；其中 MemoJav 不在本字幕候选的配置或验收范围。旧 `json/supjav.json` 已退役，不作为兼容入口。
 
 v37 SHA-256：`03B7BBA54A47C958B5B11B04E96382A4687B01825EADE40295976443B5AF0021`；MD5：`004df47ae36384de6fe14d5e31f23ff7`。
 
