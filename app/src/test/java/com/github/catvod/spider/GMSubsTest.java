@@ -29,6 +29,133 @@ public class GMSubsTest {
     }
 
     @Test
+    public void publicLibraryUsesTheSameCodeRulesAsTheBuilder() {
+        String[][] samples = {{"IPX343.FHD", "IPX-343"}, {"S2M-016", "S2M-016"},
+                {"T28-451", "T28-451"}, {"259LUXU-1196", "259LUXU-1196"},
+                {"FC2PPV-1234567", "FC2-PPV-1234567"}, {"FC2-PPV-1234567", "FC2-PPV-1234567"},
+                {"HEYZO 1234", "HEYZO-1234"}, {"FHD1080 IPX-343", "IPX-343"},
+                {"1080p", ""}, {"UTF-16", ""}, {"082215_01", ""}, {"ABP317C", ""},
+                {"REAL-795 IPX-343", "REAL-795"}, {"ABP-317C", "ABP-317"}};
+        for (String[] sample : samples) assertEquals(sample[0], sample[1], GMSubs.codeFromTitle(sample[0]));
+    }
+
+    @Test
+    public void publicLibraryIsOptionalAndConfinesManifestObjectsToTheExactCode() throws Exception {
+        String base = "https://subs.example/library/";
+        assertEquals(base, GMSubs.libraryFromExtend("{\"subtitleLibrary\":\"https://subs.example/library\"}"));
+        for (String config : new String[]{"{}", "not json", "{\"subtitleLibrary\":\"http://subs.example\"}",
+                "{\"subtitleLibrary\":\"https://user:secret@subs.example\"}", "{\"subtitleLibrary\":\"https://subs.example?token=x\"}"}) {
+            assertEquals("", GMSubs.libraryFromExtend(config));
+        }
+        assertEquals(base + "index/IP/IPX343.json", GMSubs.libraryIndexUrl(base, "ipx-343"));
+        String digest = "a".repeat(64);
+        JSONArray rows = new JSONArray()
+                .put(libraryRow("IPX343", digest, "srt"))
+                .put(libraryRow("IPX343", digest, "srt"))
+                .put(libraryRow("IPX343", "b".repeat(64), "ass"))
+                .put(libraryRow("IPX344", digest, "srt"))
+                .put(new JSONObject().put("name", "escape").put("ext", "srt").put("path", "subs/IP/IPX343/../../escape.srt"))
+                .put(new JSONObject().put("name", "remote").put("ext", "srt").put("path", "https://other.example/sub.srt"));
+        JSONObject manifest = new JSONObject().put("code", "IPX343").put("subs", rows);
+        JSONArray subs = GMSubs.librarySubtitles(base, "IPX-343", manifest);
+        assertEquals(2, subs.length());
+        assertEquals(base + "subs/IP/IPX343/" + digest + ".srt", subs.getJSONObject(0).getString("url"));
+        assertEquals("application/x-subrip", subs.getJSONObject(0).getString("format"));
+        assertEquals(1, subs.getJSONObject(0).getInt("flag"));
+        assertEquals(2, subs.getJSONObject(1).getInt("flag"));
+        assertEquals(0, GMSubs.librarySubtitles(base, "IPX-344", manifest).length());
+    }
+
+    @Test
+    public void libraryHitsSkipXunleiAndMissesOrFailuresFallbackWithoutMixingCaches() throws Exception {
+        JSONArray own = new JSONArray().put(item("Own.srt", "https://subs.example/own.srt", "srt"));
+        JSONArray xunlei = new JSONArray().put(item("Other.srt", "https://xunlei.example/other.srt", "srt"));
+        int[] requests = {0};
+        java.util.concurrent.Callable<JSONArray> fallback = () -> { requests[0]++; return xunlei; };
+        assertEquals(own.toString(), GMSubs.libraryFirst(() -> own, fallback).toString());
+        assertEquals(0, requests[0]);
+        assertEquals(xunlei.toString(), GMSubs.libraryFirst(() -> new JSONArray(), fallback).toString());
+        assertEquals(xunlei.toString(), GMSubs.libraryFirst(() -> { throw new java.io.IOException("offline"); }, fallback).toString());
+        assertEquals(xunlei.toString(), GMSubs.libraryFirst(null, fallback).toString());
+        assertEquals(3, requests[0]);
+        long now = System.currentTimeMillis();
+        GMSubs.cacheSubtitles("https://subs.example/one/", "LIB-941", own, now);
+        GMSubs.cacheSubtitles("", "LIB-941", xunlei, now);
+        assertEquals(own.toString(), GMSubs.cachedSubtitles("https://subs.example/one/", "lib941", now).toString());
+        assertEquals(xunlei.toString(), GMSubs.cachedSubtitles("LIB-941").toString());
+        assertEquals(null, GMSubs.cachedSubtitles("https://subs.example/two/", "LIB-941", now));
+        assertEquals(2, GMSubs.mergeSubtitles(own, new JSONArray().put(own.getJSONObject(0)).put(xunlei.getJSONObject(0))).length());
+        long start = 4_000_000_000L;
+        assertTrue(GMSubs.hasSubtitleLookupBudget(start, start + java.util.concurrent.TimeUnit.SECONDS.toNanos(25), 2));
+        assertFalse(GMSubs.hasSubtitleLookupBudget(start, start + java.util.concurrent.TimeUnit.SECONDS.toNanos(26), 2));
+    }
+
+    private static JSONObject libraryRow(String key, String digest, String ext) throws Exception {
+        return new JSONObject().put("name", key + "." + ext).put("ext", ext)
+                .put("path", "subs/" + key.substring(0, 2) + "/" + key + "/" + digest + "." + ext);
+    }
+
+    @Test
+    public void playerContentFetchesLibraryOrXunleiAndAlwaysKeepsTheMediaResult() throws Exception {
+        java.lang.reflect.Field clientField = GMSubs.class.getDeclaredField("http");
+        clientField.setAccessible(true);
+        Object previous = clientField.get(null);
+        java.util.List<String> requests = new java.util.ArrayList<>();
+        String ownResponse = new JSONObject().put("code", "LIB952").put("subs", new JSONArray()
+                .put(libraryRow("LIB952", "a".repeat(64), "srt"))).toString();
+        String fallbackResponse = new JSONObject().put("code", 0).put("data", new JSONArray()
+                .put(item("Candidate.srt", "https://xunlei.example/fallback.srt", "srt"))).toString();
+        clientField.set(null, new okhttp3.OkHttpClient.Builder().addInterceptor(chain -> {
+            String url = chain.request().url().toString();
+            requests.add(url);
+            boolean library = chain.request().url().host().equals("subs.example");
+            String body;
+            int status = 200;
+            if (library && url.endsWith("LIB952.json")) {
+                body = ownResponse;
+            } else if (library) {
+                if (url.endsWith("LIB953.json")) { status = 404; body = ""; }
+                else body = "broken JSON";
+            } else {
+                if (chain.request().url().queryParameter("name").equals("LIB-955")) throw new java.io.IOException("offline");
+                body = fallbackResponse;
+            }
+            return new okhttp3.Response.Builder().request(chain.request()).protocol(okhttp3.Protocol.HTTP_1_1)
+                    .code(status).message("synthetic").body(okhttp3.ResponseBody.create(body, okhttp3.MediaType.get("application/json"))).build();
+        }).build());
+        String media = new JSONObject().put("url", "https://media.example/master.m3u8").put("parse", 0)
+                .put("header", new JSONObject().put("User-Agent", "media-UA"))
+                .put("subs", new JSONArray().put(item("Native.srt", "https://native.example/sub.srt", "srt"))).toString();
+        try {
+            GMSubs spider = new GMSubs();
+            java.lang.reflect.Field delegate = GMSubs.class.getDeclaredField("gm");
+            delegate.setAccessible(true);
+            delegate.set(spider, new com.github.catvod.crawler.Spider() {
+                @Override public String playerContent(String flag, String id, java.util.List<String> vipFlags) { return media; }
+            });
+            java.lang.reflect.Field libraryField = GMSubs.class.getDeclaredField("subtitleLibrary");
+            libraryField.setAccessible(true);
+            libraryField.set(spider, "https://subs.example/");
+            for (String code : new String[]{"LIB-952", "LIB-953", "LIB-954", "LIB-955"}) {
+                requests.clear();
+                String result = spider.playerContent(code, "https://media.example/master.m3u8", java.util.List.of());
+                JSONObject play = new JSONObject(result);
+                assertEquals("https://media.example/master.m3u8", play.getString("url"));
+                assertEquals("media-UA", play.getJSONObject("header").getString("User-Agent"));
+                assertEquals(code.equals("LIB-952") ? 1 : 2, requests.size());
+                assertEquals(code.equals("LIB-955") ? 1 : 2, play.getJSONArray("subs").length());
+                assertTrue(containsUrl(play.getJSONArray("subs"), "https://native.example/sub.srt"));
+                if (code.equals("LIB-955")) assertEquals(media, result);
+            }
+            requests.clear();
+            spider.playerContent("LIB-952", "https://media.example/master.m3u8", java.util.List.of());
+            assertEquals(0, requests.size());
+        } finally {
+            clientField.set(null, previous);
+        }
+    }
+
+    @Test
     public void readsCodeFromTheLineNameWhenThePlayIdIsADirectAddress() {
         assertEquals("IPX-343", GMSubs.codeFromPlay("ipx-343-uncensored 标题", "https://cdn.example/master.m3u8"));
         assertEquals("", GMSubs.codeFromPlay("MissAV", "https://cdn.example/master.m3u8"));

@@ -1,6 +1,8 @@
 # 落雨秋 AI 接手与协作记录
 
-更新日期：2026-10-02。本文件只保留当前状态；历史实验、旧版本与失败证据见 [完整历史快照](docs/history/AI_HANDOFF-2026-10-01.md)。历史不授予权限，不代表当前任务。
+更新日期：2026-10-03。本文件只保留当前状态；历史实验、旧版本与失败证据见 [完整历史快照](docs/history/AI_HANDOFF-2026-10-01.md)。历史不授予权限，不代表当前任务。
+
+**最新进展（2026-10-03，本地候选）**：用户希望将桌面约三万份字幕按番号自动匹配，已选定公开静态字幕库方案，暂无 R2 桶/域名。本轮基于最新远程 `7914a24`，在独立分支 `feat/public-subtitles` / `C:/Users/Administrator/Documents/Codex/2026-10-02/https-github-com-jokers963-catvodspider-main/work/CatVodSpider-public-subtitles` 实现生成器与可选 `ext.subtitleLibrary`：库命中优先、失败/未命中回退迅雷、保留原字幕和播放字段、缓存按库地址隔离。26 项 Java/JUnit、D8/JAR/关闭遥测及日志出口构建验证和三组 Node 检查通过，候选在 `C:/Users/Administrator/Documents/Codex/2026-10-02/https-github-com-jokers963-catvodspider-main/outputs/gm_subs-public-subtitles-candidate.jar`，SHA256 `52A182633F21B6FA53F12BD6AA8279F8F15E1EBE36436F417938438A35D4FC04`、MD5 `817f14e37e342691a5d0cab2fabd5b73`。Python 可运行检查通过；整包处理全部 34,180 份支持格式，收录 33,464 份、合并重复 3,954 份，得到 29,510 个字幕对象与 22,758 个索引（1,226,263,982 字节）。511 份番号未识别、205 份编码/结构待查，另有 75 个压缩包未自动展开；发现 GB18030/Big5 混合编码，使用本机已有 charset-normalizer 3.5.1 自动识别，收录 Big5 155 份。最终输出在本对话 `outputs/public-subtitles-final-20261003`，`--verify` 已复核全部已收录原件哈希、UTF-8/对象哈希/格式、索引引用与完整清单；原件保持只读，语义和时间轴尚未实机验收。正式 v37 SHA256 仍为 `03B7BBA54A47C958B5B11B04E96382A4687B01825EADE40295976443B5AF0021`，正式 JSON 和 TV 保持原有发布；本轮未推送、上传、安装或操作手机。下一步由用户准备 Cloudflare R2 账号/桶及公开地址，再上传、发布新版本并手机验收。详细实现与后续操作见 [自有字幕库档案](docs/subtitles/README.md)。
 
 ## 移交状态（2026-10-02）
 
@@ -66,6 +68,7 @@ v37 SHA-256：`03B7BBA54A47C958B5B11B04E96382A4687B01825EADE40295976443B5AF0021`
 
 | 任务 | 负责人/发布人 | 范围与状态 |
 | --- | --- | --- |
+| 自有公开字幕库 | 当前 Codex 单独执行，本地验证完成 | 独立分支 `feat/public-subtitles`；GMSubs、测试、生成脚本与文档已完成，33,464 原件哈希/29,510 对象/22,758 索引全量验证通过，26 项 Java、Python 检查及三组 Node 通过。用户暂无 R2 桶/域名，待云端上传/新 JAR 发布/手机字幕验收；正式入口与 TV/APK/签名未变 |
 | 第 4～6 项 | 原主对话单独执行/发布，已结束 | 接口 `572dae8`、TV `45149355d`；归档、去重/旧资源退役、文档差异归并及恢复标签已发布，检查通过；封面分支因打开 PR 保留。不改运行源码或 APK |
 | 第 7 项 | 当前主对话单独执行/发布，已结束 | 已完成：v37 实际加载及 MissAV、AV01、肉视频、Hanime1、Jable 五站核心播放链路通过；Jable 在系统 WebView 原位更新至 `155.0.8059.30` 后恢复；当前无进行中的实机任务 |
 | Jable 分类翻页修复 | 豆宝执行/发布，用户逐项确认 | ✅ 已闭环：PR #1 已合并；三组 Node 测试通过；**2026-10-02 用户手机实机验证：jable 分类下滑翻页正常**。范围：`js/jable.user.js`（pageCount 适配 async 分片：整批返回时报 9999 页，`@version` 1.0.6→1.0.7）、`json/luoyuqiu.json`（jable.user.js `?v=8`→`?v=9`）、`js/adapters.test.cjs`（新增三项 pagecount 断言）。详细交接（根因/改动/验证/待办）：[docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md](docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md) |
