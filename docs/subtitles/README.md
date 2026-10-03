@@ -127,6 +127,8 @@ Standard 桶 `luoyuqiu-subtitles` 的公开根地址为 [字幕库开发地址](
 
 ### v38 正式发布（2026-10-03，已部署并经公网核对）
 
+发布后用户手动反馈“加载验证了。字幕加载正常”，正式配置加载及字幕正常加载得到用户确认，本轮交付收尾。本次反馈未指明站点/番号/候选或对白同步，不等于新增设备缓存哈希核对或完整六站/全库时间轴验收；下表未验证和暂缓状态不变，不自动恢复这些任务。
+
 发布提交 `5c0de0d` 经 [PR #3](https://github.com/jokers963/CatVodSpider/pull/3) 合并，main 合并提交 `ecad170`；[CI](https://github.com/jokers963/CatVodSpider/actions/runs/37115706726) 和 [Pages](https://github.com/jokers963/CatVodSpider/actions/runs/37115706211) 均成功。正式裸入口 JSON 与发布文件一致；公网 v38、MD5 文件及保留的 v37 哈希通过。库 IPX343 索引和首个候选 HTTP 200，内容 SHA256 和严格 UTF-8 通过，不存在索引 HTTP 404；MemoJav 条目缺失，正式脚本 HTTP 404。TV 工作树仍干净，19 个 AAR 校验匹配。本机发布摘要 `outputs/subtitles-release-v38-20261003/verification.json` 不上传。此前“待确认”“未发布”等段落保留过程证据，当前部署状态以本段为准，未验收范围以下表及最新共享交接为准。
 
 用户明确确认正式发布。正式配置沿用原裸入口 `https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json`，六站增加同一公开 `subtitleLibrary`；站点脚本、路由、顺序、画面样式和其他设置不改，MemoJav 保持移除。v38 与此前实机缓存校验过的 sanitized 候选逐字节相同，SHA256 `52A182633F21B6FA53F12BD6AA8279F8F15E1EBE36436F417938438A35D4FC04`、MD5 `817f14e37e342691a5d0cab2fabd5b73`，大小 `1164269` 字节；不重新构建未测试的运行包，不改 TV/APK、签名、AAR、R2 对象或时间轴。配置检查加入 CI，检查 v38 与候选一致、六站库地址、关闭 debug、无站点 JAR 覆写及其余设置一致。
