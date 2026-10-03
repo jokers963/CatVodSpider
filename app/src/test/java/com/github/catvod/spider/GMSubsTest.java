@@ -33,6 +33,100 @@ public class GMSubsTest {
         return text.toString();
     }
 
+    private static String spacedCaptions(int count, String body, long offset) {
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < count; i++) {
+            long from = offset + i * 30000L;
+            text.append(i + 1).append('\n');
+            for (long time : new long[]{from, from + 2000}) {
+                text.append(String.format(java.util.Locale.ROOT, "%02d:%02d:%02d,%03d", time / 3600000,
+                        time / 60000 % 60, time / 1000 % 60, time % 1000));
+                text.append(time == from ? " --> " : "\n");
+            }
+            text.append(body).append("\n\n");
+        }
+        return text.toString();
+    }
+
+    @Test
+    public void dominantLongAnnotationLoopsAreDemotedWithoutDeletingCandidates() throws Exception {
+        String ordinary = spacedCaptions(120, "今天我们一起去公园。", 3000000);
+        GMSubs.SubtitleQuality loop = quality(spacedCaptions(80, "（未知的长串识别标签）", 0) + ordinary);
+        GMSubs.SubtitleQuality healthy = quality(spacedCaptions(80, "今天我们一起去公园。", 0) + ordinary);
+        assertEquals(80, loop.loopedAnnotation);
+        assertEquals(healthy.score() - 32, loop.score());
+        assertTrue(loop.annotations.isEmpty());
+        JSONArray rows = GMSubs.rankSubtitles("TEST-010", new JSONArray()
+                .put(item("TEST-010.srt", "https://example.com/loop.srt", "srt"))
+                .put(item("TEST-010-good.srt", "https://example.com/good.srt", "srt")));
+        JSONArray ranked = GMSubs.rankSubtitleContents("TEST-010", rows,
+                Map.of("https://example.com/loop.srt", loop, "https://example.com/good.srt", healthy));
+        assertEquals(2, ranked.length());
+        assertEquals("https://example.com/good.srt", ranked.getJSONObject(0).getString("url"));
+        assertTrue(ranked.getJSONObject(1).getString("name").endsWith("疑似正文复读"));
+    }
+
+    @Test
+    public void annotationLoopsProtectShortCallsDialogueLyricsRareAndConcentratedRepetition() throws Exception {
+        String ordinary = spacedCaptions(120, "今天我们一起去公园。", 3000000);
+        for (String body : new String[]{"哦", "是的", "部长", "（部长）", "（山田部长）", "今天我们一起去公园",
+                "（你好，朋友，辛苦了。）", "（♪今天我们一起去公园♪）", "[Thank you very much]"})
+            assertEquals(body, 0, quality(spacedCaptions(80, body, 0) + ordinary).loopedAnnotation);
+        String annotation = "（未知的长串识别标签）";
+        assertEquals(0, quality(spacedCaptions(59, annotation, 0) + spacedCaptions(41, "你好", 3000000)).loopedAnnotation);
+        assertEquals(0, quality(spacedCaptions(60, annotation, 0) + spacedCaptions(140, "你好", 3000000)).loopedAnnotation);
+        assertEquals(0, quality(captions(80, annotation) + ordinary).loopedAnnotation);
+        assertEquals(0, quality(spacedCaptions(80, annotation, 0) + spacedCaptions(120, "A very long English dialogue for a foreign subtitle.", 3000000)).loopedAnnotation);
+    }
+
+    @Test
+    public void nearEqualHealthyTranslationsAppearBeforeTheirTimeShiftAlternates() throws Exception {
+        String body = spacedCaptions(120, "今天我们一起去公园。", 0);
+        String shifted = spacedCaptions(120, "今天我们一起去公园。", 6000);
+        String twiceShifted = spacedCaptions(120, "今天我们一起去公园。", 12000);
+        assertEquals(quality(body).bodyFingerprint, quality(shifted).bodyFingerprint);
+        assertFalse(quality(body).fingerprint.equals(quality(shifted).fingerprint));
+        String[] names = {"a", "copy", "shift", "shift2", "other", "low", "unknown"};
+        JSONArray data = new JSONArray();
+        for (String name : names) data.put(item("TEST-011-" + name + ".srt", "https://example.com/" + name + ".srt", "srt"));
+        JSONArray rows = GMSubs.rankSubtitles("TEST-011", data);
+        Map<String, GMSubs.SubtitleQuality> evidence = Map.of(
+                "https://example.com/a.srt", quality(body), "https://example.com/copy.srt", quality(body),
+                "https://example.com/shift.srt", quality(shifted), "https://example.com/shift2.srt", quality(twiceShifted),
+                "https://example.com/other.srt", quality(spacedCaptions(119, "今天我们一起去看电影。", 0)),
+                "https://example.com/low.srt", quality(captions(20, "你好")));
+        JSONArray ranked = GMSubs.rankSubtitleContents("TEST-011", rows, evidence);
+        String[] expected = {"a", "other", "shift", "shift2", "low", "unknown"};
+        assertEquals(expected.length, ranked.length());
+        for (int i = 0; i < expected.length; i++) {
+            assertEquals("https://example.com/" + expected[i] + ".srt", ranked.getJSONObject(i).getString("url"));
+            assertEquals(i == 0 ? 1 : 2, ranked.getJSONObject(i).getInt("flag"));
+        }
+        assertTrue(ranked.getJSONObject(2).getString("name").endsWith("同正文·不同时间轴"));
+        assertFalse(rows.getJSONObject(2).getString("name").contains("同正文"));
+        // A distinct but much lower-quality family must not leapfrog a healthy time-shift alternative.
+        assertTrue(ranked.getJSONObject(4).getString("url").contains("low.srt"));
+    }
+
+    @Test
+    public void diversityNeverPromotesDamagedOrInvalidTranslationsOverHealthyShiftedAlternatives() throws Exception {
+        JSONArray data = new JSONArray();
+        for (String name : new String[]{"a", "shift", "damaged", "invalid"})
+            data.put(item("TEST-012-" + name + ".srt", "https://example.com/" + name + ".srt", "srt"));
+        String ordinary = spacedCaptions(120, "今天我们一起去公园。", 0);
+        GMSubs.SubtitleQuality damaged = quality(ordinary.replaceFirst("今天", "今\ufffd"));
+        GMSubs.SubtitleQuality invalid = quality(ordinary.replaceFirst("00:00:02,000", "00:00:00,000"));
+        assertEquals(1, damaged.damaged);
+        assertEquals(1, invalid.invalid);
+        JSONArray ranked = GMSubs.rankSubtitleContents("TEST-012", GMSubs.rankSubtitles("TEST-012", data), Map.of(
+                "https://example.com/a.srt", quality(ordinary),
+                "https://example.com/shift.srt", quality(spacedCaptions(120, "今天我们一起去公园。", 6000)),
+                "https://example.com/damaged.srt", damaged, "https://example.com/invalid.srt", invalid));
+        assertEquals("https://example.com/a.srt", ranked.getJSONObject(0).getString("url"));
+        assertEquals("https://example.com/shift.srt", ranked.getJSONObject(1).getString("url"));
+        assertEquals(4, ranked.length());
+    }
+
     @Test
     public void contentRankingPenalizesInvalidEmptyNoisyAndForeignNotJustEntryCount() throws Exception {
         GMSubs.SubtitleQuality healthy = quality(captions(493, "今天我们一起去公园。"));

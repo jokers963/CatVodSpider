@@ -8,12 +8,12 @@ const read = file => fs.readFileSync(path.join(root, file));
 const hash = (file, type) => createHash(type).update(read(file)).digest('hex');
 const formal = JSON.parse(read('json/luoyuqiu.json'));
 const test = JSON.parse(read('json/luoyuqiu-subtitle-ranking-test.json'));
-const jar = 'jar/gm_subs-subtitle-ranking-test-20261003-fix2.jar';
-const md5 = '1a1a1c5e1437215be47a324b3c537584';
+const jar = 'jar/gm_subs-subtitle-ranking-test-20261003-fix3.jar';
+const md5 = '28cd05f6a9e4f91fe333a916bb76edaa';
 assert.equal(hash(jar, 'md5'), md5);
 assert.equal(read(`${jar}.md5`).toString().trim(), md5);
-assert.equal(hash(jar, 'sha256'), 'b8914977d18d9da77377ef4f2efa3385f60c74e2e76c258954b619877cf87a85');
-assert.equal(read(jar).length, 1169678);
+assert.equal(hash(jar, 'sha256'), '9c72a25d70de9732c7d9d3b0adedc94fd5942a0a8688df739dc01fa57a1bec0c');
+assert.equal(read(jar).length, 1223148);
 assert.equal(test.spider, `https://raw.githubusercontent.com/jokers963/CatVodSpider/feat/subtitle-rule-ranking/${jar};md5;${md5}`);
 assert.deepEqual(test.sites.map(site => site.key), ['missav', 'av01', 'rou', 'hanime1', 'javguru']);
 for (const site of test.sites) {

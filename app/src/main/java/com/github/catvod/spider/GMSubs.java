@@ -235,8 +235,9 @@ public class GMSubs extends Spider {
 
     /** ponytail: structural heuristics only; audio/reference validation needs a separately scoped workflow. */
     static final class SubtitleQuality {
-        int cues, invalid, empty, noise, dialogue, han, latin, otherScript, damaged, characters, repeated, isolatedLatin;
-        String fingerprint;
+        int cues, invalid, empty, noise, dialogue, han, latin, otherScript, damaged, characters, repeated, isolatedLatin, loopedAnnotation;
+        String fingerprint, bodyFingerprint;
+        final Map<String, long[]> annotations = new HashMap<>();
 
         int score() {
             if (cues == 0) return -100;
@@ -249,6 +250,7 @@ public class GMSubs extends Spider {
             // A few speaker labels are not evidence; only substantial fragments in Chinese-first text count.
             if (han > latin && han > otherScript && isolatedLatin >= 5 && isolatedLatin * 100 >= cues)
                 value -= Math.min(25, 400 * isolatedLatin / cues);
+            value -= Math.min(35, 80 * loopedAnnotation / cues);
             return value;
         }
     }
@@ -259,6 +261,8 @@ public class GMSubs extends Spider {
     private static final Pattern NOISE_TEXT = Pattern.compile("^[\\[（(【].*(?:呼吸|吸气|呼气|喘|呻吟|吐息|鼻息|声|音|脚步|笑い|泣き|息遣い|息を).*[\\]）)】]$");
     private static final Pattern REPEATED_TEXT = Pattern.compile("(.)\\1{7,}");
     private static final Pattern ISOLATED_LATIN = Pattern.compile("^[A-Za-z][\\p{P}\\s]*$");
+    // Narrow annotation shape, not normal punctuated dialogue, short calls or marked lyrics.
+    private static final Pattern LONG_ANNOTATION = Pattern.compile("^[\\[（(【][^。！？!?，,：:；;♪♫]{6,80}[\\]）)】]$");
     private static final Pattern AD_TEXT = Pattern.compile("(?i)https?://|www\\.|字幕.{0,6}(?:制作|听译|校对)|(?:色花堂|98堂).{0,12}(?:出品|字幕|听译)|广告|推广|公众号");
 
     static long subtitleTime(String text) {
@@ -305,6 +309,7 @@ public class GMSubs extends Spider {
         String text = decodeSubtitle(bytes).replace("\r\n", "\n").replace('\r', '\n');
         SubtitleQuality quality = new SubtitleQuality();
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        MessageDigest bodyDigest = MessageDigest.getInstance("SHA-256");
         if (text.toLowerCase(Locale.ROOT).contains("[events]")) {
             int start = 1, end = 2, content = 9, fields = 10;
             boolean events = false;
@@ -324,7 +329,7 @@ public class GMSubs extends Spider {
                 } else if (line.regionMatches(true, 0, "Dialogue:", 0, 9)) {
                     String[] values = line.substring(9).split(",", fields);
                     if (values.length != fields) throw new IOException("Incomplete ASS event");
-                    addSubtitleCue(quality, digest, values[start], values[end], values[content].replace("\\N", "\n").replace("\\n", "\n").replace("\\h", " "));
+                    addSubtitleCue(quality, digest, bodyDigest, values[start], values[end], values[content].replace("\\N", "\n").replace("\\n", "\n").replace("\\h", " "));
                 }
             }
         } else {
@@ -343,38 +348,67 @@ public class GMSubs extends Spider {
                 String start = time.group(1), end = time.group(2);
                 String body = block.substring(time.end()).trim();
                 if (body.contains("-->")) throw new IOException("Incomplete cue separation");
-                addSubtitleCue(quality, digest, start, end, body);
+                addSubtitleCue(quality, digest, bodyDigest, start, end, body);
             }
         }
         if (quality.cues > 0) {
-            StringBuilder hex = new StringBuilder();
-            for (byte b : digest.digest()) hex.append(String.format(Locale.ROOT, "%02x", b & 255));
-            quality.fingerprint = hex.toString();
+            quality.fingerprint = subtitleDigest(digest);
+            quality.bodyFingerprint = subtitleDigest(bodyDigest);
+            // ponytail: only dominant, long-lived annotation loops; semantic repetition needs reference/audio.
+            if (quality.han > quality.latin && quality.han > quality.otherScript) {
+                for (long[] loop : quality.annotations.values()) {
+                    if (loop[0] >= 60 && loop[0] * 100 >= 35L * quality.cues && loop[2] - loop[1] >= 1200000)
+                        quality.loopedAnnotation = Math.max(quality.loopedAnnotation, (int) loop[0]);
+                }
+            }
         }
+        quality.annotations.clear(); // Do not retain raw phrases in evidence/cache.
         return quality;
     }
 
-    private static void addSubtitleCue(SubtitleQuality q, MessageDigest digest, String start, String end, String body) throws Exception {
+    private static String subtitleDigest(MessageDigest digest) {
+        StringBuilder hex = new StringBuilder();
+        for (byte b : digest.digest()) hex.append(String.format(Locale.ROOT, "%02x", b & 255));
+        return hex.toString();
+    }
+
+    private static void addSubtitleCue(SubtitleQuality q, MessageDigest digest, MessageDigest bodyDigest, String start, String end, String body) throws Exception {
         if (++q.cues > 20000) throw new IOException("Too many subtitle cues");
         long from = subtitleTime(start), to = subtitleTime(end);
         if (to <= from) q.invalid++;
         String visible = SUBTITLE_TAGS.matcher(body).replaceAll("").replaceAll("\\s+", " ").trim();
         digest.update((from + ":" + to + ":" + visible.length() + ":" + visible + "\n").getBytes(StandardCharsets.UTF_8));
+        bodyDigest.update((visible.length() + ":" + visible + "\n").getBytes(StandardCharsets.UTF_8));
+        boolean noise = NOISE_TEXT.matcher(visible).matches() || AD_TEXT.matcher(visible).find();
         if (visible.isEmpty()) q.empty++;
-        else if (NOISE_TEXT.matcher(visible).matches() || AD_TEXT.matcher(visible).find()) q.noise++;
+        else if (noise) q.noise++;
         else q.dialogue++;
         if (REPEATED_TEXT.matcher(visible).find()) q.repeated++;
         if (ISOLATED_LATIN.matcher(visible).matches()) q.isolatedLatin++;
+        int han = 0;
         for (int i = 0; i < visible.length(); i++) {
             char c = visible.charAt(i);
             q.characters++;
             Character.UnicodeScript script = Character.UnicodeScript.of(c);
-            if (script == Character.UnicodeScript.HAN) q.han++;
+            if (script == Character.UnicodeScript.HAN) { q.han++; han++; }
             if (script == Character.UnicodeScript.LATIN) q.latin++;
             if (script == Character.UnicodeScript.HIRAGANA || script == Character.UnicodeScript.KATAKANA
                     || script == Character.UnicodeScript.HANGUL || script == Character.UnicodeScript.THAI) q.otherScript++;
             if (c == 0 || c == '\ufffd' || Character.getType(c) == Character.PRIVATE_USE) q.damaged++;
         }
+        if (!noise && han >= 6 && LONG_ANNOTATION.matcher(visible).matches()) {
+            long[] loop = q.annotations.computeIfAbsent(visible, ignored -> new long[]{0, from, from});
+            loop[0]++;
+            loop[1] = Math.min(loop[1], from);
+            loop[2] = Math.max(loop[2], from);
+        }
+    }
+
+    private static int subtitleContentScore(String code, JSONObject row, Map<String, SubtitleQuality> evidence) {
+        SubtitleQuality q = evidence.get(row.optString("url"));
+        String namedCode = codeFromTitle(row.optString("name"));
+        int mismatch = !code.isEmpty() && !namedCode.isEmpty() && !normalizeCode(code).equals(normalizeCode(namedCode)) ? 80 : 0;
+        return (q == null ? 50 : q.score()) - mismatch;
     }
 
     static JSONArray rankSubtitleContents(String code, JSONArray subs, Map<String, SubtitleQuality> evidence) throws Exception {
@@ -382,22 +416,36 @@ public class GMSubs extends Spider {
         List<JSONObject> ranked = new ArrayList<>();
         for (int i = 0; i < subs.length(); i++) ranked.add(new JSONObject(subs.getJSONObject(i).toString()));
         // Java's stable sort keeps the existing filename/API order for equal evidence.
-        ranked.sort(Comparator.comparingInt((JSONObject row) -> {
-            SubtitleQuality q = evidence.get(row.optString("url"));
-            String namedCode = codeFromTitle(row.optString("name"));
-            int mismatch = !code.isEmpty() && !namedCode.isEmpty() && !normalizeCode(code).equals(normalizeCode(namedCode)) ? 80 : 0;
-            return (q == null ? 50 : q.score()) - mismatch;
-        }).reversed());
+        ranked.sort(Comparator.comparingInt((JSONObject row) -> subtitleContentScore(code, row, evidence)).reversed());
         Set<String> seen = new HashSet<>();
+        Set<String> bodies = new HashSet<>();
+        List<JSONObject> deferred = new ArrayList<>();
+        int band = ranked.isEmpty() ? 0 : subtitleContentScore(code, ranked.get(0), evidence);
         JSONArray result = new JSONArray();
         for (JSONObject row : ranked) {
             SubtitleQuality q = evidence.get(row.optString("url"));
             if (q != null && q.fingerprint != null && !seen.add(q.fingerprint)) continue;
+            int score = subtitleContentScore(code, row, evidence);
+            boolean healthy = q != null && score >= 100 && q.invalid == 0 && q.damaged == 0 && q.bodyFingerprint != null;
+            // Diversity only within a near-equal, healthy score band; never promote damaged/unknown text over good alternatives.
+            if (!healthy || band - score > 3) {
+                for (JSONObject alternate : deferred) result.put(alternate);
+                deferred.clear();
+                bodies.clear();
+                band = score;
+            }
+            if (q != null && q.loopedAnnotation > 0) row.put("name", row.optString("name") + " · 疑似正文复读");
             if (q != null && q.cues > 0 && q.invalid > 0) row.put("name", row.optString("name") + " · 时轴异常");
             else if (q != null && (q.cues == 0 || q.score() < 50)) row.put("name", row.optString("name") + " · 建议备选");
-            row.put("flag", result.length() == 0 ? 1 : 2);
+            if (healthy && !bodies.add(q.bodyFingerprint)) {
+                row.put("name", row.optString("name") + " · 同正文·不同时间轴");
+                deferred.add(row);
+                continue;
+            }
             result.put(row);
         }
+        for (JSONObject alternate : deferred) result.put(alternate);
+        for (int i = 0; i < result.length(); i++) result.getJSONObject(i).put("flag", i == 0 ? 1 : 2);
         return result;
     }
 
