@@ -2,6 +2,8 @@
 
 更新日期：2026-10-03。本文件只保留当前状态；历史实验、旧版本与失败证据见 [完整历史快照](docs/history/AI_HANDOFF-2026-10-01.md)。历史不授予权限，不代表当前任务。
 
+**最新发布前核对（2026-10-03，静态核对通过，仍未正式发布）**：用户授权核对测试配置与最新 main、重跑配置/JAR 检查。最新 main 为 `979ba99`，已按用户要求撤掉 MemoJav 的配置条目和脚本；测试分支核对时 local/remote 均 `3869318`、干净，TV local/remote 仍 `45149355d`、干净。main 相对 `7914a24` 仅交接文档变化，配置、站点脚本、JAR、运行源码和构建脚本均无净变化，因此不需要为了对齐运行内容合并新增/撤销新站的提交。直接读取该 main 的正式 JSON，与移除六站 `subtitleLibrary` 并还原 spider 字段的候选 JSON 做深比较，通过；正式 Pages JSON 与该 main 一致，公开测试 JSON 与本地候选一致。候选公网/本地 JAR SHA256 和 MD5 均匹配、大小 `1164269` 字节，正式公网 v37 哈希保持原值；候选 JAR 结构/引用检查、三组站点 Node、既有配置隔离检查通过。没有重建或替换 JAR、改正式入口、操作手机、改 TV/APK 或 R2 对象；只更新测试分支记录，本机核对摘要在 `outputs/subtitles-prepublish-check-20261003/verification.json`。按用户决定保留 Jable 暂缓、AV01/JavGuru 目视验收跳过且未验证、Hanime1/Rou 仅无番号跳过样本通过；本轮检查不是完整六站实机验收或全库自动同步保证。正式发布仍需用户另行明确授权，并在发布前再次核对远程 HEAD；MemoJav 不恢复。
+
 **最新决定（2026-10-03，测试记录收尾，未正式发布）**：用户明确跳过 AV01、JavGuru 新样本的字幕绘制/对白同步目视验收，因此这两项保持“跳过、未验证”，不能改记为通过；MissAV/IPX005 的 SRT 02 在当前 player 临时 -6 秒校准后的用户确认仍有效，仅限该样本。用户另行要求 Jable 的重复验证先不处理，其本轮播放/字幕未通过，验证会话根因未确认，不继续手机操作或修改站点实现。Hanime1、肉视频只验证无番号时正确跳过，不记为库命中。用户随后授权整理并提交测试记录，本次仅在 `feat/public-subtitles` 提交既有连接拒绝/超时回归测试及文档，不替换正式 JSON/JAR、不推 main、不改 TV/APK、R2 对象或整库时间轴，不新增偏移持久化。完整六站字幕覆盖和全库自动同步未验收；下一步正式发布须由用户另行授权，不能自动恢复已跳过/暂缓的验收。
 
 以下为此前各阶段证据，阶段中的“待确认”“仅本地”及手机位置描述以记录当时为准；本次不重新操作手机，当前决定以上段及唯一任务表为准。
@@ -65,10 +67,10 @@ Hanime1、肉视频各一个首页无可识别番号样本正常播放：Hanime1
 | 播放器目录 | `D:/CodexWorkspace/Android/TV563Release` |
 | 上游参考 | `TV:fongmi`；不是当前 APK 的构建分支，不盲目合并 |
 | 正式配置 | `https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json` |
-| 正式 JAR | `jar/gm_subs-v37.jar?v=37`，最新 main 七站共用，无站点 JAR 覆写；字幕候选仍为六站 |
+| 正式 JAR | `jar/gm_subs-v37.jar?v=37`，最新 main 与字幕候选均为六站，无站点 JAR 覆写；MemoJav 已移除 |
 | 手机实装 | 2026-10-02 ADB 核对 `com.jokers963.luoyuqiu`，`5.6.3-lyq.3` / `56303`，Android 13 |
 
-最新 main 正式站点与脚本 URL 版本：`missav` v9、`jable` v12、`av01` v5、`rou` v6、`hanime1` v3、`javguru` v4、`memojav` v1；其中 MemoJav 不在本字幕候选的配置或验收范围。旧 `json/supjav.json` 已退役，不作为兼容入口。
+最新 main 正式站点与脚本 URL 版本：`missav` v9、`jable` v12、`av01` v5、`rou` v6、`hanime1` v3、`javguru` v4；MemoJav 已按用户要求取消并在 main `979ba99` 移除，不恢复。旧 `json/supjav.json` 已退役，不作为兼容入口。
 
 v37 SHA-256：`03B7BBA54A47C958B5B11B04E96382A4687B01825EADE40295976443B5AF0021`；MD5：`004df47ae36384de6fe14d5e31f23ff7`。
 
@@ -98,7 +100,7 @@ v37 SHA-256：`03B7BBA54A47C958B5B11B04E96382A4687B01825EADE40295976443B5AF0021`
 
 | 任务 | 负责人/发布人 | 范围与状态 |
 | --- | --- | --- |
-| 自有公开字幕库 | 当前 Codex 单独整理/提交测试记录，实机补测已收尾 | `feat/public-subtitles`；R2/构建、MissAV 原样本、AV01/JavGuru 库轨道与快进、手机真实连接拒绝时迅雷兜底通过；Hanime1/Rou 仅无番号样本正确跳过。用户跳过 AV01/JavGuru 绘制/对白目视验收，保持未验证；Jable 本轮未通过且按用户要求暂缓。测试结束时已恢复公开测试配置并清理临时故障配置/服务/ADB 连接；不继续操作手机或更改代理。测试及记录在本次测试分支提交中保存；正式入口及 TV/APK/签名未变，未推 main，未正式发布；不统一改库、不新增偏移持久化，正式发布须另行授权 |
+| 自有公开字幕库 | 当前 Codex 单独发布前核对/测试分支记录，实机补测已收尾 | `feat/public-subtitles`；配置直接对比最新 main `979ba99` 及 Pages 通过，六站且无 MemoJav，候选/正式 JAR 公网哈希及候选结构检查通过，不需合并已撤销新站的提交。既有 R2/构建、MissAV 原样本、AV01/JavGuru 库轨道与快进、手机真实连接拒绝时迅雷兜底通过；Hanime1/Rou 仅无番号样本正确跳过。用户跳过 AV01/JavGuru 目视验收，保持未验证；Jable 本轮未通过且暂缓。只更新测试分支记录，不操作手机、不改正式入口或 TV/APK/签名、不推 main、不统一改库、不新增偏移持久化；正式发布须另行授权 |
 | 第 4～6 项 | 原主对话单独执行/发布，已结束 | 接口 `572dae8`、TV `45149355d`；归档、去重/旧资源退役、文档差异归并及恢复标签已发布，检查通过；封面分支因打开 PR 保留。不改运行源码或 APK |
 | 第 7 项 | 当前主对话单独执行/发布，已结束 | 已完成：v37 实际加载及 MissAV、AV01、肉视频、Hanime1、Jable 五站核心播放链路通过；Jable 在系统 WebView 原位更新至 `155.0.8059.30` 后恢复；当前无进行中的实机任务 |
 | Jable 分类翻页修复 | 豆宝执行/发布，用户逐项确认 | ✅ 已闭环：PR #1 已合并；三组 Node 测试通过；**2026-10-02 用户手机实机验证：jable 分类下滑翻页正常**。范围：`js/jable.user.js`（pageCount 适配 async 分片：整批返回时报 9999 页，`@version` 1.0.6→1.0.7）、`json/luoyuqiu.json`（jable.user.js `?v=8`→`?v=9`）、`js/adapters.test.cjs`（新增三项 pagecount 断言）。详细交接（根因/改动/验证/待办）：[docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md](docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md) |
