@@ -2,6 +2,8 @@
 
 更新日期：2026-10-04。本文件只保留当前状态；历史实验、旧版本与失败证据见 [完整历史快照](docs/history/AI_HANDOFF-2026-10-01.md)。历史不授予权限，不代表当前任务。
 
+**最新 v39 正式发布完成（2026-10-04）**：[PR #4](https://github.com/jokers963/CatVodSpider/pull/4) 已合并，资源提交 `d53072a`、main 合并提交 `e165173`；[正式 CI](https://github.com/jokers963/CatVodSpider/actions/runs/37137191940) 与 [Pages 部署](https://github.com/jokers963/CatVodSpider/actions/runs/37137191190) 均 success。裸原[正式配置](https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json) HTTP 200，与本地 JSON 深比较一致，指向 v39/MD5；五站仍为 MissAV、AV01、肉视频、Hanime1、JavGuru，Jable 不恢复。公网 v39 JAR 1223148 字节、SHA256 `9C72A25D70DE9732C7D9D3B0ADEDC94FD5942A0A8688DF739DC01FA57A1BEC0C`、MD5 `28cd05f6a9e4f91fe333a916bb76edaa`，与本地/fix3 原字节一致，MD5 文件相符；公网 v38/v37 及各自 MD5 文件逐字节符合保留回退包。正式配置除 spider 字段外与发布前完全一致，库优先、迅雷 fallback 排序生效范围不变。发布前重跑 40 项 Java/JUnit/D8、五组 Node/配置检查通过，包装 DEX 与已发布 fix3 相同；完整 Gradle 与本轮手机加载/绘制/切换/同步/最佳翻译未新增验收。用户退出旧视频、重新加载原正式地址即可，无需清数据或换 APK；若当前仍选独立测试入口，应切回正式 URL。按 ponytail 最小发布方案复用已校验原包，无新排序改动、依赖或自动时间轴处理。TV/APK/签名/AAR/备份/R2/原档/时间轴/旧脏 main 未动，测试分支/旧包保留，不操作手机或截图。此次交付收尾，后续仅按用户新指令处理；以下“准备中/未合并”是此前阶段事实，不覆盖本段。
+
 **最新 v39 正式发布授权（2026-10-04，发布准备中）**：用户明确要求“先这样吧，推正式接口吧，后面有问题再说”，授权把 fix3 纳入正式接口，不是新增手机验收。Codex 唯一修改/发布者，手机由用户验证。本轮复用干净 main 基线 `f4a6427` 的临时工作树，合入测试分支 `183c113` 的排序实现/测试/工具/历史测试包；唯一合并冲突为交接新增记录，保留 main 的 Jable 下架事实及测试发布记录。正式 `jar/gm_subs-v39.jar` 直接采用 fix3 原字节，SHA256 `9C72A25D70DE9732C7D9D3B0ADEDC94FD5942A0A8688DF739DC01FA57A1BEC0C`、MD5 `28cd05f6a9e4f91fe333a916bb76edaa`、1223148 字节；不再改排序逻辑。正式配置只换 v39/MD5，五站参数、R2 库优先/失败迅雷 fallback 不变，Jable 不恢复。v38/v37 和旧测试包保留供回退，不改变 TV/APK/签名/AAR/备份/R2/原档/时间轴/旧脏 main 工作树，不操作手机/截图/清数据/改代理。按 ponytail 最小发布范围执行；通过 PR/CI 后合并 main，等待 Pages/公网 JSON/JAR/回退包核对。fix3 手机加载/绘制/切换/同步及最佳翻译仍未新增验收，不能因用户授权或上线补记通过。
 
 **最新 fix3 测试发布核对通过（2026-10-04，等待用户手机验证）**：资源提交 `939eadd` 已推 `feat/subtitle-rule-ranking`，[CI](https://github.com/jokers963/CatVodSpider/actions/runs/37135657445) success。裸原[测试配置](https://raw.githubusercontent.com/jokers963/CatVodSpider/feat/subtitle-rule-ranking/json/luoyuqiu-subtitle-ranking-test.json) HTTP 200、五站，与本地 JSON 深比较一致；公网 fix3 JAR 大小 1223148、SHA256 `9C72A25D70DE9732C7D9D3B0ADEDC94FD5942A0A8688DF739DC01FA57A1BEC0C`、MD5 `28cd05f6a9e4f91fe333a916bb76edaa` 及 MD5 文件均与最终候选一致。正式 Pages JSON 与本地深比较一致，公网 v38 SHA256 保持原值，main 未改、测试未合并正式。40 项 Java/D8/净化、五组 Node/配置、最终 16 组离线回归通过；本机原档/正文/报告不上传。首项仍不能宣称最佳翻译，所有平移轴仍可选；DASS 的长期复读降权，SONE-948 不再以相同正文平移版本占满前三。用户需退出旧视频、重新加载同一测试配置，再检查 DASS-933 的“疑似正文复读”、SONE-948 的“同正文·不同时间轴”及候选切换；手机实际 1500 ms 内完成数量可能不同于离线全量。没有操作手机、截图、清数据或改变 TV/APK/签名/AAR/备份/R2/原档/时间轴/代理/旧脏树；fix3 手机加载/绘制/切换/同步尚未验收，正式发布仍另行确认。以下“准备发布”仅为发布前阶段记录。
@@ -99,14 +101,16 @@ Hanime1、肉视频各一个首页无可识别番号样本正常播放：Hanime1
 | 播放器目录 | `D:/CodexWorkspace/Android/TV563Release` |
 | 上游参考 | `TV:fongmi`；不是当前 APK 的构建分支，不盲目合并 |
 | 正式配置 | `https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json` |
-| 正式 JAR | `jar/gm_subs-v38.jar?v=38`，配置含 MD5，PR #3 合并并经 Pages 公网校验；v37 保留回退。六站无 JAR 覆写，MemoJav 已移除 |
+| 正式 JAR | `jar/gm_subs-v39.jar?v=39`，配置含 MD5，PR #4 / main `e165173` 已合并，CI/Pages/公网校验通过；v38/v37 保留回退。五站无 JAR 覆写，Jable 暂时关闭，MemoJav 已移除 |
 | 手机实装 | 2026-10-02 ADB 核对 `com.jokers963.luoyuqiu`，`5.6.3-lyq.3` / `56303`，Android 13 |
 
-最新 main 正式站点与脚本 URL 版本：`missav` v9、`jable` v12、`av01` v5、`rou` v6、`hanime1` v3、`javguru` v4；MemoJav 已按用户要求取消并在 main `979ba99` 移除，不恢复。旧 `json/supjav.json` 已退役，不作为兼容入口。
+最新 main 正式站点与脚本 URL 版本：`missav` v9、`av01` v5、`rou` v6、`hanime1` v3、`javguru` v4；Jable 暂时关闭（脚本 v12 保留，不在正式配置），MemoJav 已按用户要求取消并在 main `979ba99` 移除，不恢复。旧 `json/supjav.json` 已退役，不作为兼容入口。
 
 v37 SHA-256：`03B7BBA54A47C958B5B11B04E96382A4687B01825EADE40295976443B5AF0021`；MD5：`004df47ae36384de6fe14d5e31f23ff7`。
 
 v38 SHA-256：`52A182633F21B6FA53F12BD6AA8279F8F15E1EBE36436F417938438A35D4FC04`；MD5：`817f14e37e342691a5d0cab2fabd5b73`，与手机已测试候选逐字节一致。
+
+v39 SHA-256：`9C72A25D70DE9732C7D9D3B0ADEDC94FD5942A0A8688DF739DC01FA57A1BEC0C`；MD5：`28cd05f6a9e4f91fe333a916bb76edaa`，与 fix3 测试包逐字节一致，公网校验通过；本轮手机未新增验收。
 
 ## 本轮整理与原有差异归并
 
@@ -135,7 +139,7 @@ v38 SHA-256：`52A182633F21B6FA53F12BD6AA8279F8F15E1EBE36436F417938438A35D4FC04`
 | 任务 | 负责人/发布人 | 范围与状态 |
 | --- | --- | --- |
 | Jable 暂时关闭 | 当前 Codex 单独配置发布，手机用户操作 | 用户要求暂时关站；main `bddf221` 与排序测试 `49b61fa` 已发布，CI/Pages/公网五站 JSON 核对通过，其他站点/JAR/脚本不变。实现保留，未经用户新指令不恢复；用户退出旧页面并重新加载配置，不再续测其验证弹窗 |
-| 迅雷字幕规则排序 | 当前 Codex 单独修改/测试分支发布；手机用户验证 | fix3 资源 `939eadd` 已上线，CI/公网五站 JSON/JAR/SHA/MD5 核对通过；40 项 Java/D8/净化、五组 Node/配置及 16 组回归通过，各组首项/保留集合不变。长期高占比注释复读降权、近同分健康候选的同正文不同轴后置；正文自然性/翻译准确性仍不能判断。fix2 旧包保留，正式 v38/main、TV/APK/R2/原档/时间轴未改；fix3 手机加载/绘制/切换/同步等待用户复验，正式发布另行确认 |
+| 迅雷字幕规则排序 | 当前 Codex 单独正式发布，交付收尾；手机用户验证 | 用户授权正式发布，fix3 原字节作为 v39 经 PR #4 / main `e165173` 上线，CI/Pages/公网五站 JSON/JAR/SHA/MD5 核对通过，v38/v37 回退包校验通过。40 项 Java/D8、五组 Node/配置及既有 16 组回归通过；长期高占比注释复读降权、近同分健康候选的同正文不同轴后置，库优先不变。规则仍不能保证最佳翻译或同步，本轮手机加载/绘制/切换未新增验收。TV/APK/R2/原档/时间轴/旧脏树不改；后续只按用户新指令处理 |
 | 自有公开字幕库 | 当前 Codex 单独发布，本轮交付已收尾 | v38 经 PR #3 / main `ecad170` 发布，CI/Pages success，正式 JSON、JAR/MD5、库样本公网检查通过，v37 保留回退；用户随后手动确认“加载验证了。字幕加载正常”，不作设备端新哈希确认或完整六站验收。26 项 Java/D8、Python、Node/配置/JAR 检查通过，MemoJav 不恢复。Jable 暂缓、AV01/JavGuru 目视验收跳过且未验证、Hanime1/Rou 库命中未验证。本轮不操作手机，不改 TV/APK/签名/AAR/R2 对象/时间轴，不新增偏移持久化；后续按用户新指令处理 |
 | 第 4～6 项 | 原主对话单独执行/发布，已结束 | 接口 `572dae8`、TV `45149355d`；归档、去重/旧资源退役、文档差异归并及恢复标签已发布，检查通过；封面分支因打开 PR 保留。不改运行源码或 APK |
 | 第 7 项 | 当前主对话单独执行/发布，已结束 | 已完成：v37 实际加载及 MissAV、AV01、肉视频、Hanime1、Jable 五站核心播放链路通过；Jable 在系统 WebView 原位更新至 `155.0.8059.30` 后恢复；当前无进行中的实机任务 |
