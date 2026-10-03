@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MemoJav
 // @namespace    luoyuqiuspider
-// @version      1.0.0
+// @version      1.0.1
 // @match        https://memojav.org/*
 // @grant        unsafeWindow
 // ==/UserScript==
@@ -12,7 +12,7 @@
 //   GET /hls/get_video_info.php?id={番号}&sig={sig}&sts={sts}
 //   → for (;;);{"type":"hls","url":"https%3A%2F%2Fvideo10.memojav.net%2Fstream%2F{id}%2Fmaster.m3u8","success":true}
 // 实测：curl 复现签名调接口成功，m3u8 (video10.memojav.net) 200 可读，无过期概念
-// 本站无站内搜索（搜索框跳 Google site:），搜索仅支持番号直查 /video/{番号}
+// 本站无站内搜索（搜索框跳 Google site:），搜索支持：番号直查（自动纠大小写/空格/补 hyphen）+ 女优英文名直查 /actress/{slug}
 (function () {
     const args = JSON.parse(GmSpiderInject.GetSpiderArgs());
     const method = args.shift();
@@ -20,18 +20,19 @@
     const ORIGIN = 'https://memojav.org';
     let sent = false, busy = false;
 
-    const categories = [
-        ['', '最新视频'],
-        ['categories/big-tits', '大胸'],
-        ['categories/beautiful-girl', '美少女'],
-        ['categories/mature-woman', '熟女'],
-        ['categories/married-woman', '人妻'],
-        ['categories/schoolgirl', '学生妹'],
-        ['categories/creampie', '中出'],
-        ['categories/uniform', '制服'],
+    // 分类页兜底（/categories/ 拉取失败时用）
+    const fallbackCats = [
+        ['categories/big-tits', 'Big Tits'],
+        ['categories/beautiful-girl', 'Beautiful Girl'],
+        ['categories/mature-woman', 'Mature Woman'],
+        ['categories/married-woman', 'Married Woman'],
+        ['categories/schoolgirl', 'Schoolgirl'],
+        ['categories/creampie', 'Creampie'],
+        ['categories/uniform', 'Uniform'],
         ['categories/cosplay', 'Cosplay'],
-        ['categories/massage', '按摩']
-    ].map(([type_id, type_name]) => ({type_id, type_name}));
+        ['categories/massage', 'Massage'],
+        ['categories/nurse', 'Nurse']
+    ];
 
     function absUrl(path) {
         return path.startsWith('http') ? path : ORIGIN + (path.startsWith('/') ? path : '/' + path);
@@ -63,6 +64,27 @@
         const response = await fetch(url, {credentials: 'same-origin'}).catch(() => null);
         if (!response || !response.ok) return null;
         return new DOMParser().parseFromString(await response.text(), 'text/html');
+    }
+
+    // 全站分类动态拉取（/categories/，约 260 个）
+    async function home() {
+        const cats = [{type_id: '', type_name: '最新视频'}];
+        const doc = await fetchDoc(ORIGIN + '/categories/');
+        if (doc) {
+            const seen = new Set();
+            doc.querySelectorAll('a[href^="/categories/"]').forEach(function (a) {
+                const slug = new URL(a.href, ORIGIN).pathname.split('/')[2];
+                const name = (a.textContent || '').trim();
+                if (slug && name && !seen.has(slug)) {
+                    seen.add(slug);
+                    cats.push({type_id: 'categories/' + slug, type_name: name});
+                }
+            });
+        }
+        if (cats.length <= 1) {
+            fallbackCats.forEach(([type_id, type_name]) => cats.push({type_id, type_name}));
+        }
+        return {class: cats, list: []};
     }
 
     // 逆向出的签名算法：纯本地时间戳，无密钥
@@ -113,21 +135,43 @@
         return {list: videos(document), pagecount: pageCount(document)};
     }
 
-    // 本站无站内搜索：仅支持番号直查 /video/{番号}
-    async function search(key, quick) {
-        const id = String(key || '').trim().toUpperCase();
-        if (!id) return {list: [], pagecount: 1};
-        const doc = await fetchDoc(absUrl('/video/' + encodeURIComponent(id)));
-        const msg = quick ? undefined : '未找到该番号（本站无关键词搜索）';
-        if (!doc) return {list: [], pagecount: 1, msg};
-        const name = doc.querySelector('meta[property="og:title"]')?.content?.trim() || id;
-        // 详情页标题含番号才算命中，避免 404 软着陆页误报
+    function isVideoPage(doc, id) {
         const esc = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        if (!new RegExp(esc, 'i').test(doc.title) && !new RegExp(esc, 'i').test(name)) {
-            return {list: [], pagecount: 1, msg};
-        }
+        const re = new RegExp(esc, 'i');
+        return re.test(doc.title || '') || re.test(
+            doc.querySelector('meta[property="og:title"]')?.content || '');
+    }
+
+    function singleResult(doc, id) {
+        const name = doc.querySelector('meta[property="og:title"]')?.content?.trim() || id;
         const pic = doc.querySelector('meta[property="og:image"]')?.content || '';
         return {list: [{vod_id: id, vod_name: name, vod_pic: pic}], pagecount: 1};
+    }
+
+    async function search(key, quick) {
+        const raw = String(key || '').trim();
+        const noMsg = {list: [], pagecount: 1};
+        const msg = quick ? undefined : '未找到（仅支持番号 / 女优英文名搜索）';
+        if (!raw) return noMsg;
+        // 1) 番号直查：纠大小写、去空格
+        const id = raw.toUpperCase().replace(/\s+/g, '');
+        const candidates = [id];
+        const m = id.match(/^([A-Z]+)(\d+[A-Z]*)$/);
+        if (m && !id.includes('-')) candidates.push(m[1] + '-' + m[2]); // SDJS381 → SDJS-381
+        for (const cid of candidates) {
+            const doc = await fetchDoc(absUrl('/video/' + encodeURIComponent(cid)));
+            if (doc && isVideoPage(doc, cid)) return singleResult(doc, cid);
+        }
+        // 2) 女优英文名直查：/actress/{slug}
+        const slug = raw.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        if (slug) {
+            const adoc = await fetchDoc(absUrl('/actress/' + encodeURIComponent(slug)));
+            if (adoc) {
+                const list = videos(adoc);
+                if (list.length) return {list: list, pagecount: pageCount(adoc)};
+            }
+        }
+        return {list: [], pagecount: 1, msg};
     }
 
     async function tick() {
@@ -136,7 +180,7 @@
         const waiting = Date.now() - started;
         let result;
         if (method === 'homeContent') {
-            result = {list: [], class: categories};
+            result = await home();
         } else if (method === 'categoryContent') {
             const [tid, , pg] = args;
             result = await category(tid, pg);
