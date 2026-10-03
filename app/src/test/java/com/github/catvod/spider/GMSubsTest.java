@@ -109,6 +109,8 @@ public class GMSubsTest {
             String url = chain.request().url().toString();
             requests.add(url);
             boolean library = chain.request().url().host().equals("subs.example");
+            if (library && url.endsWith("LIB956.json")) throw new java.net.ConnectException("synthetic connection refused");
+            if (library && url.endsWith("LIB957.json")) throw new java.net.SocketTimeoutException("synthetic timeout");
             String body;
             int status = 200;
             if (library && url.endsWith("LIB952.json")) {
@@ -136,7 +138,7 @@ public class GMSubsTest {
             java.lang.reflect.Field libraryField = GMSubs.class.getDeclaredField("subtitleLibrary");
             libraryField.setAccessible(true);
             libraryField.set(spider, "https://subs.example/");
-            for (String code : new String[]{"LIB-952", "LIB-953", "LIB-954", "LIB-955"}) {
+            for (String code : new String[]{"LIB-952", "LIB-953", "LIB-954", "LIB-955", "LIB-956", "LIB-957"}) {
                 requests.clear();
                 String result = spider.playerContent(code, "https://media.example/master.m3u8", java.util.List.of());
                 JSONObject play = new JSONObject(result);
@@ -145,6 +147,9 @@ public class GMSubsTest {
                 assertEquals(code.equals("LIB-952") ? 1 : 2, requests.size());
                 assertEquals(code.equals("LIB-955") ? 1 : 2, play.getJSONArray("subs").length());
                 assertTrue(containsUrl(play.getJSONArray("subs"), "https://native.example/sub.srt"));
+                if (!code.equals("LIB-952") && !code.equals("LIB-955")) {
+                    assertTrue(containsUrl(play.getJSONArray("subs"), "https://xunlei.example/fallback.srt"));
+                }
                 if (code.equals("LIB-955")) assertEquals(media, result);
             }
             requests.clear();

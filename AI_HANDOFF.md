@@ -2,6 +2,22 @@
 
 更新日期：2026-10-03。本文件只保留当前状态；历史实验、旧版本与失败证据见 [完整历史快照](docs/history/AI_HANDOFF-2026-10-01.md)。历史不授予权限，不代表当前任务。
 
+**最新决定（2026-10-03，测试记录收尾，未正式发布）**：用户明确跳过 AV01、JavGuru 新样本的字幕绘制/对白同步目视验收，因此这两项保持“跳过、未验证”，不能改记为通过；MissAV/IPX005 的 SRT 02 在当前 player 临时 -6 秒校准后的用户确认仍有效，仅限该样本。用户另行要求 Jable 的重复验证先不处理，其本轮播放/字幕未通过，验证会话根因未确认，不继续手机操作或修改站点实现。Hanime1、肉视频只验证无番号时正确跳过，不记为库命中。用户随后授权整理并提交测试记录，本次仅在 `feat/public-subtitles` 提交既有连接拒绝/超时回归测试及文档，不替换正式 JSON/JAR、不推 main、不改 TV/APK、R2 对象或整库时间轴，不新增偏移持久化。完整六站字幕覆盖和全库自动同步未验收；下一步正式发布须由用户另行授权，不能自动恢复已跳过/暂缓的验收。
+
+以下为此前各阶段证据，阶段中的“待确认”“仅本地”及手机位置描述以记录当时为准；本次不重新操作手机，当前决定以上段及唯一任务表为准。
+
+收尾复核：提交前测试分支 local/remote 均 `e492d88`、main 远程 `7914a24`、TV local/remote `45149355d` 且干净；26 项 Java/JUnit、D8/JAR 结构、三组站点 Node、配置隔离、两份 Markdown 的 12 个本地链接及 `git diff --check` 均通过。JVM 中 OkHttp 初始化打印 Android Log 原生方法不可用警告，但 JUnit 最终 `OK (26 tests)`、构建检查退出 0；不把该警告记为手机故障，也不宣称完整 Gradle 测试通过。本轮输出仅在 `outputs/subtitles-records-closeout-20261003/wrapper`，是本机原始包装层测试产物，不上传或替换候选/正式 JAR。本机续测 JSON 同步标注用户跳过/暂缓，报告不上传；Git 提交仅含本文件、字幕档案及既有回归测试文件。
+
+**最新续测（2026-10-03，其他样本及真实故障兜底通过，等待 Jable 手动验证）**：用户手动重新打开 App 后继续授权测试。AV01/IPX343（网站 API 核对 id 28330）和 JavGuru/IPX343 均在字幕菜单自动选中库 SRT 01，设置界面读回偏移 `+0.0s`，未继承先前 -6 秒。JavGuru 持续播放 `65587→133340 ms`，快进至 `1576221 ms` 后 state=3、speed=1、error=null，菜单同一库轨道仍 selected。AV01 首次持续播放 `17306→37879 ms`；复测快进至 `1609750 ms` 时 state=6，随后恢复 `1682738 ms`、state=3、speed=1、error=null，库 SRT 01 仍 selected。中途一轮 AV01 菜单出现迅雷候选，触发原因未取证，不能据此推断 R2 故障；另行做明确故障测试如下。轨道菜单只能证明匹配/加载及选择，不替代新样本字幕实际绘制或对白同步的目视确认。
+
+真实故障测试只在本机 outputs 增加 loopback-only Node 静态配置服务，ADB reverse tcp:18181；配置只把六站 `subtitleLibrary` 设为 `https://127.0.0.1:1/`，沿用同一候选 JAR/MD5、脚本和媒体设置。手机本机端口探测明确 Connection refused，正常接收界面加载 `http://127.0.0.1:18181/refused.json`，并核对选中配置；MissAV/IPX343 在此配置下仍播放 `43→45187 ms`、state=3、speed=1、error=null，字幕菜单出现迅雷 SRT 候选且首项 selected。因此本手机样本的库连接失败→迅雷候选→媒体仍播放通过，不等于所有网络异常都已实测。测试后通过正常接收界面恢复公开候选测试入口，核对 config_0 一致；设置→点播配置历史中只删除新增的 `Subtitle fault fixture` 条目（及其测试历史/收藏，源码 Config.delete 的范围），旧配置和应用数据不清除。临时配置文件仍在本机可重建，服务已退出，本轮 reverse tcp:18181、forward tcp:19978 已移除，原有代理不动。
+
+Hanime1、肉视频各一个首页无可识别番号样本正常播放：Hanime1 `0→27773 ms`，Rou `45→32458 ms`，均 state=3、speed=1、error=null；字幕菜单文本轨道、库/迅雷候选均为 0。这里只验收无番号时不误配、播放不受影响，不算两站库命中覆盖。抽样读取当前 App 801 行日志，FATAL/VerifyError、SubtitleDecoderException、ExoPlaybackException/Bad HTTP Status 匹配均为 0，不作长期稳定保证。Jable/IPX343 显示验证、state=0，未代点；验证等待结束后验证视图消失并出现 id/error，播放仍 state=0/position=0，不算验证成功。手机留在此 Jable 样本页面待用户重新尝试播放及手动验证，不再留前一个 AV01 播放。此轮未截图、未清数据、未改系统方向设置，TV/APK/签名/AAR/字幕原件/R2 对象及已发布资源不变；远程 main `7914a24`、测试分支 `e492d88` 未更新。本机续测报告为 `outputs/subtitles-extra-tests-20261003/extra-verification.json`；测试和交接修改仍仅本地，正式发布待用户后续授权。
+
+**最新补测（2026-10-03，待用户重新打开 App）**：用户反馈不同样本有固定时间偏移、没有随播放时间增加而漂移，并明确放弃新增偏移持久化；不修改 TV 或整库时间轴。用户随后授权补测其他站点字幕及库故障兜底，未授权正式发布。已核对候选分支 local/remote `e492d88`、远程 main `7914a24`、TV `luoyuqiu` `45149355d`，TV 干净；手机选中入口仍为候选测试地址。扩充现有 `GMSubsTest.playerContentFetchesLibraryOrXunleiAndAlwaysKeepsTheMediaResult`，加入模拟 ConnectException、SocketTimeoutException 及明确迅雷候选断言；26 项 Java/JUnit、D8/JAR 结构检查、三组 Node 与配置隔离检查通过。只改测试，运行源码、已发布候选 JAR、正式 JSON/JAR、R2 对象和 APK 未改；新构建是本机原始包装层测试产物，不可替换经过 sanitize 的发布包。
+
+实机补测：JavGuru/IPX343 样本正常播放（state=3、position=21472 ms、buffered=72000 ms、speed=1.0、error=null），但未成功确认字幕轨道/偏移，不能写成字幕通过。Jable/IPX343 停在 Cloudflare 验证，state=0、position=0；没有代点验证。AV01 搜索可返回 IPX343，但本轮未成功进入播放验收。全局搜索中的验证视图影响后续操作，已正常返回；手机现停在桌面，自动启动 App 被工具环境拒绝，已请用户手动打开落雨秋后继续，未换其他方式绕过。核对 0 MediaSession，移除本轮临时 tcp:19978 转发，不改现有代理或其他连接。手机真实库连接故障/迅雷命中、其他站点字幕匹配、偏移归零与绘制均仍待验证；本机模拟异常通过不替代手机结论。此补测记录及测试修改仅保留本地，未提交/推送。
+
 **当前任务（2026-10-03，用户确认样本 -6 秒同步，测试已结束）**：用户授权接入候选测试配置并做手机字幕验收，又明确授权正常解锁及打开手机现有代理。Codex 通过普通上滑解锁，无密码验证；Clash 从“已停止”切到“运行中”，未换节点、模式、配置或 DNS。设置输入框被现有输入法误转中文，错误地址没有保存，改用 App 本地 cast API 和接收界面正常加载测试配置，没有直接编辑私有配置。选中的 `config_0` 已核对为 `https://raw.githubusercontent.com/jokers963/CatVodSpider/feat/public-subtitles/json/luoyuqiu-subtitles-test.json`；手机缓存候选 JAR 的 SHA256 为 `52A182633F21B6FA53F12BD6AA8279F8F15E1EBE36436F417938438A35D4FC04`，与构建及公网一致。代理开启前无播放数据，开启后正常重启 App（不清数据），MissAV 样本可播。
 
 用户目视确认：当前 IPX005 视频含内嵌字幕，外挂字幕比内嵌晚约 7 秒，故实际绘制已经确认，但时间轴未通过。复核时菜单当前选中 SRT 02，播放器偏移初值 `+0.0s`；通过字幕设置→偏移调整并读取确认最终 `-7.0s`，恢复播放为 `state=3`、位置 `451323 ms`、`speed=1.0`、`error=null`。现有 `SubtitleSettingPanel` 只调用当前 player 的 `setTextOffsetMs`；核对配套 AAR 的 TextRenderer 为字幕时间减 offset，因此负值提前。仅复制 classes.jar 到本机报告目录作只读检查，原 AAR 未改。没有改源字幕、云端对象、全库时间轴、TV 或 JAR；当前播放器临时校准不能当作全库修复或保证跨影片不继承，后续测试其他影片前应归零。用户尚未确认 -7 秒调整后是否同步，正式发布仍待此复核及剩余验收。
@@ -50,7 +66,7 @@
 | 正式 JAR | `jar/gm_subs-v37.jar?v=37`，六站共用，无站点 JAR 覆写 |
 | 手机实装 | 2026-10-02 ADB 核对 `com.jokers963.luoyuqiu`，`5.6.3-lyq.3` / `56303`，Android 13 |
 
-正式站点与脚本 URL 版本：`missav` v9、`jable` v12、`av01` v5、`rou` v6、`hanime1` v3、`javguru` v3。旧 `json/supjav.json` 已退役，不作为兼容入口。
+正式站点与脚本 URL 版本：`missav` v9、`jable` v12、`av01` v5、`rou` v6、`hanime1` v3、`javguru` v4。旧 `json/supjav.json` 已退役，不作为兼容入口。
 
 v37 SHA-256：`03B7BBA54A47C958B5B11B04E96382A4687B01825EADE40295976443B5AF0021`；MD5：`004df47ae36384de6fe14d5e31f23ff7`。
 
@@ -80,7 +96,7 @@ v37 SHA-256：`03B7BBA54A47C958B5B11B04E96382A4687B01825EADE40295976443B5AF0021`
 
 | 任务 | 负责人/发布人 | 范围与状态 |
 | --- | --- | --- |
-| 自有公开字幕库 | 当前 Codex 单独执行/测试分支发布，抽样测试已结束 | `feat/public-subtitles`；R2/构建及手机候选加载、自动字幕轨道、多候选切换、快进、未命中播放抽样通过。用户确认 IPX005/SRT 02 实际显示且 -6 秒临时校准后同步；不证明全库自动同步，不统一改库。测试 App 已停止、0 MediaSession、临时转发已移除；手机保留测试配置及启用的现有代理。正式入口与 TV/APK/签名未变，未推 main，剩余覆盖/异常路径及正式发布待后续授权 |
+| 自有公开字幕库 | 当前 Codex 单独整理/提交测试记录，实机补测已收尾 | `feat/public-subtitles`；R2/构建、MissAV 原样本、AV01/JavGuru 库轨道与快进、手机真实连接拒绝时迅雷兜底通过；Hanime1/Rou 仅无番号样本正确跳过。用户跳过 AV01/JavGuru 绘制/对白目视验收，保持未验证；Jable 本轮未通过且按用户要求暂缓。测试结束时已恢复公开测试配置并清理临时故障配置/服务/ADB 连接；不继续操作手机或更改代理。测试及记录在本次测试分支提交中保存；正式入口及 TV/APK/签名未变，未推 main，未正式发布；不统一改库、不新增偏移持久化，正式发布须另行授权 |
 | 第 4～6 项 | 原主对话单独执行/发布，已结束 | 接口 `572dae8`、TV `45149355d`；归档、去重/旧资源退役、文档差异归并及恢复标签已发布，检查通过；封面分支因打开 PR 保留。不改运行源码或 APK |
 | 第 7 项 | 当前主对话单独执行/发布，已结束 | 已完成：v37 实际加载及 MissAV、AV01、肉视频、Hanime1、Jable 五站核心播放链路通过；Jable 在系统 WebView 原位更新至 `155.0.8059.30` 后恢复；当前无进行中的实机任务 |
 | Jable 分类翻页修复 | 豆宝执行/发布，用户逐项确认 | ✅ 已闭环：PR #1 已合并；三组 Node 测试通过；**2026-10-02 用户手机实机验证：jable 分类下滑翻页正常**。范围：`js/jable.user.js`（pageCount 适配 async 分片：整批返回时报 9999 页，`@version` 1.0.6→1.0.7）、`json/luoyuqiu.json`（jable.user.js `?v=8`→`?v=9`）、`js/adapters.test.cjs`（新增三项 pagecount 断言）。详细交接（根因/改动/验证/待办）：[docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md](docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md) |
