@@ -53,7 +53,7 @@ assert.equal(site.ext.webViewSettings.blockList.includes('https://*.googletagman
 assert.match(site.ext.spider.homeContent.loadUrl, /search\?page=1&sort=/);
 assert.match(site.ext.spider.categoryContent.loadUrl, /genre=\$\{tid\}.*page=\$\{pg:-1\}/);
 assert.match(site.ext.spider.searchContent.loadUrl, /query=\$\{key\}.*page=\$\{pg:-1\}/);
-for (const key of ['missav', 'jable', 'av01']) {
+for (const key of ['missav', 'av01']) {
     assert.deepEqual(config.sites.find(item => item.key === key).style, {type: 'rect', ratio: 1.5});
 }
 const route = new URL(site.ext.spider.categoryContent.loadUrl
