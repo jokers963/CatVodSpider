@@ -1,5 +1,5 @@
 {
-  "spider": "https://jokers963.github.io/CatVodSpider/jar/gm_subs-v39.jar?v=39;md5;28cd05f6a9e4f91fe333a916bb76edaa",
+  "spider": "https://raw.githubusercontent.com/jokers963/CatVodSpider/feat/subtitle-rule-ranking/jar/gm_subs-subtitle-ranking-test-20261003-fix3.jar;md5;28cd05f6a9e4f91fe333a916bb76edaa",
   "sites": [
     {
       "key": "missav",
@@ -13,16 +13,23 @@
       "timeout": 60,
       "ext": {
         "userScript": "https://jokers963.github.io/CatVodSpider/js/missav.user.js?v=9",
-        "subtitleLibrary": "https://pub-662c4b411cfb4cf69f52f71f22140341.r2.dev/",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": true
         },
         "spider": {
-          "homeContent": {"loadUrl": "https://missav.ws/cn/new"},
-          "categoryContent": {"loadUrl": "https://missav.ws/cn/${tid}?page=${pg:-1}"},
-          "detailContent": {"loadUrl": "https://missav.ws/cn/${id}"},
-          "searchContent": {"loadUrl": "https://missav.ws/cn/search/${key}?page=${pg:-1}"}
+          "homeContent": {
+            "loadUrl": "https://missav.ws/cn/new"
+          },
+          "categoryContent": {
+            "loadUrl": "https://missav.ws/cn/${tid}?page=${pg:-1}"
+          },
+          "detailContent": {
+            "loadUrl": "https://missav.ws/cn/${id}"
+          },
+          "searchContent": {
+            "loadUrl": "https://missav.ws/cn/search/${key}?page=${pg:-1}"
+          }
         }
       },
       "style": {
@@ -42,7 +49,6 @@
       "timeout": 60,
       "ext": {
         "userScript": "https://jokers963.github.io/CatVodSpider/js/av01.user.js?v=5",
-        "subtitleLibrary": "https://pub-662c4b411cfb4cf69f52f71f22140341.r2.dev/",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": true,
@@ -54,11 +60,21 @@
           ]
         },
         "spider": {
-          "homeContent": {"loadUrl": "https://www.av01.media/cn"},
-          "categoryContent": {"loadUrl": "https://www.av01.media/cn"},
-          "detailContent": {"loadUrl": "https://www.av01.media/cn/video/${id}"},
-          "playerContent": {"loadUrl": "https://www.av01.media/cn/video/${id}/${slug}"},
-          "searchContent": {"loadUrl": "https://www.av01.media/cn"}
+          "homeContent": {
+            "loadUrl": "https://www.av01.media/cn"
+          },
+          "categoryContent": {
+            "loadUrl": "https://www.av01.media/cn"
+          },
+          "detailContent": {
+            "loadUrl": "https://www.av01.media/cn/video/${id}"
+          },
+          "playerContent": {
+            "loadUrl": "https://www.av01.media/cn/video/${id}/${slug}"
+          },
+          "searchContent": {
+            "loadUrl": "https://www.av01.media/cn"
+          }
         }
       },
       "style": {
@@ -78,14 +94,23 @@
       "timeout": 60,
       "ext": {
         "userScript": "https://jokers963.github.io/CatVodSpider/js/rou.user.js?v=6",
-        "subtitleLibrary": "https://pub-662c4b411cfb4cf69f52f71f22140341.r2.dev/",
         "debug": false,
-        "webViewSettings": {"blockNetworkImage": true},
+        "webViewSettings": {
+          "blockNetworkImage": true
+        },
         "spider": {
-          "homeContent": {"loadUrl": "https://rou.video/v"},
-          "categoryContent": {"loadUrl": "https://rou.video/${tid}?order=${order:-createdAt}&s=${s:-}&f=${f:-}&tag=${tag:-}&page=${pg:-1}"},
-          "detailContent": {"loadUrl": "https://rou.video/${id}"},
-          "searchContent": {"loadUrl": "https://rou.video/search?q=${key}&page=${pg:-1}"}
+          "homeContent": {
+            "loadUrl": "https://rou.video/v"
+          },
+          "categoryContent": {
+            "loadUrl": "https://rou.video/${tid}?order=${order:-createdAt}&s=${s:-}&f=${f:-}&tag=${tag:-}&page=${pg:-1}"
+          },
+          "detailContent": {
+            "loadUrl": "https://rou.video/${id}"
+          },
+          "searchContent": {
+            "loadUrl": "https://rou.video/search?q=${key}&page=${pg:-1}"
+          }
         }
       }
     },
@@ -101,7 +126,6 @@
       "timeout": 60,
       "ext": {
         "userScript": "https://jokers963.github.io/CatVodSpider/js/hanime1.user.js?v=3",
-        "subtitleLibrary": "https://pub-662c4b411cfb4cf69f52f71f22140341.r2.dev/",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": true,
@@ -117,10 +141,18 @@
           ]
         },
         "spider": {
-          "homeContent": {"loadUrl": "https://hanime1.me/search?page=1&sort=%E6%9C%80%E6%96%B0%E4%B8%8A%E5%B8%82"},
-          "categoryContent": {"loadUrl": "https://hanime1.me/search?genre=${tid}&page=${pg:-1}&sort=${sort:-%E6%9C%80%E6%96%B0%E4%B8%8A%E5%B8%82}&date=${date:-}&duration=${duration:-}"},
-          "detailContent": {"loadUrl": "https://hanime1.me/watch?v=${id}"},
-          "searchContent": {"loadUrl": "https://hanime1.me/search?query=${key}&page=${pg:-1}"}
+          "homeContent": {
+            "loadUrl": "https://hanime1.me/search?page=1&sort=%E6%9C%80%E6%96%B0%E4%B8%8A%E5%B8%82"
+          },
+          "categoryContent": {
+            "loadUrl": "https://hanime1.me/search?genre=${tid}&page=${pg:-1}&sort=${sort:-%E6%9C%80%E6%96%B0%E4%B8%8A%E5%B8%82}&date=${date:-}&duration=${duration:-}"
+          },
+          "detailContent": {
+            "loadUrl": "https://hanime1.me/watch?v=${id}"
+          },
+          "searchContent": {
+            "loadUrl": "https://hanime1.me/search?query=${key}&page=${pg:-1}"
+          }
         }
       }
     },
@@ -136,7 +168,6 @@
       "timeout": 60,
       "ext": {
         "userScript": "https://jokers963.github.io/CatVodSpider/js/javguru.user.js?v=4",
-        "subtitleLibrary": "https://pub-662c4b411cfb4cf69f52f71f22140341.r2.dev/",
         "debug": false,
         "webViewSettings": {
           "blockNetworkImage": true,
@@ -148,11 +179,21 @@
           "https://upload18.org/*m3u8*"
         ],
         "spider": {
-          "homeContent": {"loadUrl": "https://javguru.fit/"},
-          "categoryContent": {"loadUrl": "https://javguru.fit/${tid}?page=${pg:-1}"},
-          "detailContent": {"loadUrl": "https://javguru.fit/video/${id}"},
-          "playerContent": {"loadUrl": "https://upload18.org/play/index/${slug}"},
-          "searchContent": {"loadUrl": "https://javguru.fit/search?keyword=${key}&page=${pg:-1}"}
+          "homeContent": {
+            "loadUrl": "https://javguru.fit/"
+          },
+          "categoryContent": {
+            "loadUrl": "https://javguru.fit/${tid}?page=${pg:-1}"
+          },
+          "detailContent": {
+            "loadUrl": "https://javguru.fit/video/${id}"
+          },
+          "playerContent": {
+            "loadUrl": "https://upload18.org/play/index/${slug}"
+          },
+          "searchContent": {
+            "loadUrl": "https://javguru.fit/search?keyword=${key}&page=${pg:-1}"
+          }
         }
       },
       "style": {
