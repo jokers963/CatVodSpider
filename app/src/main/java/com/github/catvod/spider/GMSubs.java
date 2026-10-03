@@ -15,7 +15,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.SequenceInputStream;
 import java.net.URLEncoder;
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -27,6 +31,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
@@ -34,6 +40,8 @@ import java.util.regex.Pattern;
 import java.util.zip.InflaterInputStream;
 
 import okhttp3.HttpUrl;
+import okhttp3.Call;
+import okhttp3.Callback;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -60,6 +68,9 @@ public class GMSubs extends Spider {
     private static final long PLAYER_CONTENT_TIMEOUT_MS = 30000;
     private static final long SUBTITLE_HTTP_TIMEOUT_MS = 1000;
     private static final long PLAYER_RETURN_RESERVE_MS = 2000;
+    static final int MAX_SUBTITLE_BYTES = 1024 * 1024;
+    static final int MAX_QUALITY_CANDIDATES = 20;
+    static final long QUALITY_WAIT_MS = 1500;
     private static final Map<String, SubtitleCacheEntry> subtitleCache = new LinkedHashMap<String, SubtitleCacheEntry>(16, .75f, true) {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, SubtitleCacheEntry> eldest) {
@@ -222,6 +233,218 @@ public class GMSubs extends Spider {
         return subs;
     }
 
+    /** ponytail: structural heuristics only; audio/reference validation needs a separately scoped workflow. */
+    static final class SubtitleQuality {
+        int cues, invalid, empty, noise, dialogue, han, latin, otherScript, damaged, characters, repeated;
+        String fingerprint;
+
+        int score() {
+            if (cues == 0) return -100;
+            int value = 100 + (int) Math.round(20 * Math.log1p(Math.min(1000, dialogue)) / Math.log1p(1000));
+            value -= 130 * invalid / cues + 70 * empty / cues + 60 * noise / cues;
+            value -= 20 * Math.max(0, 100 - dialogue) / 100;
+            value -= 50 * repeated / cues;
+            if (characters > 0) value -= Math.min(100, 1000 * damaged / characters);
+            if (han == 0 || otherScript > han || latin > 2 * han) value -= 50;
+            return value;
+        }
+    }
+
+    private static final Pattern CUE_TIME = Pattern.compile("(?m)^\\s*(\\d{1,3}:\\d{2}:\\d{2}[,.]\\d{1,3}|\\d{2}:\\d{2}[,.]\\d{1,3})\\s*-->\\s*(\\d{1,3}:\\d{2}:\\d{2}[,.]\\d{1,3}|\\d{2}:\\d{2}[,.]\\d{1,3})[^\\r\\n]*$");
+    private static final Pattern SUBTITLE_TAGS = Pattern.compile("<[^>]*>|\\{[^}]*}");
+    private static final Pattern NOISE_TEXT = Pattern.compile("^[\\[（(【].*(?:呼吸|吸气|呼气|喘|呻吟|吐息|鼻息|声|音|脚步|笑い|泣き|息遣い|息を).*[\\]）)】]$");
+    private static final Pattern REPEATED_TEXT = Pattern.compile("(.)\\1{7,}");
+    private static final Pattern AD_TEXT = Pattern.compile("(?i)https?://|www\\.|字幕.{0,6}(?:制作|听译|校对)|(?:色花堂|98堂).{0,12}(?:出品|字幕|听译)|广告|推广|公众号");
+
+    static long subtitleTime(String text) {
+        String[] parts = text.trim().replace(',', '.').split(":");
+        if (parts.length < 2 || parts.length > 3) throw new IllegalArgumentException("Bad timestamp");
+        int hours = parts.length == 3 ? Integer.parseInt(parts[0]) : 0;
+        int minutes = Integer.parseInt(parts[parts.length - 2]);
+        double seconds = Double.parseDouble(parts[parts.length - 1]);
+        if (minutes >= 60 || seconds >= 60 || minutes < 0 || seconds < 0) throw new IllegalArgumentException("Bad timestamp");
+        return hours * 3600000L + minutes * 60000L + Math.round(seconds * 1000);
+    }
+
+    /** Strict decoding: ambiguous legacy encodings remain ungraded, not mislabeled as corrupt. */
+    static String decodeSubtitle(byte[] bytes) throws Exception {
+        if (bytes.length > MAX_SUBTITLE_BYTES) throw new IOException("Subtitle is too large");
+        if (bytes.length >= 2 && ((bytes[0] == (byte) 0xff && bytes[1] == (byte) 0xfe)
+                || (bytes[0] == (byte) 0xfe && bytes[1] == (byte) 0xff))) {
+            return strictDecode(bytes, StandardCharsets.UTF_16);
+        }
+        try {
+            return strictDecode(bytes, StandardCharsets.UTF_8).replace("\ufeff", "");
+        } catch (java.nio.charset.CharacterCodingException ignored) {
+            String decoded = null;
+            for (String charset : new String[]{"GB18030", "Big5"}) {
+                try {
+                    String next = strictDecode(bytes, Charset.forName(charset));
+                    if (decoded != null && !decoded.equals(next)) throw new IOException("Ambiguous subtitle encoding");
+                    decoded = next;
+                } catch (java.nio.charset.CharacterCodingException unsupported) {
+                    // Only an unambiguous, strictly decoded legacy file can be graded.
+                }
+            }
+            if (decoded == null) throw new IOException("Unknown subtitle encoding");
+            return decoded;
+        }
+    }
+
+    private static String strictDecode(byte[] bytes, Charset charset) throws Exception {
+        return charset.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(bytes)).toString();
+    }
+
+    static SubtitleQuality analyzeSubtitle(byte[] bytes) throws Exception {
+        String text = decodeSubtitle(bytes).replace("\r\n", "\n").replace('\r', '\n');
+        SubtitleQuality quality = new SubtitleQuality();
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        if (text.toLowerCase(Locale.ROOT).contains("[events]")) {
+            int start = 1, end = 2, content = 9, fields = 10;
+            boolean events = false;
+            for (String line : text.split("\n")) {
+                if (line.trim().startsWith("[")) events = line.trim().equalsIgnoreCase("[Events]");
+                if (!events) continue;
+                if (line.regionMatches(true, 0, "Format:", 0, 7)) {
+                    String[] names = line.substring(7).split(",");
+                    fields = names.length;
+                    start = end = content = -1;
+                    for (int i = 0; i < fields; i++) {
+                        if (names[i].trim().equalsIgnoreCase("Start")) start = i;
+                        if (names[i].trim().equalsIgnoreCase("End")) end = i;
+                        if (names[i].trim().equalsIgnoreCase("Text")) content = i;
+                    }
+                    if (start < 0 || end < 0 || content != fields - 1) throw new IOException("Unsupported ASS format");
+                } else if (line.regionMatches(true, 0, "Dialogue:", 0, 9)) {
+                    String[] values = line.substring(9).split(",", fields);
+                    if (values.length != fields) throw new IOException("Incomplete ASS event");
+                    addSubtitleCue(quality, digest, values[start], values[end], values[content].replace("\\N", "\n").replace("\\n", "\n").replace("\\h", " "));
+                }
+            }
+        } else {
+            // SRT/VTT cues are blank-line separated; timing settings and cue numbers do not affect dedup.
+            boolean vtt = text.trim().startsWith("WEBVTT");
+            for (String block : text.split("\n[ \\t]*\n")) {
+                Matcher time = CUE_TIME.matcher(block);
+                if (!time.find()) {
+                    String header = block.trim();
+                    if (!header.isEmpty() && !header.matches("\\d+") && !(vtt && (header.startsWith("WEBVTT") || header.startsWith("NOTE")
+                            || header.startsWith("STYLE") || header.startsWith("REGION")))) {
+                        throw new IOException("Unsupported subtitle block");
+                    }
+                    continue;
+                }
+                String start = time.group(1), end = time.group(2);
+                String body = block.substring(time.end()).trim();
+                if (body.contains("-->")) throw new IOException("Incomplete cue separation");
+                addSubtitleCue(quality, digest, start, end, body);
+            }
+        }
+        if (quality.cues > 0) {
+            StringBuilder hex = new StringBuilder();
+            for (byte b : digest.digest()) hex.append(String.format(Locale.ROOT, "%02x", b & 255));
+            quality.fingerprint = hex.toString();
+        }
+        return quality;
+    }
+
+    private static void addSubtitleCue(SubtitleQuality q, MessageDigest digest, String start, String end, String body) throws Exception {
+        if (++q.cues > 20000) throw new IOException("Too many subtitle cues");
+        long from = subtitleTime(start), to = subtitleTime(end);
+        if (to <= from) q.invalid++;
+        String visible = SUBTITLE_TAGS.matcher(body).replaceAll("").replaceAll("\\s+", " ").trim();
+        digest.update((from + ":" + to + ":" + visible.length() + ":" + visible + "\n").getBytes(StandardCharsets.UTF_8));
+        if (visible.isEmpty()) q.empty++;
+        else if (NOISE_TEXT.matcher(visible).matches() || AD_TEXT.matcher(visible).find()) q.noise++;
+        else q.dialogue++;
+        if (REPEATED_TEXT.matcher(visible).find()) q.repeated++;
+        for (int i = 0; i < visible.length(); i++) {
+            char c = visible.charAt(i);
+            q.characters++;
+            Character.UnicodeScript script = Character.UnicodeScript.of(c);
+            if (script == Character.UnicodeScript.HAN) q.han++;
+            if (script == Character.UnicodeScript.LATIN) q.latin++;
+            if (script == Character.UnicodeScript.HIRAGANA || script == Character.UnicodeScript.KATAKANA
+                    || script == Character.UnicodeScript.HANGUL || script == Character.UnicodeScript.THAI) q.otherScript++;
+            if (c == 0 || c == '\ufffd' || Character.getType(c) == Character.PRIVATE_USE) q.damaged++;
+        }
+    }
+
+    static JSONArray rankSubtitleContents(String code, JSONArray subs, Map<String, SubtitleQuality> evidence) throws Exception {
+        if (evidence.isEmpty()) return new JSONArray(subs.toString());
+        List<JSONObject> ranked = new ArrayList<>();
+        for (int i = 0; i < subs.length(); i++) ranked.add(new JSONObject(subs.getJSONObject(i).toString()));
+        // Java's stable sort keeps the existing filename/API order for equal evidence.
+        ranked.sort(Comparator.comparingInt((JSONObject row) -> {
+            SubtitleQuality q = evidence.get(row.optString("url"));
+            String namedCode = codeFromTitle(row.optString("name"));
+            int mismatch = !code.isEmpty() && !namedCode.isEmpty() && !normalizeCode(code).equals(normalizeCode(namedCode)) ? 80 : 0;
+            return (q == null ? 50 : q.score()) - mismatch;
+        }).reversed());
+        Set<String> seen = new HashSet<>();
+        JSONArray result = new JSONArray();
+        for (JSONObject row : ranked) {
+            SubtitleQuality q = evidence.get(row.optString("url"));
+            if (q != null && q.fingerprint != null && !seen.add(q.fingerprint)) continue;
+            if (q != null && q.cues > 0 && q.invalid > 0) row.put("name", row.optString("name") + " · 时轴异常");
+            else if (q != null && (q.cues == 0 || q.score() < 50)) row.put("name", row.optString("name") + " · 建议备选");
+            row.put("flag", result.length() == 0 ? 1 : 2);
+            result.put(row);
+        }
+        return result;
+    }
+
+    static long subtitleQualityBudget(long startedAtNanos, long nowNanos) {
+        long elapsed = Math.max(0, TimeUnit.NANOSECONDS.toMillis(nowNanos - startedAtNanos));
+        return Math.max(0, Math.min(QUALITY_WAIT_MS, PLAYER_CONTENT_TIMEOUT_MS - PLAYER_RETURN_RESERVE_MS - elapsed));
+    }
+
+    static boolean trustedSubtitleUrl(String url) {
+        HttpUrl parsed = HttpUrl.parse(url);
+        return parsed != null && parsed.isHttps() && parsed.host().equals("subtitle.v.geilijiasu.com")
+                && parsed.port() == 443 && parsed.username().isEmpty() && parsed.password().isEmpty();
+    }
+
+    static JSONArray inspectSubtitleContents(String code, JSONArray subs, long startedAtNanos) throws Exception {
+        long wait = subtitleQualityBudget(startedAtNanos, System.nanoTime());
+        if (wait == 0 || subs.length() == 0) return subs;
+        Map<String, SubtitleQuality> evidence = new ConcurrentHashMap<>();
+        List<Call> calls = new ArrayList<>();
+        int limit = Math.min(MAX_QUALITY_CANDIDATES, subs.length());
+        CountDownLatch done = new CountDownLatch(limit);
+        OkHttpClient client = http().newBuilder().followRedirects(false).followSslRedirects(false)
+                .callTimeout(Math.min(wait, SUBTITLE_HTTP_TIMEOUT_MS), TimeUnit.MILLISECONDS).build();
+        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(wait);
+        try {
+            for (int i = 0; i < limit; i++) {
+                String url = subs.getJSONObject(i).optString("url");
+                if (!trustedSubtitleUrl(url)) { done.countDown(); continue; }
+                Call call = client.newCall(new Request.Builder().url(url).build());
+                calls.add(call);
+                call.enqueue(new Callback() {
+                    @Override public void onFailure(Call failed, IOException error) { done.countDown(); }
+                    @Override public void onResponse(Call completed, Response response) {
+                        try (Response closed = response) {
+                            if (!response.isSuccessful() || response.body() == null) return;
+                            if (response.body().contentLength() > MAX_SUBTITLE_BYTES) return;
+                            SubtitleQuality quality = analyzeSubtitle(readAll(response.body().byteStream(), MAX_SUBTITLE_BYTES));
+                            if (System.nanoTime() < deadline) evidence.put(url, quality);
+                        } catch (Exception ignored) {
+                            // Fetch/decoding/format uncertainty keeps the original candidate.
+                        } finally { done.countDown(); }
+                    }
+                });
+            }
+            done.await(Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        } finally {
+            for (Call call : calls) call.cancel();
+        }
+        return rankSubtitleContents(code, subs, new HashMap<>(evidence));
+    }
+
     /** GM stores the webview descriptor as data:text/plain;base64, plus the JSON. */
     static String playIdPayload(String id) {
         String prefix = "data:text/plain;base64,";
@@ -300,7 +523,7 @@ public class GMSubs extends Spider {
                         subtitleLibrary.isEmpty() ? null : () -> searchLibrary(code),
                         () -> {
                             if (!hasSubtitleLookupBudget(startedAt, System.nanoTime())) throw new IOException("Subtitle deadline reached");
-                            return search(code);
+                            return search(code, startedAt);
                         }));
             }
             if (subs == null) subs = new JSONArray();
@@ -399,13 +622,15 @@ public class GMSubs extends Spider {
         }
     }
 
-    private static JSONArray search(String code) throws Exception {
+    private static JSONArray search(String code, long startedAt) throws Exception {
         Request request = new Request.Builder().url("https://api-shoulei-ssl.xunlei.com/oracle/subtitle?name=" + code).build();
         try (Response response = http().newCall(request).execute()) {
             if (!response.isSuccessful() || response.body() == null) throw new IOException("Subtitle lookup failed");
             JSONObject json = new JSONObject(response.body().string());
             if (json.optInt("code", -1) != 0) throw new IOException("Subtitle lookup failed");
-            return rankSubtitles(code, json.optJSONArray("data"));
+            JSONArray subs = rankSubtitles(code, json.optJSONArray("data"));
+            try { return inspectSubtitleContents(code, subs, startedAt); }
+            catch (Exception ignored) { return subs; }
         }
     }
 
