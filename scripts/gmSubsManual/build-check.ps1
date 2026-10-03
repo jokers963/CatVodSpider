@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory = $true)]
-    [string]$OutputDir
+    [string]$OutputDir,
+    [string]$FixtureRoot = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -37,6 +38,21 @@ if ($LASTEXITCODE) { throw 'test compile failed' }
 & "$jdk\java.exe" -cp "$testOut;$testCp" org.junit.runner.JUnitCore com.github.catvod.spider.GMSubsTest
 if ($LASTEXITCODE) { throw 'tests failed' }
 
+# Optional local originals; the same runtime analyzer generates metadata-only evidence.
+if ($FixtureRoot) {
+    $fixtures = (Resolve-Path -LiteralPath $FixtureRoot).Path
+    & "$jdk\javac.exe" --release 17 -cp $testCp -d $testOut "$root\scripts\gmSubsManual\SubtitleRankingCheck.java"
+    if ($LASTEXITCODE) { throw 'ranking evidence runner compile failed' }
+    $evidenceOut = Join-Path $work 'ranking-evidence'
+    New-Item -ItemType Directory -Path $evidenceOut | Out-Null
+    foreach ($fixture in Get-ChildItem -LiteralPath $fixtures -Directory) {
+        $apiJson = Join-Path $fixture.FullName 'api.json'
+        if (-not (Test-Path -LiteralPath $apiJson)) { continue }
+        & "$jdk\java.exe" -cp "$testOut;$testCp" com.github.catvod.spider.SubtitleRankingCheck $fixture.Name $apiJson $fixture.FullName (Join-Path $evidenceOut ($fixture.Name + '.json'))
+        if ($LASTEXITCODE) { throw "ranking evidence failed: $($fixture.Name)" }
+    }
+}
+
 $classes = @(Get-ChildItem -LiteralPath "$compileOut\com\github\catvod\spider" -Filter 'GMSubs*.class' | Sort-Object Name)
 if (-not ($classes | Where-Object Name -eq 'GMSubs.class')) { throw 'GMSubs.class missing from D8 inputs' }
 if ($classes.Count -lt 3) { throw "Expected GMSubs and its generated nested classes; found $($classes.Count) input classes" }
@@ -68,4 +84,4 @@ if ($originalHash -ne $candidateOriginalHash) { throw 'Original classes.dex chan
 & powershell -NoProfile -ExecutionPolicy Bypass -File "$root\jar\checkJar.ps1" -Jar $candidateJar -BaseJar "$root\jar\gm.jar" -AllowBundledRuntime
 if ($LASTEXITCODE) { throw 'candidate JAR structural/reference verification failed' }
 Write-Output "Temporary JAR verified: $candidateJar"
-Write-Output "Original classes.dex preserved (SHA256 $originalHash); added classes2.dex defines GMSubs and both generated nested classes."
+Write-Output "Original classes.dex preserved (SHA256 $originalHash); added classes2.dex includes all $($classes.Count) GMSubs classes."

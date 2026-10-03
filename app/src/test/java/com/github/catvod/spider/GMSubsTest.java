@@ -22,6 +22,368 @@ import static org.junit.Assert.assertTrue;
 
 public class GMSubsTest {
 
+    private static GMSubs.SubtitleQuality quality(String text) throws Exception {
+        return GMSubs.analyzeSubtitle(text.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static String captions(int count, String body) {
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < count; i++) text.append(i + 1).append("\n00:00:01,000 --> 00:00:02,000\n")
+                .append(body).append("\n\n");
+        return text.toString();
+    }
+
+    private static String spacedCaptions(int count, String body, long offset) {
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < count; i++) {
+            long from = offset + i * 30000L;
+            text.append(i + 1).append('\n');
+            for (long time : new long[]{from, from + 2000}) {
+                text.append(String.format(java.util.Locale.ROOT, "%02d:%02d:%02d,%03d", time / 3600000,
+                        time / 60000 % 60, time / 1000 % 60, time % 1000));
+                text.append(time == from ? " --> " : "\n");
+            }
+            text.append(body).append("\n\n");
+        }
+        return text.toString();
+    }
+
+    @Test
+    public void dominantLongAnnotationLoopsAreDemotedWithoutDeletingCandidates() throws Exception {
+        String ordinary = spacedCaptions(120, "今天我们一起去公园。", 3000000);
+        GMSubs.SubtitleQuality loop = quality(spacedCaptions(80, "（未知的长串识别标签）", 0) + ordinary);
+        GMSubs.SubtitleQuality healthy = quality(spacedCaptions(80, "今天我们一起去公园。", 0) + ordinary);
+        assertEquals(80, loop.loopedAnnotation);
+        assertEquals(healthy.score() - 32, loop.score());
+        assertTrue(loop.annotations.isEmpty());
+        JSONArray rows = GMSubs.rankSubtitles("TEST-010", new JSONArray()
+                .put(item("TEST-010.srt", "https://example.com/loop.srt", "srt"))
+                .put(item("TEST-010-good.srt", "https://example.com/good.srt", "srt")));
+        JSONArray ranked = GMSubs.rankSubtitleContents("TEST-010", rows,
+                Map.of("https://example.com/loop.srt", loop, "https://example.com/good.srt", healthy));
+        assertEquals(2, ranked.length());
+        assertEquals("https://example.com/good.srt", ranked.getJSONObject(0).getString("url"));
+        assertTrue(ranked.getJSONObject(1).getString("name").endsWith("疑似正文复读"));
+    }
+
+    @Test
+    public void annotationLoopsProtectShortCallsDialogueLyricsRareAndConcentratedRepetition() throws Exception {
+        String ordinary = spacedCaptions(120, "今天我们一起去公园。", 3000000);
+        for (String body : new String[]{"哦", "是的", "部长", "（部长）", "（山田部长）", "今天我们一起去公园",
+                "（你好，朋友，辛苦了。）", "（♪今天我们一起去公园♪）", "[Thank you very much]"})
+            assertEquals(body, 0, quality(spacedCaptions(80, body, 0) + ordinary).loopedAnnotation);
+        String annotation = "（未知的长串识别标签）";
+        assertEquals(0, quality(spacedCaptions(59, annotation, 0) + spacedCaptions(41, "你好", 3000000)).loopedAnnotation);
+        assertEquals(0, quality(spacedCaptions(60, annotation, 0) + spacedCaptions(140, "你好", 3000000)).loopedAnnotation);
+        assertEquals(0, quality(captions(80, annotation) + ordinary).loopedAnnotation);
+        assertEquals(0, quality(spacedCaptions(80, annotation, 0) + spacedCaptions(120, "A very long English dialogue for a foreign subtitle.", 3000000)).loopedAnnotation);
+    }
+
+    @Test
+    public void nearEqualHealthyTranslationsAppearBeforeTheirTimeShiftAlternates() throws Exception {
+        String body = spacedCaptions(120, "今天我们一起去公园。", 0);
+        String shifted = spacedCaptions(120, "今天我们一起去公园。", 6000);
+        String twiceShifted = spacedCaptions(120, "今天我们一起去公园。", 12000);
+        assertEquals(quality(body).bodyFingerprint, quality(shifted).bodyFingerprint);
+        assertFalse(quality(body).fingerprint.equals(quality(shifted).fingerprint));
+        String[] names = {"a", "copy", "shift", "shift2", "other", "low", "unknown"};
+        JSONArray data = new JSONArray();
+        for (String name : names) data.put(item("TEST-011-" + name + ".srt", "https://example.com/" + name + ".srt", "srt"));
+        JSONArray rows = GMSubs.rankSubtitles("TEST-011", data);
+        Map<String, GMSubs.SubtitleQuality> evidence = Map.of(
+                "https://example.com/a.srt", quality(body), "https://example.com/copy.srt", quality(body),
+                "https://example.com/shift.srt", quality(shifted), "https://example.com/shift2.srt", quality(twiceShifted),
+                "https://example.com/other.srt", quality(spacedCaptions(119, "今天我们一起去看电影。", 0)),
+                "https://example.com/low.srt", quality(captions(20, "你好")));
+        JSONArray ranked = GMSubs.rankSubtitleContents("TEST-011", rows, evidence);
+        String[] expected = {"a", "other", "shift", "shift2", "low", "unknown"};
+        assertEquals(expected.length, ranked.length());
+        for (int i = 0; i < expected.length; i++) {
+            assertEquals("https://example.com/" + expected[i] + ".srt", ranked.getJSONObject(i).getString("url"));
+            assertEquals(i == 0 ? 1 : 2, ranked.getJSONObject(i).getInt("flag"));
+        }
+        assertTrue(ranked.getJSONObject(2).getString("name").endsWith("同正文·不同时间轴"));
+        assertFalse(rows.getJSONObject(2).getString("name").contains("同正文"));
+        // A distinct but much lower-quality family must not leapfrog a healthy time-shift alternative.
+        assertTrue(ranked.getJSONObject(4).getString("url").contains("low.srt"));
+    }
+
+    @Test
+    public void diversityNeverPromotesDamagedOrInvalidTranslationsOverHealthyShiftedAlternatives() throws Exception {
+        JSONArray data = new JSONArray();
+        for (String name : new String[]{"a", "shift", "damaged", "invalid"})
+            data.put(item("TEST-012-" + name + ".srt", "https://example.com/" + name + ".srt", "srt"));
+        String ordinary = spacedCaptions(120, "今天我们一起去公园。", 0);
+        GMSubs.SubtitleQuality damaged = quality(ordinary.replaceFirst("今天", "今\ufffd"));
+        GMSubs.SubtitleQuality invalid = quality(ordinary.replaceFirst("00:00:02,000", "00:00:00,000"));
+        assertEquals(1, damaged.damaged);
+        assertEquals(1, invalid.invalid);
+        JSONArray ranked = GMSubs.rankSubtitleContents("TEST-012", GMSubs.rankSubtitles("TEST-012", data), Map.of(
+                "https://example.com/a.srt", quality(ordinary),
+                "https://example.com/shift.srt", quality(spacedCaptions(120, "今天我们一起去公园。", 6000)),
+                "https://example.com/damaged.srt", damaged, "https://example.com/invalid.srt", invalid));
+        assertEquals("https://example.com/a.srt", ranked.getJSONObject(0).getString("url"));
+        assertEquals("https://example.com/shift.srt", ranked.getJSONObject(1).getString("url"));
+        assertEquals(4, ranked.length());
+    }
+
+    @Test
+    public void contentRankingPenalizesInvalidEmptyNoisyAndForeignNotJustEntryCount() throws Exception {
+        GMSubs.SubtitleQuality healthy = quality(captions(493, "今天我们一起去公园。"));
+        GMSubs.SubtitleQuality inflated = quality(captions(2456, "") + captions(699, "（呼吸声）") + captions(178, "你好"));
+        GMSubs.SubtitleQuality invalid = quality(captions(493, "你好").replace("00:00:01,000", "00:00:03,000"));
+        assertEquals(3333, inflated.cues);
+        assertEquals(2456, inflated.empty);
+        assertEquals(699, inflated.noise);
+        assertEquals(493, invalid.invalid);
+        assertTrue(healthy.score() > inflated.score());
+        GMSubs.SubtitleQuality sounds = quality(captions(2450, "(息を吸う音)") + captions(643, "（吸气声）") + captions(240, "你好"));
+        assertEquals(3093, sounds.noise);
+        assertTrue(healthy.score() > sounds.score());
+        assertTrue(healthy.score() > invalid.score());
+        assertTrue(healthy.score() > quality(captions(493, "今日はいい天気です。" )).score());
+        assertTrue(healthy.score() > quality(captions(493, "哈哈哈哈哈哈哈哈哈哈" )).score());
+        assertTrue(healthy.score() > quality(captions(493, "坏\ufffd字\u0000符" )).score());
+        assertTrue(healthy.score() > quality(captions(51, "今天我们一起去公园。" )).score());
+        try { quality("<html>verification</html>"); org.junit.Assert.fail("Not a subtitle"); }
+        catch (java.io.IOException expected) { }
+        assertEquals(0, quality(captions(10, "（你好，朋友。）")).noise);
+        assertTrue(healthy.score() > quality(captions(493, "A beautiful day outside.") + captions(1, "中文字幕")).score());
+    }
+
+    @Test
+    public void parsesSrtVttAssAndSsaWithEqualVisibleContent() throws Exception {
+        String srt = "1\n00:00:01,200 --> 00:00:03,450\n你好，<i>朋友</i>。\n";
+        GMSubs.SubtitleQuality reference = quality(srt);
+        String vtt = "WEBVTT\n\nintro\n00:01.200 --> 00:03.450 align:start\n你好，朋友。\n";
+        String ass = "[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\nDialogue: 0,0:00:01.20,0:00:03.45,Default,,0,0,0,,{\\i1}你好，朋友。\n";
+        String ssa = ass.replace("Layer", "Marked").replace("Dialogue: 0,", "Dialogue: Marked=0,");
+        assertEquals(reference.fingerprint, quality(vtt).fingerprint);
+        assertEquals(reference.fingerprint, quality(ass).fingerprint);
+        assertEquals(reference.fingerprint, quality(ssa).fingerprint);
+        assertEquals(3450, GMSubs.subtitleTime("0:00:03.45"));
+        assertEquals(1200, GMSubs.subtitleTime("00:01.200"));
+    }
+
+    @Test
+    public void frequentIsolatedLatinFragmentsLowerChineseQualityWithoutPenalizingNormalShortDialogue() throws Exception {
+        String dialogue = captions(1400, "今天我们一起去公园。");
+        int healthy = quality(dialogue + captions(600, "嗯嗯")).score();
+        GMSubs.SubtitleQuality fragments = quality(dialogue + captions(60, "<i>A...</i>") + captions(540, "是的"));
+        assertEquals(60, fragments.isolatedLatin);
+        assertEquals(healthy - 12, fragments.score());
+        for (String shortText : new String[]{"嗯", "啊", "嗯嗯", "是的", "好的", "A计划", "B超", "维生素A", "OK"})
+            assertEquals(shortText, healthy, quality(dialogue + captions(600, shortText)).score());
+        assertEquals(healthy, quality(dialogue + captions(4, "A")).score());
+        assertEquals(healthy, quality(dialogue + captions(5, "A")).score()); // Below one percent.
+        assertEquals(quality(captions(2000, "I")).score(), quality(captions(2000, "Hello")).score());
+        JSONArray rows = GMSubs.rankSubtitles("TEST-009", new JSONArray()
+                .put(item("TEST-009.srt", "https://example.com/fragments.srt", "srt"))
+                .put(item("TEST-009-good.srt", "https://example.com/good.srt", "srt")));
+        Map<String, GMSubs.SubtitleQuality> evidence = new LinkedHashMap<>();
+        evidence.put("https://example.com/fragments.srt", fragments);
+        evidence.put("https://example.com/good.srt", quality(dialogue + captions(600, "嗯嗯")));
+        JSONArray ranked = GMSubs.rankSubtitleContents("TEST-009", rows, evidence);
+        assertEquals("https://example.com/good.srt", ranked.getJSONObject(0).getString("url"));
+        assertEquals(2, ranked.length()); // Demote, never remove a distinct candidate.
+    }
+
+    @Test
+    public void removesOnlyDuplicatesWithBothIdenticalTextAndIdenticalTimestamps() throws Exception {
+        String body = captions(120, "你好，朋友。");
+        JSONArray rows = GMSubs.rankSubtitles("TEST-001", new JSONArray()
+                .put(item("TEST-001.srt", "https://example.com/a.srt", "srt"))
+                .put(item("TEST-001-copy.srt", "https://example.com/b.srt", "srt"))
+                .put(item("TEST-001-shift.srt", "https://example.com/c.srt", "srt"))
+                .put(item("TEST-001-text.srt", "https://example.com/d.srt", "srt"))
+                .put(item("TEST-001-unfetched.srt", "https://example.com/e.srt", "srt")));
+        Map<String, GMSubs.SubtitleQuality> evidence = new LinkedHashMap<>();
+        evidence.put("https://example.com/a.srt", quality(body));
+        evidence.put("https://example.com/b.srt", quality("\ufeff" + body.replace("\n", "\r\n") + "  \r\n"));
+        evidence.put("https://example.com/c.srt", quality(body.replace("00:00:01,000", "00:00:02,000").replace("00:00:02,000\n", "00:00:03,000\n")));
+        evidence.put("https://example.com/d.srt", quality(body.replace("朋友", "同学")));
+        JSONArray ranked = GMSubs.rankSubtitleContents("TEST-001", rows, evidence);
+        assertEquals(4, ranked.length());
+        assertFalse(containsUrl(ranked, "https://example.com/b.srt"));
+        assertTrue(containsUrl(ranked, "https://example.com/c.srt"));
+        assertTrue(containsUrl(ranked, "https://example.com/d.srt"));
+        assertTrue(containsUrl(ranked, "https://example.com/e.srt"));
+        assertEquals(1, ranked.getJSONObject(0).getInt("flag"));
+        assertEquals(2, ranked.getJSONObject(1).getInt("flag"));
+        assertFalse(rows.getJSONObject(0).has("flag"));
+    }
+
+    @Test
+    public void sourceCreditDoesNotOverrideBrokenTimingAndAllUnknownKeepsOriginalOrder() throws Exception {
+        JSONArray rows = GMSubs.rankSubtitles("TEST-002", new JSONArray()
+                .put(item("TEST-002-色花堂.srt", "https://example.com/a.srt", "srt"))
+                .put(item("TEST-002.srt", "https://example.com/b.srt", "srt")));
+        assertEquals(rows.toString(), GMSubs.rankSubtitleContents("TEST-002", rows, new LinkedHashMap<>()).toString());
+        Map<String, GMSubs.SubtitleQuality> evidence = new LinkedHashMap<>();
+        evidence.put("https://example.com/a.srt", quality(captions(150, "色花堂字幕出品").replace("00:00:02,000", "00:00:00,000")));
+        evidence.put("https://example.com/b.srt", quality(captions(150, "今天我们去公园。")));
+        JSONArray ranked = GMSubs.rankSubtitleContents("TEST-002", rows, evidence);
+        assertEquals("https://example.com/b.srt", ranked.getJSONObject(0).getString("url"));
+        assertTrue(ranked.getJSONObject(1).getString("name").endsWith("时轴异常"));
+    }
+
+    @Test
+    public void explicitDifferentVideoCodeCannotWinByHavingMoreDialogue() throws Exception {
+        JSONArray rows = GMSubs.rankSubtitles("TEST-007", new JSONArray()
+                .put(item("TEST-008.srt", "https://example.com/wrong.srt", "srt"))
+                .put(item("TEST-007.srt", "https://example.com/right.srt", "srt")));
+        Map<String, GMSubs.SubtitleQuality> evidence = new LinkedHashMap<>();
+        evidence.put("https://example.com/wrong.srt", quality(captions(1000, "今天我们去公园。")));
+        evidence.put("https://example.com/right.srt", quality(captions(120, "你好，朋友。")));
+        assertEquals("https://example.com/right.srt", GMSubs.rankSubtitleContents("TEST-007", rows, evidence).getJSONObject(0).getString("url"));
+    }
+
+    @Test
+    public void decodingAndResourceCapsFailOpenRatherThanInventingText() throws Exception {
+        String srt = captions(2, "你好");
+        assertEquals(quality(srt).fingerprint, GMSubs.analyzeSubtitle(srt.getBytes(StandardCharsets.UTF_16)).fingerprint);
+        try {
+            GMSubs.decodeSubtitle(srt.getBytes(java.nio.charset.Charset.forName("GB18030")));
+            org.junit.Assert.fail("Both legacy decoders accept these bytes but disagree; do not guess");
+        } catch (java.io.IOException expected) { assertTrue(expected.getMessage().contains("Ambiguous")); }
+        for (byte[] bytes : new byte[][]{new byte[]{(byte) 0xff}, new byte[GMSubs.MAX_SUBTITLE_BYTES + 1]}) {
+            try { GMSubs.analyzeSubtitle(bytes); org.junit.Assert.fail("Must reject undecodable/oversized data"); }
+            catch (Exception expected) { }
+        }
+        try { quality(captions(20001, "你好")); org.junit.Assert.fail("Cue cap"); }
+        catch (java.io.IOException expected) { }
+        try { quality(captions(2, "你好").replace("\n\n", "\n")); org.junit.Assert.fail("No partial dedup"); }
+        catch (java.io.IOException expected) { }
+        try { quality("1\n00:00:99,000 --> 00:01:40,000\n你好\n"); org.junit.Assert.fail("Bad clock"); }
+        catch (IllegalArgumentException expected) { }
+        assertFalse(GMSubs.trustedSubtitleUrl("https://subtitle.v.geilijiasu.com.evil.example/a.srt"));
+        assertFalse(GMSubs.trustedSubtitleUrl("https://user:secret@subtitle.v.geilijiasu.com/a.srt"));
+        assertFalse(GMSubs.trustedSubtitleUrl("http://subtitle.v.geilijiasu.com/a.srt"));
+        assertFalse(GMSubs.trustedSubtitleUrl("https://subtitle.v.geilijiasu.com:444/a.srt"));
+        assertTrue(GMSubs.trustedSubtitleUrl("https://subtitle.v.geilijiasu.com/A/B/c.srt"));
+        long start = 123000L;
+        assertEquals(1500, GMSubs.subtitleQualityBudget(start, start));
+        assertEquals(500, GMSubs.subtitleQualityBudget(start, start + java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(27500)));
+        assertEquals(0, GMSubs.subtitleQualityBudget(start, start + java.util.concurrent.TimeUnit.SECONDS.toNanos(28)));
+    }
+
+    @Test
+    public void contentFetchIsBoundedSkipsUnknownHostsAndKeepsFailedCandidates() throws Exception {
+        java.lang.reflect.Field field = GMSubs.class.getDeclaredField("http");
+        field.setAccessible(true);
+        Object previous = field.get(null);
+        java.util.concurrent.atomic.AtomicInteger requests = new java.util.concurrent.atomic.AtomicInteger();
+        field.set(null, new okhttp3.OkHttpClient.Builder().addInterceptor(chain -> {
+            requests.incrementAndGet();
+            String path = chain.request().url().encodedPath();
+            if (path.contains("failed")) throw new java.net.SocketTimeoutException("synthetic timeout");
+            if (path.contains("slow")) {
+                // Deterministic interceptor honors cancellation, without making external HTTP calls.
+                while (!chain.call().isCanceled()) {
+                    try { Thread.sleep(5); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); break; }
+                }
+                throw new java.io.IOException("cancelled");
+            }
+            String body = path.contains("bad") ? captions(100, "（呼吸声）") : captions(100, "今天我们一起去公园。");
+            int status = path.contains("redirect") ? 302 : 200;
+            return new okhttp3.Response.Builder().request(chain.request()).protocol(okhttp3.Protocol.HTTP_1_1)
+                    .code(status).message("test").header("Location", "https://untrusted.example/never")
+                    .body(okhttp3.ResponseBody.create(body, okhttp3.MediaType.get("text/plain"))).build();
+        }).build());
+        try {
+            JSONArray rows = GMSubs.rankSubtitles("TEST-003", new JSONArray()
+                    .put(item("TEST-003.srt", "https://subtitle.v.geilijiasu.com/bad.srt", "srt"))
+                    .put(item("TEST-003-good.srt", "https://subtitle.v.geilijiasu.com/good.srt", "srt"))
+                    .put(item("TEST-003-failed.srt", "https://subtitle.v.geilijiasu.com/failed.srt", "srt"))
+                    .put(item("TEST-003-other.srt", "https://unknown.example/a.srt", "srt"))
+                    .put(item("TEST-003-redirect.srt", "https://subtitle.v.geilijiasu.com/redirect.srt", "srt")));
+            JSONArray ranked = GMSubs.inspectSubtitleContents("TEST-003", rows, System.nanoTime());
+            assertEquals(4, requests.get());
+            assertEquals(5, ranked.length());
+            assertEquals("https://subtitle.v.geilijiasu.com/good.srt", ranked.getJSONObject(0).getString("url"));
+            assertTrue(containsUrl(ranked, "https://unknown.example/a.srt"));
+            assertTrue(containsUrl(ranked, "https://subtitle.v.geilijiasu.com/failed.srt"));
+            JSONArray slow = GMSubs.rankSubtitles("TEST-004", new JSONArray()
+                    .put(item("TEST-004.srt", "https://subtitle.v.geilijiasu.com/slow.srt", "srt")));
+            long before = System.nanoTime();
+            assertEquals(slow.toString(), GMSubs.inspectSubtitleContents("TEST-004", slow, before).toString());
+            assertTrue(java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - before) < 2200);
+            int count = requests.get();
+            assertEquals(rows.toString(), GMSubs.inspectSubtitleContents("TEST-003", rows, System.nanoTime() - java.util.concurrent.TimeUnit.SECONDS.toNanos(29)).toString());
+            assertEquals(count, requests.get());
+        } finally { field.set(null, previous); }
+    }
+
+    @Test
+    public void contentFetchCapsTwentyFilesRejectsOversizeAndClosesEveryResponse() throws Exception {
+        java.lang.reflect.Field field = GMSubs.class.getDeclaredField("http");
+        field.setAccessible(true);
+        Object previous = field.get(null);
+        java.util.concurrent.atomic.AtomicInteger requests = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.concurrent.atomic.AtomicInteger closed = new java.util.concurrent.atomic.AtomicInteger();
+        field.set(null, new okhttp3.OkHttpClient.Builder().addInterceptor(chain -> {
+            requests.incrementAndGet();
+            return new okhttp3.Response.Builder().request(chain.request()).protocol(okhttp3.Protocol.HTTP_1_1)
+                    .code(200).message("test").body(new okhttp3.ResponseBody() {
+                        @Override public okhttp3.MediaType contentType() { return okhttp3.MediaType.get("text/plain"); }
+                        @Override public long contentLength() { return GMSubs.MAX_SUBTITLE_BYTES + 1L; }
+                        @Override public okio.BufferedSource source() { throw new AssertionError("Must not read oversized body"); }
+                        @Override public void close() { closed.incrementAndGet(); }
+                    }).build();
+        }).build());
+        try {
+            JSONArray raw = new JSONArray();
+            for (int i = 0; i < 25; i++) raw.put(item("TEST-005-" + i + ".srt", "https://subtitle.v.geilijiasu.com/" + i + ".srt", "srt"));
+            JSONArray rows = GMSubs.rankSubtitles("TEST-005", raw);
+            assertEquals(rows.toString(), GMSubs.inspectSubtitleContents("TEST-005", rows, System.nanoTime()).toString());
+            assertEquals(20, requests.get());
+            assertEquals(20, closed.get());
+            try { GMSubs.readAll(new ByteArrayInputStream(new byte[GMSubs.MAX_SUBTITLE_BYTES + 1]), GMSubs.MAX_SUBTITLE_BYTES); org.junit.Assert.fail("Chunked oversize body"); }
+            catch (java.io.IOException expected) { }
+        } finally { field.set(null, previous); }
+    }
+
+    @Test
+    public void playerContentUsesRankedResultAndCacheWithoutChangingMediaHeadersOrNativeSubs() throws Exception {
+        java.lang.reflect.Field field = GMSubs.class.getDeclaredField("http");
+        field.setAccessible(true);
+        Object previous = field.get(null);
+        java.util.concurrent.atomic.AtomicInteger requests = new java.util.concurrent.atomic.AtomicInteger();
+        String api = new JSONObject().put("code", 0).put("data", new JSONArray()
+                .put(item("TEST-906.srt", "https://subtitle.v.geilijiasu.com/bad.srt", "srt"))
+                .put(item("TEST-906-good.srt", "https://subtitle.v.geilijiasu.com/good.srt", "srt"))).toString();
+        field.set(null, new okhttp3.OkHttpClient.Builder().addInterceptor(chain -> {
+            requests.incrementAndGet();
+            String host = chain.request().url().host();
+            String body = host.equals("api-shoulei-ssl.xunlei.com") ? api
+                    : captions(120, "你好，朋友。").replace("00:00:02,000", chain.request().url().encodedPath().contains("bad") ? "00:00:00,000" : "00:00:02,000");
+            return new okhttp3.Response.Builder().request(chain.request()).protocol(okhttp3.Protocol.HTTP_1_1)
+                    .code(200).message("test").body(okhttp3.ResponseBody.create(body, okhttp3.MediaType.get("text/plain"))).build();
+        }).build());
+        String media = new JSONObject().put("url", "https://media.example/video.m3u8").put("parse", 0)
+                .put("header", new JSONObject().put("User-Agent", "unchanged"))
+                .put("subs", new JSONArray().put(item("Native.srt", "https://native.example/sub.srt", "srt"))).toString();
+        try {
+            GMSubs spider = new GMSubs();
+            java.lang.reflect.Field delegate = GMSubs.class.getDeclaredField("gm");
+            delegate.setAccessible(true);
+            delegate.set(spider, new com.github.catvod.crawler.Spider() {
+                @Override public String playerContent(String flag, String id, java.util.List<String> vipFlags) { return media; }
+            });
+            String result = spider.playerContent("TEST-906", "https://media.example/video.m3u8", java.util.List.of());
+            JSONObject play = new JSONObject(result);
+            assertEquals("https://media.example/video.m3u8", play.getString("url"));
+            assertEquals("unchanged", play.getJSONObject("header").getString("User-Agent"));
+            assertEquals(0, play.getInt("parse"));
+            assertEquals(3, play.getJSONArray("subs").length());
+            assertEquals("https://subtitle.v.geilijiasu.com/good.srt", play.getJSONArray("subs").getJSONObject(0).getString("url"));
+            assertTrue(containsUrl(play.getJSONArray("subs"), "https://native.example/sub.srt"));
+            assertEquals(3, requests.get());
+            assertEquals(result, spider.playerContent("TEST-906", "https://media.example/video.m3u8", java.util.List.of()));
+            assertEquals(3, requests.get());
+        } finally { field.set(null, previous); }
+    }
+
     @Test
     public void extractsVideoCodeFromTitle() {
         assertEquals("REAL-795", GMSubs.codeFromTitle("REAL-795 A Slow-lip Delivery Service That Uses Incredible Technique"));
