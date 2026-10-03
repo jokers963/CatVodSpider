@@ -18,6 +18,8 @@
 
 **最新进展（2026-10-03）**：新增 MemoJav 站（`memojav`，`memojav.org`，main `4bb9dba`）。起因：ren 问"memojav.org 这个你能写吗"；按加新站流程先对方案，ren 选"先逆向 /hls/ 签名、确认能播再写"。逆向结论：详情页 HTML 无视频地址，播放器走 iframe `/embed/{id}`，取流在 `/static/main.js` 的 `get_video_info()`——签名纯客户端时间戳算法（`btoa(Date.now())` 取中间 10 字符 + `sts=1+Σ(charCode×i×1743)`），无密钥无服务端下发；`GET /hls/get_video_info.php?id={番号}&sig=&sts=` 返回 `for (;;);{"type":"hls","url":"https%3A%2F%2Fvideo10.memojav.net%2Fstream%2F{id}%2Fmaster.m3u8","success":true}`；m3u8 静态路径、无签名参数、无过期概念。Node 复现签名 + curl 全链路验证通过（接口 success:true，m3u8 HTTP 200，33KB）。实现：`js/memojav.user.js` v1.0.0（home/分类/详情/搜索；本站无站内搜索——搜索框跳 Google site:——故搜索仅支持番号直查 `/video/{番号}`），分类 10 个（`big-tits` 等 slug 全部 curl 200 验证），翻页为路径式 `page-N`；`vod_play_url` 直接返回 m3u8（`播放$` 前缀；直链若被拦再切 match 嗅探）。正式配置新增 `memojav` 条目（`?v=1`，blockNetworkImage true）。JSON/JS 校验通过，已推 main。待 ren 手机验证分类/搜索/播放；云端无 WebView 实机条件，手机为最终裁决。
 
+**最新进展（2026-10-03）**：MemoJav 站已按 ren 要求下架（`memojav` 条目与 `js/memojav.user.js` 一并移除）。ren 手机验证：播放正常，但分类（260 个全量动态拉取仍不满意）与搜索（本站无站内搜索，仅番号/女优英文名直查）不符合预期，决定不要该站。/hls/ 签名逆向结论保留在上条记录中备查。
+
 ## 当前结论与用户边界
 
 - SupJav 已移除，NBD-022 排查已取消；不恢复旧站点、线路、诊断包或旧配置。
@@ -38,7 +40,7 @@
 | 正式 JAR | `jar/gm_subs-v37.jar?v=37`，六站共用，无站点 JAR 覆写 |
 | 手机实装 | 2026-10-02 ADB 核对 `com.jokers963.luoyuqiu`，`5.6.3-lyq.3` / `56303`，Android 13 |
 
-正式站点与脚本 URL 版本：`missav` v9、`jable` v12、`av01` v5、`rou` v6、`hanime1` v3、`javguru` v3、`memojav` v1。旧 `json/supjav.json` 已退役，不作为兼容入口。
+正式站点与脚本 URL 版本：`missav` v9、`jable` v12、`av01` v5、`rou` v6、`hanime1` v3、`javguru` v3。旧 `json/supjav.json` 已退役，不作为兼容入口。（`memojav` v1.0.0/v1.0.1 已按 ren 要求下架，条目与脚本一并移除。）
 
 v37 SHA-256：`03B7BBA54A47C958B5B11B04E96382A4687B01825EADE40295976443B5AF0021`；MD5：`004df47ae36384de6fe14d5e31f23ff7`。
 

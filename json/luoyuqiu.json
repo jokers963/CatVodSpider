@@ -127,28 +127,6 @@
       }
     },
     {
-      "key": "memojav",
-      "name": "🎞️ MemoJav",
-      "type": 3,
-      "api": "csp_GMSubs",
-      "searchable": 1,
-      "quickSearch": 1,
-      "changeable": 0,
-      "filterable": 0,
-      "timeout": 60,
-      "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/memojav.user.js?v=2",
-        "debug": false,
-        "webViewSettings": {"blockNetworkImage": true},
-        "spider": {
-          "homeContent": {"loadUrl": "https://memojav.org/"},
-          "categoryContent": {"loadUrl": "https://memojav.org/${tid}/"},
-          "detailContent": {"loadUrl": "https://memojav.org/video/${id}"},
-          "searchContent": {"loadUrl": "https://memojav.org/video/${key}"}
-        }
-      }
-    },
-    {
       "key": "hanime1",
       "name": "🎨 Hanime1",
       "type": 3,
