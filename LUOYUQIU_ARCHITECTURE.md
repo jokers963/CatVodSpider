@@ -45,7 +45,7 @@ https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json
 
 | 项目 | 快照 |
 | --- | --- |
-| Spider JAR | `jar/gm_subs-v37.jar?v=37` |
+| Spider JAR | `jar/gm_subs-v38.jar?v=38`，正式配置含 MD5；v37 保留供回退 |
 | 站点 | MissAV、Jable、AV01、肉视频、Hanime1、JavGuru |
 | MissAV 脚本 | URL `v=9` |
 | Jable 脚本 | URL `v=12` |
@@ -124,6 +124,8 @@ MissAV 当前采用普通直链的 `vod_play_url`，不要擅自改回带 `name`
 从播放描述的标题或线路名称提取编号，查询迅雷字幕，按名称相关性排序、去重，保留 HTTPS 的 SRT/ASS/SSA/VTT 候选，转换成 `subs`。
 
 匹配是名称相关性，不代表时间轴已验证；查询失败或没有字幕时仍返回原播放结果。当前查询是同步的，客户端总调用超时为一秒（`SUBTITLE_HTTP_TIMEOUT_MS = 1000`），可能增加启动等待；“失败不阻断”不等于“后台异步”。
+
+2026-10-03 用户确认将已实测候选以 v38 发布到正式配置，v37 保留供回退：新增可选 `ext.subtitleLibrary`，按番号请求静态 JSON，库未命中或失败时回退迅雷；保留已有字幕与媒体字段、按库地址隔离缓存并限制总查询预算。配套生成器只读原包，生成 UTF-8 内容哈希对象与分片索引。R2 数据及手机字幕轨道/切换/播放已抽样验证；用户确认一个样本实际显示并在 player 临时 -6 秒校准后同步，不代表全库自动同步。Jable 暂缓，AV01/JavGuru 目视验收按用户要求跳过，不能因发布改记通过。部署状态、实现及回退见 [自有字幕库档案](docs/subtitles/README.md)。
 
 历史 `gm_subs.jar` 保留 GM 的原始 `classes.dex`，新增包装层为 `classes2.dex`。研究时原始 DEX 在两个 JAR 中均为 SHA256（不是当前 v37 主 DEX 的校验值）：
 

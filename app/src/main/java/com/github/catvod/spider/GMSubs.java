@@ -38,10 +38,15 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-/** Keeps GM's page parsing and playback, adding matching Xunlei subtitle candidates. */
+/** Keeps GM's page parsing and playback, adding a public subtitle library with Xunlei fallback. */
 public class GMSubs extends Spider {
 
-    private static final Pattern CODE = Pattern.compile("(?i)(?<![a-z0-9])([a-z]{2,8})[-_.](\\d{2,6})(?!\\d)");
+    // Keep these rules aligned with scripts/subtitles/build_library.py.
+    private static final Pattern FC2 = Pattern.compile("(?i)(?<![a-z0-9])fc2[-_ ]?(?:ppv[-_ ]?)?(\\d{5,8})(?!\\d)");
+    private static final Pattern SEPARATED_CODE = Pattern.compile("(?i)(?<![a-z0-9])([a-z]{2,8}|s2m(?:bd)?|t28|\\d{2,4}[a-z]{2,8})[-_.](\\d{2,6})(?!\\d)");
+    private static final Pattern HEYZO = Pattern.compile("(?i)(?<![a-z0-9])(heyzo)[-_ .]*(\\d{2,6})(?!\\d)");
+    private static final Pattern CODE = Pattern.compile("(?i)(?<![a-z0-9])([a-z]{2,8}|s2m(?:bd)?|t28|\\d{2,4}[a-z]{2,8})[-_.]?(\\d{2,6})(?![a-z0-9])");
+    private static final String NON_CODES = "|FHD|UHD|FULLHD|HEVC|XVID|UTF|GBK|GB|WEB|MP|";
     /** AV01 master whose relative variant URIs must carry the master's access_token, as the site's own HLS loader does. */
     private static final Pattern TOKEN_MASTER = Pattern.compile("(?i)^https://www\\.av01\\.media/api/v1/videos/\\d+/manifest/master\\.m3u8\\?(.*&)?access_token=");
     private static final Pattern URI_ATTR = Pattern.compile("URI=\"([^\"]+)\"");
@@ -64,6 +69,7 @@ public class GMSubs extends Spider {
     private static OkHttpClient http;
     private static OkHttpClient stream;
     private Spider gm;
+    private String subtitleLibrary = "";
 
     private static OkHttpClient http() {
         if (http == null) http = new OkHttpClient.Builder().callTimeout(SUBTITLE_HTTP_TIMEOUT_MS, TimeUnit.MILLISECONDS).build();
@@ -81,8 +87,78 @@ public class GMSubs extends Spider {
 
     // ponytail: use the first video code; expand only if real titles contain multiple codes.
     static String codeFromTitle(String title) {
-        Matcher match = CODE.matcher(title == null ? "" : title);
-        return match.find() ? (match.group(1) + "-" + match.group(2)).toUpperCase(Locale.ROOT) : "";
+        String code = "";
+        int first = Integer.MAX_VALUE;
+        for (Pattern pattern : new Pattern[]{FC2, SEPARATED_CODE, HEYZO, CODE}) {
+            Matcher match = pattern.matcher(title == null ? "" : title);
+            while (match.find()) {
+                if (pattern != FC2 && NON_CODES.contains("|" + match.group(1).toUpperCase(Locale.ROOT) + "|")) continue;
+                if (match.start() >= first) continue;
+                code = pattern == FC2 ? "FC2-PPV-" + match.group(1) : (match.group(1) + "-" + match.group(2)).toUpperCase(Locale.ROOT);
+                first = match.start();
+            }
+        }
+        return code;
+    }
+
+    /** Optional HTTPS root; leaving it unset preserves Xunlei-only behavior. */
+    static String libraryFromExtend(String extend) {
+        try {
+            HttpUrl base = HttpUrl.parse(new JSONObject(extend).optString("subtitleLibrary"));
+            if (base == null || !base.isHttps() || !base.username().isEmpty() || !base.password().isEmpty()
+                    || base.query() != null || base.fragment() != null) return "";
+            return base.encodedPath().endsWith("/") ? base.toString() : base.toString() + "/";
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    static String libraryIndexUrl(String library, String code) {
+        String key = normalizeCode(code).toUpperCase(Locale.ROOT);
+        return library.isEmpty() || key.length() < 2 ? "" : library + "index/" + key.substring(0, 2) + "/" + key + ".json";
+    }
+
+    /** Resolve only content-addressed objects for this exact code, below the configured root. */
+    static JSONArray librarySubtitles(String library, String code, JSONObject manifest) throws Exception {
+        JSONArray subs = new JSONArray();
+        String key = normalizeCode(code).toUpperCase(Locale.ROOT);
+        if (key.length() < 2 || !key.equals(manifest.optString("code"))) return subs;
+        JSONArray rows = manifest.optJSONArray("subs");
+        HttpUrl base = HttpUrl.parse(library);
+        if (rows == null || base == null || !base.isHttps()) return subs;
+        String prefix = "subs/" + key.substring(0, 2) + "/" + key + "/";
+        Set<String> seen = new HashSet<>();
+        for (int i = 0; i < Math.min(rows.length(), 100); i++) {
+            JSONObject row = rows.optJSONObject(i);
+            if (row == null) continue;
+            String path = row.optString("path");
+            String ext = row.optString("ext");
+            String format = subtitleFormat(ext);
+            String name = row.optString("name").trim();
+            if (format.isEmpty() || name.isEmpty() || !path.startsWith(prefix)
+                    || !path.substring(prefix.length()).matches("[a-f0-9]{64}\\.(srt|ass|ssa|vtt)")
+                    || !path.endsWith("." + ext) || !seen.add(path)) continue;
+            HttpUrl url = base.resolve(path);
+            if (url == null) continue;
+            JSONObject sub = new JSONObject().put("name", "字幕库 · " + name).put("url", url.toString())
+                    .put("format", format).put("flag", subs.length() == 0 ? 1 : 2);
+            String lang = row.optString("lang");
+            if (lang.matches("zh(?:-Hans|-Hant)?|en|ja")) sub.put("lang", lang);
+            subs.put(sub);
+        }
+        return subs;
+    }
+
+    static JSONArray libraryFirst(Callable<JSONArray> library, Callable<JSONArray> fallback) throws Exception {
+        if (library != null) {
+            try {
+                JSONArray subs = library.call();
+                if (subs != null && subs.length() > 0) return subs;
+            } catch (Exception ignored) {
+                // A missing or unavailable optional library still allows Xunlei and playback.
+            }
+        }
+        return fallback.call();
     }
 
     /** Strip separators so IPX-343, IPX343 and IPX_343 compare the same. */
@@ -173,6 +249,7 @@ public class GMSubs extends Spider {
 
     @Override
     public void init(Context context, String extend) throws Exception {
+        subtitleLibrary = libraryFromExtend(extend);
         gm = (Spider) Class.forName("com.github.catvod.spider.GM", true, getClass().getClassLoader()).getDeclaredConstructor().newInstance();
         gm.siteKey = siteKey;
         gm.init(context, extend);
@@ -217,13 +294,18 @@ public class GMSubs extends Spider {
             if (play.optString("url").isEmpty()) return result;
             boolean changed = proxyFakePngHls(play) || proxyTokenMaster(play);
             String code = codeFromPlay(flag, id);
-            JSONArray subs = cachedSubtitles(code);
-            if (subs == null && hasSubtitleLookupBudget(startedAt, System.nanoTime())) {
-                subs = cachedOrLookupSubtitles(code, () -> search(code));
+            JSONArray subs = cachedSubtitles(subtitleLibrary, code, System.currentTimeMillis());
+            if (subs == null && hasSubtitleLookupBudget(startedAt, System.nanoTime(), subtitleLibrary.isEmpty() ? 1 : 2)) {
+                subs = cachedOrLookupSubtitles(subtitleLibrary, code, () -> libraryFirst(
+                        subtitleLibrary.isEmpty() ? null : () -> searchLibrary(code),
+                        () -> {
+                            if (!hasSubtitleLookupBudget(startedAt, System.nanoTime())) throw new IOException("Subtitle deadline reached");
+                            return search(code);
+                        }));
             }
             if (subs == null) subs = new JSONArray();
             if (subs.length() > 0) {
-                play.put("subs", subs);
+                play.put("subs", mergeSubtitles(subs, play.optJSONArray("subs")));
                 changed = true;
             }
             return changed ? play.toString() : result;
@@ -233,17 +315,25 @@ public class GMSubs extends Spider {
     }
 
     static boolean hasSubtitleLookupBudget(long startedAtNanos, long nowNanos) {
+        return hasSubtitleLookupBudget(startedAtNanos, nowNanos, 1);
+    }
+
+    static boolean hasSubtitleLookupBudget(long startedAtNanos, long nowNanos, int requests) {
         long elapsed = Math.max(0, TimeUnit.NANOSECONDS.toMillis(nowNanos - startedAtNanos));
-        return elapsed < PLAYER_CONTENT_TIMEOUT_MS - SUBTITLE_HTTP_TIMEOUT_MS - PLAYER_RETURN_RESERVE_MS;
+        return elapsed < PLAYER_CONTENT_TIMEOUT_MS - SUBTITLE_HTTP_TIMEOUT_MS * requests - PLAYER_RETURN_RESERVE_MS;
     }
 
     static JSONArray cachedOrLookupSubtitles(String code, Callable<JSONArray> lookup) {
+        return cachedOrLookupSubtitles("", code, lookup);
+    }
+
+    static JSONArray cachedOrLookupSubtitles(String library, String code, Callable<JSONArray> lookup) {
         if (code == null || code.isEmpty()) return new JSONArray();
         try {
-            JSONArray cached = cachedSubtitles(code);
+            JSONArray cached = cachedSubtitles(library, code, System.currentTimeMillis());
             if (cached != null) return cached;
             JSONArray found = lookup.call();
-            cacheSubtitles(code, found);
+            cacheSubtitles(library, code, found, System.currentTimeMillis());
             return found;
         } catch (Exception ignored) {
             // Subtitle lookup is optional; a failure must never prevent GM playback.
@@ -256,8 +346,12 @@ public class GMSubs extends Spider {
     }
 
     static JSONArray cachedSubtitles(String code, long now) {
-        String key = normalizeCode(code);
-        if (key.isEmpty()) return null;
+        return cachedSubtitles("", code, now);
+    }
+
+    static JSONArray cachedSubtitles(String library, String code, long now) {
+        if (normalizeCode(code).isEmpty()) return null;
+        String key = library + "|" + normalizeCode(code);
         String data;
         synchronized (subtitleCache) {
             SubtitleCacheEntry entry = subtitleCache.get(key);
@@ -283,8 +377,12 @@ public class GMSubs extends Spider {
     }
 
     static void cacheSubtitles(String code, JSONArray subtitles, long now) {
-        String key = normalizeCode(code);
-        if (key.isEmpty()) return;
+        cacheSubtitles("", code, subtitles, now);
+    }
+
+    static void cacheSubtitles(String library, String code, JSONArray subtitles, long now) {
+        if (normalizeCode(code).isEmpty()) return;
+        String key = library + "|" + normalizeCode(code);
         SubtitleCacheEntry entry = new SubtitleCacheEntry(subtitles.toString(), now + SUBTITLE_CACHE_TTL_MS);
         synchronized (subtitleCache) {
             subtitleCache.put(key, entry);
@@ -309,6 +407,29 @@ public class GMSubs extends Spider {
             if (json.optInt("code", -1) != 0) throw new IOException("Subtitle lookup failed");
             return rankSubtitles(code, json.optJSONArray("data"));
         }
+    }
+
+    private JSONArray searchLibrary(String code) throws Exception {
+        Request request = new Request.Builder().url(libraryIndexUrl(subtitleLibrary, code)).build();
+        try (Response response = http().newCall(request).execute()) {
+            if (response.code() == 404) return new JSONArray();
+            if (!response.isSuccessful() || response.body() == null) throw new IOException("Subtitle library lookup failed");
+            String json = new String(readAll(response.body().byteStream(), 256 * 1024), StandardCharsets.UTF_8);
+            return librarySubtitles(subtitleLibrary, code, new JSONObject(json));
+        }
+    }
+
+    static JSONArray mergeSubtitles(JSONArray found, JSONArray existing) {
+        JSONArray merged = new JSONArray();
+        Set<String> seen = new HashSet<>();
+        for (JSONArray rows : new JSONArray[]{found, existing}) {
+            if (rows == null) continue;
+            for (int i = 0; i < rows.length(); i++) {
+                JSONObject row = rows.optJSONObject(i);
+                if (row != null && !row.optString("url").isEmpty() && seen.add(row.optString("url"))) merged.put(row);
+            }
+        }
+        return merged;
     }
 
     static boolean needsPngProxy(String url) {

@@ -14,3 +14,4 @@ jobs:
           node js/adapters.test.cjs
           node js/new-sites.test.cjs
           node js/hanime1.nav.test.cjs
+          node scripts/subtitles/test_config.cjs
