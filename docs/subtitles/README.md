@@ -125,6 +125,8 @@ Standard 桶 `luoyuqiu-subtitles` 的公开根地址为 [字幕库开发地址](
 
 ## 发布与验收
 
+用户已授权下一阶段测试。隔离入口为 [字幕测试配置](https://raw.githubusercontent.com/jokers963/CatVodSpider/feat/public-subtitles/json/luoyuqiu-subtitles-test.json)，只在 `feat/public-subtitles` 分支发布候选 JAR 和配置，不替换 main 或正式 Pages 入口。配置内含候选 MD5，六站沿用最新正式 userscript；`node scripts/subtitles/test_config.cjs` 检查候选校验值、六站库地址以及除此之外与正式配置完全相同。手机需要先手动解锁，实际加载及自动字幕仍待验证。
+
 1. 生成、编码审计及 `--verify` 通过，确定真实公开根地址。
 2. 上传字幕和索引，验证一个单字幕番号、一个多字幕番号以及不存在的番号；确认所有候选地址可下载且内容是 UTF-8。
 3. 用 [gmRelease](../../scripts/gmRelease/build-check.ps1) 构建经过关闭遥测/日志处理的候选。该旧脚本输出名固定为 `gm_subs-v37.jar`，它在新输出目录中的内容不等于已发布 v37；发布时另定新版本名，保留正式 v37。`gmSubsManual` 的原始 GM 包候选不能直接发布。
