@@ -15,7 +15,7 @@ assert.equal(read(`${jar}.md5`).toString().trim(), md5);
 assert.equal(hash(jar, 'sha256'), 'b8914977d18d9da77377ef4f2efa3385f60c74e2e76c258954b619877cf87a85');
 assert.equal(read(jar).length, 1169678);
 assert.equal(test.spider, `https://raw.githubusercontent.com/jokers963/CatVodSpider/feat/subtitle-rule-ranking/${jar};md5;${md5}`);
-assert.deepEqual(test.sites.map(site => site.key), ['missav', 'jable', 'av01', 'rou', 'hanime1', 'javguru']);
+assert.deepEqual(test.sites.map(site => site.key), ['missav', 'av01', 'rou', 'hanime1', 'javguru']);
 for (const site of test.sites) {
   assert.equal(site.ext.subtitleLibrary, undefined, 'Test must exercise Xunlei, not a public-library hit');
   assert.equal(site.ext.debug, false);

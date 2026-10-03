@@ -31,47 +31,6 @@
       }
     },
     {
-      "key": "jable",
-      "name": "🎬 Jable",
-      "type": 3,
-      "api": "csp_GMSubs",
-      "searchable": 1,
-      "quickSearch": 1,
-      "changeable": 0,
-      "filterable": 0,
-      "timeout": 60,
-      "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/jable.user.js?v=12",
-        "subtitleLibrary": "https://pub-662c4b411cfb4cf69f52f71f22140341.r2.dev/",
-        "debug": false,
-        "webViewSettings": {
-          "blockNetworkImage": true,
-          "blockList": [
-            "https://*.mnaspm.com/*",
-            "https://*.greentrafsa.com/*",
-            "https://*.magsrv.com/*",
-            "https://*.snaptrckr.fun/*",
-            "https://*.storagexhd.com/*",
-            "https://*.doppiocdn.com/*",
-            "https://adsco.re/*",
-            "https://*.adsco.re/*",
-            "https://*.tsyndicate.com/*",
-            "https://*.google-analytics.com/*"
-          ]
-        },
-        "spider": {
-          "homeContent": {"loadUrl": "https://jable.tv/"},
-          "categoryContent": {"loadUrl": "https://jable.tv/categories/${tid}/?mode=async&function=get_block&block_id=list_videos_common_videos_list&sort_by=post_date&from=${pg:-01}"},
-          "detailContent": {"loadUrl": "https://jable.tv/videos/${id}/"},
-          "searchContent": {"loadUrl": "https://jable.tv/search/${key}/"}
-        }
-      },
-      "style": {
-        "type": "rect",
-        "ratio": 1.5
-      }
-    },
-    {
       "key": "av01",
       "name": "🎬 AV01",
       "type": 3,
