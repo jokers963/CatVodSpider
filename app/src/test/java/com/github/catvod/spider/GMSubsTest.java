@@ -72,6 +72,29 @@ public class GMSubsTest {
     }
 
     @Test
+    public void frequentIsolatedLatinFragmentsLowerChineseQualityWithoutPenalizingNormalShortDialogue() throws Exception {
+        String dialogue = captions(1400, "今天我们一起去公园。");
+        int healthy = quality(dialogue + captions(600, "嗯嗯")).score();
+        GMSubs.SubtitleQuality fragments = quality(dialogue + captions(60, "<i>A...</i>") + captions(540, "是的"));
+        assertEquals(60, fragments.isolatedLatin);
+        assertEquals(healthy - 12, fragments.score());
+        for (String shortText : new String[]{"嗯", "啊", "嗯嗯", "是的", "好的", "A计划", "B超", "维生素A", "OK"})
+            assertEquals(shortText, healthy, quality(dialogue + captions(600, shortText)).score());
+        assertEquals(healthy, quality(dialogue + captions(4, "A")).score());
+        assertEquals(healthy, quality(dialogue + captions(5, "A")).score()); // Below one percent.
+        assertEquals(quality(captions(2000, "I")).score(), quality(captions(2000, "Hello")).score());
+        JSONArray rows = GMSubs.rankSubtitles("TEST-009", new JSONArray()
+                .put(item("TEST-009.srt", "https://example.com/fragments.srt", "srt"))
+                .put(item("TEST-009-good.srt", "https://example.com/good.srt", "srt")));
+        Map<String, GMSubs.SubtitleQuality> evidence = new LinkedHashMap<>();
+        evidence.put("https://example.com/fragments.srt", fragments);
+        evidence.put("https://example.com/good.srt", quality(dialogue + captions(600, "嗯嗯")));
+        JSONArray ranked = GMSubs.rankSubtitleContents("TEST-009", rows, evidence);
+        assertEquals("https://example.com/good.srt", ranked.getJSONObject(0).getString("url"));
+        assertEquals(2, ranked.length()); // Demote, never remove a distinct candidate.
+    }
+
+    @Test
     public void removesOnlyDuplicatesWithBothIdenticalTextAndIdenticalTimestamps() throws Exception {
         String body = captions(120, "你好，朋友。");
         JSONArray rows = GMSubs.rankSubtitles("TEST-001", new JSONArray()

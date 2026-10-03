@@ -235,7 +235,7 @@ public class GMSubs extends Spider {
 
     /** ponytail: structural heuristics only; audio/reference validation needs a separately scoped workflow. */
     static final class SubtitleQuality {
-        int cues, invalid, empty, noise, dialogue, han, latin, otherScript, damaged, characters, repeated;
+        int cues, invalid, empty, noise, dialogue, han, latin, otherScript, damaged, characters, repeated, isolatedLatin;
         String fingerprint;
 
         int score() {
@@ -246,6 +246,9 @@ public class GMSubs extends Spider {
             value -= 50 * repeated / cues;
             if (characters > 0) value -= Math.min(100, 1000 * damaged / characters);
             if (han == 0 || otherScript > han || latin > 2 * han) value -= 50;
+            // A few speaker labels are not evidence; only substantial fragments in Chinese-first text count.
+            if (han > latin && han > otherScript && isolatedLatin >= 5 && isolatedLatin * 100 >= cues)
+                value -= Math.min(25, 400 * isolatedLatin / cues);
             return value;
         }
     }
@@ -255,6 +258,7 @@ public class GMSubs extends Spider {
     private static final Pattern SUBTITLE_TAGS = Pattern.compile("<[^>]*>|[{][^}]*[}]");
     private static final Pattern NOISE_TEXT = Pattern.compile("^[\\[（(【].*(?:呼吸|吸气|呼气|喘|呻吟|吐息|鼻息|声|音|脚步|笑い|泣き|息遣い|息を).*[\\]）)】]$");
     private static final Pattern REPEATED_TEXT = Pattern.compile("(.)\\1{7,}");
+    private static final Pattern ISOLATED_LATIN = Pattern.compile("^[A-Za-z][\\p{P}\\s]*$");
     private static final Pattern AD_TEXT = Pattern.compile("(?i)https?://|www\\.|字幕.{0,6}(?:制作|听译|校对)|(?:色花堂|98堂).{0,12}(?:出品|字幕|听译)|广告|推广|公众号");
 
     static long subtitleTime(String text) {
@@ -360,6 +364,7 @@ public class GMSubs extends Spider {
         else if (NOISE_TEXT.matcher(visible).matches() || AD_TEXT.matcher(visible).find()) q.noise++;
         else q.dialogue++;
         if (REPEATED_TEXT.matcher(visible).find()) q.repeated++;
+        if (ISOLATED_LATIN.matcher(visible).matches()) q.isolatedLatin++;
         for (int i = 0; i < visible.length(); i++) {
             char c = visible.charAt(i);
             q.characters++;

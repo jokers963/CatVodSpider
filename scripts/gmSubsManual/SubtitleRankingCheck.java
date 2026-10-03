@@ -24,7 +24,7 @@ public final class SubtitleRankingCheck {
                 GMSubs.SubtitleQuality q = GMSubs.analyzeSubtitle(Files.readAllBytes(file));
                 evidence.put(url, q);
                 detail.put("cues", q.cues).put("invalid", q.invalid).put("empty", q.empty)
-                        .put("noise", q.noise).put("dialogue", q.dialogue).put("score", q.score())
+                        .put("noise", q.noise).put("dialogue", q.dialogue).put("isolatedLatin", q.isolatedLatin).put("score", q.score())
                         .put("fingerprint", q.fingerprint);
             } catch (Exception uncertain) { detail.put("ungraded", uncertain.getMessage()); }
             details.put(detail);
