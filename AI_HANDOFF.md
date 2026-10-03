@@ -2,6 +2,8 @@
 
 更新日期：2026-10-03。本文件只保留当前状态；历史实验、旧版本与失败证据见 [完整历史快照](docs/history/AI_HANDOFF-2026-10-01.md)。历史不授予权限，不代表当前任务。
 
+**最新发布完成（2026-10-03，v38 正式入口已上线，非新增实机验收）**：用户确认后，发布提交 `5c0de0d` 经 [PR #3](https://github.com/jokers963/CatVodSpider/pull/3) 合并，main 发布合并提交 `ecad170`；[main CI](https://github.com/jokers963/CatVodSpider/actions/runs/37115706726) 与 [Pages 部署](https://github.com/jokers963/CatVodSpider/actions/runs/37115706211) 均 success。裸正式 URL 返回 JSON 与发布文件深比较一致：六站共用 v38 + MD5 和公开字幕库，其他站点设置保留，MemoJav 条目不存在且正式脚本 HTTP 404。公网 v38 与已测试候选 SHA256/MD5 一致、大小 `1164269` 字节，公网 MD5 文件一致；v37 公网 SHA256 仍为原值，可用于回退。R2 的 IPX343 索引及首个候选均 HTTP 200，候选路径内容 SHA256、严格 UTF-8 通过，不存在索引 HTTP 404。本机摘要为 `outputs/subtitles-release-v38-20261003/verification.json`，报告不上传。发布前 26 项 Java/D8、Python 生成器、三组站点 Node、发布配置及 JAR 结构/引用检查通过；v38 非包装层 ZIP 条目与 v37 完全一致，包装层 DEX 与本轮测试源码编译一致。TV local/remote 仍 `45149355d`、工作树干净，19 个 AAR 哈希全部符合清单，签名/备份未动。本轮未操作手机、截图、清数据或改代理/系统设置；用户手机此前保留测试入口，不声称已切到正式配置或实际加载 v38 的新文件名。Jable 暂缓、AV01/JavGuru 目视验收跳过且未验证、Hanime1/Rou 库命中未验证，完整六站/全库自动同步仍未验收，不能因上线改记通过。`r2.dev` 开发限流及片源固定偏移风险仍保留；不恢复 MemoJav，不自动继续取消/跳过项。
+
 **最新发布授权（2026-10-03，v38 已准备，待 PR/部署完成）**：用户明确回复“确认”，授权将公开字幕库正式发布。当前 Codex 为唯一此功能修改/发布者；本轮不操作手机，Jable 暂缓和已跳过验收保持原状态。测试分支已合并最新 main `979ba99` 的交接记录与 MemoJav 取消事实，唯一文档冲突按实际 JavGuru `?v=4` 保留；运行内容无新站恢复。发布使用已实机校验的候选原字节作为 `jar/gm_subs-v38.jar`，SHA256 `52A182633F21B6FA53F12BD6AA8279F8F15E1EBE36436F417938438A35D4FC04`、MD5 `817f14e37e342691a5d0cab2fabd5b73`、大小 `1164269` 字节；正式 spider 包含版本和 MD5，六站加同一 R2 字幕库，其他站点设置/脚本/顺序不改。v37 及 MD5 原文件保留供回退。只发布必要源码/测试/生成与核对工具、JAR/配置及文档，报告与凭据留本机；通过 PR 检查后合并 main，随后核对 Pages 正式配置、JAR 哈希及字幕样本。APK/TV/签名/AAR/旧脏工作树/备份/R2 对象/整库时间轴不改，不新增偏移持久化。发布前后结果会续记于本段，不把授权或构建当成部署已成功。`r2.dev` 的开发限流风险保留，完整六站字幕与自动同步未验收。手机仍保留之前的测试入口，本轮不自动切换；正式发布后由用户自行使用原正式 URL。
 
 **最新发布前核对（2026-10-03，静态核对通过，仍未正式发布）**：用户授权核对测试配置与最新 main、重跑配置/JAR 检查。最新 main 为 `979ba99`，已按用户要求撤掉 MemoJav 的配置条目和脚本；测试分支核对时 local/remote 均 `3869318`、干净，TV local/remote 仍 `45149355d`、干净。main 相对 `7914a24` 仅交接文档变化，配置、站点脚本、JAR、运行源码和构建脚本均无净变化，因此不需要为了对齐运行内容合并新增/撤销新站的提交。直接读取该 main 的正式 JSON，与移除六站 `subtitleLibrary` 并还原 spider 字段的候选 JSON 做深比较，通过；正式 Pages JSON 与该 main 一致，公开测试 JSON 与本地候选一致。候选公网/本地 JAR SHA256 和 MD5 均匹配、大小 `1164269` 字节，正式公网 v37 哈希保持原值；候选 JAR 结构/引用检查、三组站点 Node、既有配置隔离检查通过。没有重建或替换 JAR、改正式入口、操作手机、改 TV/APK 或 R2 对象；只更新测试分支记录，本机核对摘要在 `outputs/subtitles-prepublish-check-20261003/verification.json`。按用户决定保留 Jable 暂缓、AV01/JavGuru 目视验收跳过且未验证、Hanime1/Rou 仅无番号跳过样本通过；本轮检查不是完整六站实机验收或全库自动同步保证。正式发布仍需用户另行明确授权，并在发布前再次核对远程 HEAD；MemoJav 不恢复。
@@ -73,7 +75,7 @@ Hanime1、肉视频各一个首页无可识别番号样本正常播放：Hanime1
 | 播放器目录 | `D:/CodexWorkspace/Android/TV563Release` |
 | 上游参考 | `TV:fongmi`；不是当前 APK 的构建分支，不盲目合并 |
 | 正式配置 | `https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json` |
-| 正式 JAR | 本轮准备 `jar/gm_subs-v38.jar?v=38`，配置含 MD5，待 PR/部署复核；v37 保留回退。六站无 JAR 覆写，MemoJav 已移除 |
+| 正式 JAR | `jar/gm_subs-v38.jar?v=38`，配置含 MD5，PR #3 合并并经 Pages 公网校验；v37 保留回退。六站无 JAR 覆写，MemoJav 已移除 |
 | 手机实装 | 2026-10-02 ADB 核对 `com.jokers963.luoyuqiu`，`5.6.3-lyq.3` / `56303`，Android 13 |
 
 最新 main 正式站点与脚本 URL 版本：`missav` v9、`jable` v12、`av01` v5、`rou` v6、`hanime1` v3、`javguru` v4；MemoJav 已按用户要求取消并在 main `979ba99` 移除，不恢复。旧 `json/supjav.json` 已退役，不作为兼容入口。
@@ -108,7 +110,7 @@ v38 SHA-256：`52A182633F21B6FA53F12BD6AA8279F8F15E1EBE36436F417938438A35D4FC04`
 
 | 任务 | 负责人/发布人 | 范围与状态 |
 | --- | --- | --- |
-| 自有公开字幕库 | 当前 Codex 唯一修改/发布者，用户已确认正式发布 | v38 与实机候选逐字节一致，六站正式配置接入库，v37 保留供回退；待 PR 检查/合并及 Pages 公网复核。26 项 Java/D8、Python 生成器、三组站点 Node、发布配置/JAR 检查通过；只改 spider 和六站库地址，其他运行设置保留，MemoJav 不恢复。Jable 暂缓、AV01/JavGuru 目视验收跳过且未验证、Hanime1/Rou 库命中未验证，不把发布改记成完整实机通过。本轮不操作手机、不改 TV/APK/签名/AAR/R2 对象/时间轴，不新增偏移持久化 |
+| 自有公开字幕库 | 当前 Codex 单独发布，用户确认后的发布已完成 | v38 经 PR #3 / main `ecad170` 发布，CI/Pages success，正式 JSON、JAR/MD5、库索引/候选样本公网检查通过，v37 保留回退；MemoJav 不恢复。26 项 Java/D8、Python 生成器、三组站点 Node、发布配置/JAR 检查通过，其他运行设置保留。Jable 暂缓、AV01/JavGuru 目视验收跳过且未验证、Hanime1/Rou 库命中未验证，不把上线改记成完整实机通过。本轮不操作手机，其原测试入口未自动切换；不改 TV/APK/签名/AAR/R2 对象/时间轴，不新增偏移持久化 |
 | 第 4～6 项 | 原主对话单独执行/发布，已结束 | 接口 `572dae8`、TV `45149355d`；归档、去重/旧资源退役、文档差异归并及恢复标签已发布，检查通过；封面分支因打开 PR 保留。不改运行源码或 APK |
 | 第 7 项 | 当前主对话单独执行/发布，已结束 | 已完成：v37 实际加载及 MissAV、AV01、肉视频、Hanime1、Jable 五站核心播放链路通过；Jable 在系统 WebView 原位更新至 `155.0.8059.30` 后恢复；当前无进行中的实机任务 |
 | Jable 分类翻页修复 | 豆宝执行/发布，用户逐项确认 | ✅ 已闭环：PR #1 已合并；三组 Node 测试通过；**2026-10-02 用户手机实机验证：jable 分类下滑翻页正常**。范围：`js/jable.user.js`（pageCount 适配 async 分片：整批返回时报 9999 页，`@version` 1.0.6→1.0.7）、`json/luoyuqiu.json`（jable.user.js `?v=8`→`?v=9`）、`js/adapters.test.cjs`（新增三项 pagecount 断言）。详细交接（根因/改动/验证/待办）：[docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md](docs/handovers/2026-10-02-doubao-to-codex-jable-pagination.md) |
