@@ -4,7 +4,7 @@
 
 ## 播放与匹配
 
-2026-10-03 新开发的[迅雷正文规则排序](RULE_RANKING.md)仅在本地 `feat/subtitle-rule-ranking` 验证，未发布；正式 v38 的下述行为仍不变。新规则不调用 AI、不改 APK，也不代表第一项翻译或时间同步已经验收。
+2026-10-03 新开发的[迅雷正文规则排序](RULE_RANKING.md)已在 `feat/subtitle-rule-ranking` 发布独立测试入口（`5f3e639`，CI/公网配置和 JAR 哈希核对通过），等待用户手机验证；正式 v38 的下述行为仍不变。测试入口不查自有库、强制迅雷；新规则不调用 AI、不改 APK，不代表第一项翻译或时间同步已经验收。
 
 `GMSubs.playerContent` 从 GM 播放描述的 `name` 或线路名提取番号，规范化为大写、去掉分隔符，再请求一个 JSON。例：`IPX-343`、`IPX343`、`IPX_343` 对应 `index/IP/IPX343.json`。
 

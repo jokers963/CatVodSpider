@@ -1,8 +1,10 @@
-# 迅雷字幕正文规则排序（本地测试，未发布）
+# 迅雷字幕正文规则排序（独立测试已发布，手机待验证）
 
-2026-10-03 用户已授权“发布，我来验证”。本轮向 `feat/subtitle-rule-ranking` 发布独立[测试配置](https://raw.githubusercontent.com/jokers963/CatVodSpider/feat/subtitle-rule-ranking/json/luoyuqiu-subtitle-ranking-test.json)，正式 v38 不变；完成公网验证后在下方续记。测试配置只替换 JAR，并移除六站 `subtitleLibrary`，确保命中迅雷而非自有库；用户使用测试地址重新加载后，先观察 IPZZ819/IPZZ037 的迅雷首项、候选数量及播放等待，再确认显示/切换。没有手机操作或验收结果；时间偏移仍手动调整，不自动平移字幕。返回正式配置即可恢复库优先。
+2026-10-03 用户授权“发布，我来验证”后，资源提交 `5f3e639` 已在 `feat/subtitle-rule-ranking` 发布独立[测试配置](https://raw.githubusercontent.com/jokers963/CatVodSpider/feat/subtitle-rule-ranking/json/luoyuqiu-subtitle-ranking-test.json)，[分支 CI](https://github.com/jokers963/CatVodSpider/actions/runs/37122186528) success。公网 JSON 与本地深比较一致，公网净化 JAR 的 SHA256/MD5/大小及 MD5 文件符合下方候选值；正式 Pages JSON 和 v38 JAR 未变，main 仍 `963da76`，不合并正式发布。公网核对文件在聊天工作目录 `outputs/ranking-test-publication-20261003/`。
 
-2026-10-03，用户要求通过规则尽量让第一份字幕更好，减少逐一试二十份的成本。开发分支 `feat/subtitle-rule-ranking`，基线 `963da76`。只改 GMSubs 包装层、测试及检查工具；正式 v38、JSON、R2 对象和 TV/APK 不变。当前没有手机加载、绘制或同步验收，也未提交/推送此分支。
+测试配置只替换 JAR，并移除六站 `subtitleLibrary`，确保命中迅雷而非自有库；用户重新加载测试地址后，先观察 IPZZ819/IPZZ037 的“迅雷 · …”首项、候选数量及播放等待，再确认显示/切换。受网络和 1500 ms 预算影响，实机已检查/去重的数量可能不同于离线全量结果。不操作手机、不记录未经用户确认的验收；时间偏移仍手动调整，不自动平移字幕。返回正式配置即可恢复库优先。以下为实现及发布前的开发记录。
+
+2026-10-03，用户要求通过规则尽量让第一份字幕更好，减少逐一试二十份的成本。开发分支 `feat/subtitle-rule-ranking`，基线 `963da76`。只改 GMSubs 包装层、测试、检查工具和独立测试资源；正式 v38/JSON、R2 对象和 TV/APK 不变。手机加载、绘制或同步尚未验收。
 
 ## 接入位置与边界
 
@@ -51,4 +53,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/gmSubsManual/build-c
 
 手动构建生成的 `codex-gm_subs.jar` 是原始包装层测试产物，**不能直接当正式发布 JAR**。已另外通过原有 `gmRelease/build-check.ps1` 准备净化候选：`D:/SubtitleRankingCandidate-20261003-01/gm_subs-subtitle-ranking-test.jar`，大小 `1169566` 字节，SHA256 `14C92840A12144611E556221D8F02939C126B91F947FEE3C82841BC985E2CEA3`，MD5 `e7ba0c00aff2267b722d4d3636fc9ef3`。ZIP 条目数与 v38 一致，除 `classes2.dex` 外逐项内容哈希完全一致；包装层 DEX 与最终冻结样本测试产物一致，JAR 结构/引用检查通过。未分配正式版本号。
 
-首次净化构建在聊天长路径输出时因 Windows PowerShell 旧路径限制失败，保留派生输出；改用新的 D 盘短路径后成功，没有删除旧目录或修改构建脚本的净化逻辑。下一步经用户授权上测试入口，并做手机等待时间/首项加载/切换验收；不将电脑离线结果当手机结果。正式发布另行确认，保留 v38 回退。当前不恢复 Jable 或已跳过的站点任务。
+首次净化构建在聊天长路径输出时因 Windows PowerShell 旧路径限制失败，保留派生输出；改用新的 D 盘短路径后成功，没有删除旧目录或修改构建脚本的净化逻辑。现已按用户授权上测试入口，等待用户做手机等待时间/首项加载/切换验收；不将电脑离线结果当手机结果。正式发布另行确认，保留 v38 回退。当前不恢复 Jable 或已跳过的站点任务。
