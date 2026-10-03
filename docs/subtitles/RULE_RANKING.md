@@ -1,4 +1,12 @@
-# 迅雷字幕正文规则排序（独立测试已发布，手机待验证）
+# 迅雷字幕正文规则排序（测试加载已修复，字幕待验证）
+
+## Android 加载空白修复（2026-10-03）
+
+用户反馈原测试入口空白，授权 Codex 自行加载后，从手机真实日志定位 `GMSubs.<clinit>` 的 `PatternSyntaxException`：`SUBTITLE_TAGS` 的闭合花括号未转义，桌面 Java 能接受，Android ICU 拒绝，导致整个包装类初始化失败，而非六站 JSON 缺失。改用显式字面量字符组 `[{][^}]*[}]`，不改变标签去除/排序语义；已有 ASS/SSA 与 SRT 可见正文指纹等价测试覆盖此用途。35 项 Java/D8、净化及配置隔离检查通过。
+
+修复资源提交 `2b85c50` 已发布，[CI](https://github.com/jokers963/CatVodSpider/actions/runs/37126020874) success。测试地址不变，改引用新文件 `jar/gm_subs-subtitle-ranking-test-20261003-fix1.jar`，避免复用同进程旧类加载器；旧 JAR 留存。新包大小 1169580 字节，SHA256 `AE3246DB737E6D8FD0537543066E587E1F639F8A2D12C688FFD2D151A804F7FC`、MD5 `ed8f716bf011c0481a1105196a83f6de`；公网文件哈希一致，除包装层 DEX 外逐 ZIP 条目与正式 v38 一致。短路径构建在 `D:/SubtitleRankingAndroidFix-20261003-01/`，正式 v38/JSON 与 main 未改。
+
+手机原设置界面重新确认同一测试地址后，MissAV 分类与 8 张内容卡片恢复，选择器显示全部六站，重新加载后的抽样日志未见该初始化异常；没有读私有缓存哈希，不宣称逐站实播或字幕验收。未截图、清数据、重启/安装 App、改代理/系统设置/TV/APK/R2/原字幕/时间轴。手机留在 MissAV 首页，下一步用户验证 IPZZ819/IPZZ037 的首项、候选数、实际字幕绘制及切换。以下是原测试发布与开发阶段记录，旧包哈希仅对应旧阶段。
 
 2026-10-03 用户授权“发布，我来验证”后，资源提交 `5f3e639` 已在 `feat/subtitle-rule-ranking` 发布独立[测试配置](https://raw.githubusercontent.com/jokers963/CatVodSpider/feat/subtitle-rule-ranking/json/luoyuqiu-subtitle-ranking-test.json)，[分支 CI](https://github.com/jokers963/CatVodSpider/actions/runs/37122186528) success。公网 JSON 与本地深比较一致，公网净化 JAR 的 SHA256/MD5/大小及 MD5 文件符合下方候选值；正式 Pages JSON 和 v38 JAR 未变，main 仍 `963da76`，不合并正式发布。公网核对文件在聊天工作目录 `outputs/ranking-test-publication-20261003/`。
 
