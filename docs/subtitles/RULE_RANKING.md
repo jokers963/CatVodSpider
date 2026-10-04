@@ -1,8 +1,8 @@
-# 迅雷字幕正文规则排序（正式 v40 发布准备中）
+# 迅雷字幕正文规则排序（正式 v40 已发布）
 
-## v40正式发布授权（2026-10-04，待部署核对）
+## v40正式发布完成（2026-10-04）
 
-用户要求“直接发正式版”，将下节本地 `270ac6b` 已校验-final原字节作为 `jar/gm_subs-v40.jar`，SHA256/MD5/大小相同，不再改排序。正式配置只更新spider/版本/MD5，五站、库优先/迅雷fallback及Jable关闭不变，保留v39/v38/v37回退包。当前通过PR/CI后合并及核对Pages/公网JSON/JAR，完成后补部署证据；不接离线AI/新增服务、不操作手机，发布不代表首项表达最好或手机加载/绘制/切换/同步/性能验收。按ponytail最小发布复用现有净化候选。下方“本地/未发布”均为此前阶段事实。
+用户要求“直接发正式版”，将下节本地 `270ac6b` 已校验-final原字节作为 `jar/gm_subs-v40.jar`，SHA256/MD5/大小相同，不再改排序。[PR #5](https://github.com/jokers963/CatVodSpider/pull/5) 已合并至 main `c01de3d`，[CI](https://github.com/jokers963/CatVodSpider/actions/runs/37172713644)/[Pages](https://github.com/jokers963/CatVodSpider/actions/runs/37172713359) success；裸正式配置与本地深比较一致，公网v40 JAR/MD5及v39/v38/v37回退包核对通过，细节见AI_HANDOFF顶部。正式配置只更新spider/版本/MD5，五站、库优先/迅雷fallback及Jable关闭不变。发布前重跑46项Java/JUnit/D8及五组Node检查通过；不接离线AI/新增服务、不操作手机，发布不代表首项表达最好或手机加载/绘制/切换/同步/性能验收。按ponytail最小发布复用现有净化候选。下方“本地/未发布”均为此前阶段事实。
 
 ## 本地候选：近副本/前缀截断/名称修复（2026-10-04，未发布）
 
