@@ -21,6 +21,7 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -238,6 +239,9 @@ public class GMSubs extends Spider {
         int cues, invalid, empty, noise, dialogue, han, latin, otherScript, damaged, characters, repeated, isolatedLatin, loopedAnnotation;
         String fingerprint, bodyFingerprint;
         final Map<String, long[]> annotations = new HashMap<>();
+        // Five longs/cue: start, end, 128-bit body hash, Han count. No raw dialogue retained.
+        long[] cueData = new long[0];
+        long latestEnd;
 
         int score() {
             if (cues == 0) return -100;
@@ -264,6 +268,7 @@ public class GMSubs extends Spider {
     // Narrow annotation shape, not normal punctuated dialogue, short calls or marked lyrics.
     private static final Pattern LONG_ANNOTATION = Pattern.compile("^[\\[（(【][^。！？!?，,：:；;♪♫]{6,80}[\\]）)】]$");
     private static final Pattern AD_TEXT = Pattern.compile("(?i)https?://|www\\.|字幕.{0,6}(?:制作|听译|校对)|(?:色花堂|98堂).{0,12}(?:出品|字幕|听译)|广告|推广|公众号");
+    private static final Pattern SUBTITLE_SOURCE_PREFIX = Pattern.compile("(?i)^(?:迅雷\\s*·\\s*)?(?:https?://)?(?:[a-z0-9-]+\\.)+[a-z]{2,24}@");
 
     static long subtitleTime(String text) {
         String[] parts = text.trim().replace(',', '.').split(":");
@@ -310,6 +315,7 @@ public class GMSubs extends Spider {
         SubtitleQuality quality = new SubtitleQuality();
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         MessageDigest bodyDigest = MessageDigest.getInstance("SHA-256");
+        MessageDigest cueDigest = MessageDigest.getInstance("SHA-256");
         if (text.toLowerCase(Locale.ROOT).contains("[events]")) {
             int start = 1, end = 2, content = 9, fields = 10;
             boolean events = false;
@@ -329,7 +335,7 @@ public class GMSubs extends Spider {
                 } else if (line.regionMatches(true, 0, "Dialogue:", 0, 9)) {
                     String[] values = line.substring(9).split(",", fields);
                     if (values.length != fields) throw new IOException("Incomplete ASS event");
-                    addSubtitleCue(quality, digest, bodyDigest, values[start], values[end], values[content].replace("\\N", "\n").replace("\\n", "\n").replace("\\h", " "));
+                    addSubtitleCue(quality, digest, bodyDigest, cueDigest, values[start], values[end], values[content].replace("\\N", "\n").replace("\\n", "\n").replace("\\h", " "));
                 }
             }
         } else {
@@ -348,7 +354,7 @@ public class GMSubs extends Spider {
                 String start = time.group(1), end = time.group(2);
                 String body = block.substring(time.end()).trim();
                 if (body.contains("-->")) throw new IOException("Incomplete cue separation");
-                addSubtitleCue(quality, digest, bodyDigest, start, end, body);
+                addSubtitleCue(quality, digest, bodyDigest, cueDigest, start, end, body);
             }
         }
         if (quality.cues > 0) {
@@ -372,7 +378,7 @@ public class GMSubs extends Spider {
         return hex.toString();
     }
 
-    private static void addSubtitleCue(SubtitleQuality q, MessageDigest digest, MessageDigest bodyDigest, String start, String end, String body) throws Exception {
+    private static void addSubtitleCue(SubtitleQuality q, MessageDigest digest, MessageDigest bodyDigest, MessageDigest cueDigest, String start, String end, String body) throws Exception {
         if (++q.cues > 20000) throw new IOException("Too many subtitle cues");
         long from = subtitleTime(start), to = subtitleTime(end);
         if (to <= from) q.invalid++;
@@ -396,6 +402,16 @@ public class GMSubs extends Spider {
                     || script == Character.UnicodeScript.HANGUL || script == Character.UnicodeScript.THAI) q.otherScript++;
             if (c == 0 || c == '\ufffd' || Character.getType(c) == Character.PRIVATE_USE) q.damaged++;
         }
+        int offset = (q.cues - 1) * 5;
+        if (offset + 5 > q.cueData.length)
+            q.cueData = Arrays.copyOf(q.cueData, Math.min(100000, Math.max(640, q.cueData.length * 2)));
+        ByteBuffer hash = ByteBuffer.wrap(cueDigest.digest(visible.getBytes(StandardCharsets.UTF_8)));
+        q.cueData[offset] = from;
+        q.cueData[offset + 1] = to;
+        q.cueData[offset + 2] = hash.getLong();
+        q.cueData[offset + 3] = hash.getLong();
+        q.cueData[offset + 4] = han;
+        q.latestEnd = Math.max(q.latestEnd, to);
         if (!noise && han >= 6 && LONG_ANNOTATION.matcher(visible).matches()) {
             long[] loop = q.annotations.computeIfAbsent(visible, ignored -> new long[]{0, from, from});
             loop[0]++;
@@ -406,47 +422,130 @@ public class GMSubs extends Spider {
 
     private static int subtitleContentScore(String code, JSONObject row, Map<String, SubtitleQuality> evidence) {
         SubtitleQuality q = evidence.get(row.optString("url"));
-        String namedCode = codeFromTitle(row.optString("name"));
+        String namedCode = codeFromTitle(SUBTITLE_SOURCE_PREFIX.matcher(row.optString("name").trim()).replaceFirst(""));
         int mismatch = !code.isEmpty() && !namedCode.isEmpty() && !normalizeCode(code).equals(normalizeCode(namedCode)) ? 80 : 0;
         return (q == null ? 50 : q.score()) - mismatch;
     }
 
     static JSONArray rankSubtitleContents(String code, JSONArray subs, Map<String, SubtitleQuality> evidence) throws Exception {
+        return rankSubtitleContents(code, subs, evidence, Long.MAX_VALUE);
+    }
+
+    private static JSONArray rankSubtitleContents(String code, JSONArray subs, Map<String, SubtitleQuality> evidence, long deadline) throws Exception {
         if (evidence.isEmpty()) return new JSONArray(subs.toString());
         List<JSONObject> ranked = new ArrayList<>();
         for (int i = 0; i < subs.length(); i++) ranked.add(new JSONObject(subs.getJSONObject(i).toString()));
+        // ponytail: bounded pairwise comparison for at most 20 analyzed files; exhaustion keeps uncertain alternatives.
+        int[] work = {1000000};
+        Set<String> truncated = new HashSet<>();
+        Map<String, Integer> scores = new HashMap<>();
+        List<SubtitleQuality> complete = new ArrayList<>();
+        for (JSONObject row : ranked) {
+            int score = subtitleContentScore(code, row, evidence);
+            scores.put(row.optString("url"), score);
+            SubtitleQuality q = evidence.get(row.optString("url"));
+            if (healthySubtitle(q, score)) complete.add(q);
+        }
+        for (JSONObject row : ranked) {
+            SubtitleQuality q = evidence.get(row.optString("url"));
+            if (q == null) continue;
+            for (SubtitleQuality longer : complete) {
+                if (truncatedSubtitlePrefix(q, longer, work, deadline)) {
+                    truncated.add(row.optString("url"));
+                    break;
+                }
+            }
+        }
         // Java's stable sort keeps the existing filename/API order for equal evidence.
-        ranked.sort(Comparator.comparingInt((JSONObject row) -> subtitleContentScore(code, row, evidence)).reversed());
+        ranked.sort(Comparator.comparingInt((JSONObject row) -> scores.get(row.optString("url"))
+                - (truncated.contains(row.optString("url")) ? 30 : 0)).reversed());
         Set<String> seen = new HashSet<>();
         Set<String> bodies = new HashSet<>();
         List<JSONObject> deferred = new ArrayList<>();
-        int band = ranked.isEmpty() ? 0 : subtitleContentScore(code, ranked.get(0), evidence);
+        List<SubtitleQuality> representatives = new ArrayList<>();
+        int band = ranked.isEmpty() ? 0 : scores.get(ranked.get(0).optString("url"))
+                - (truncated.contains(ranked.get(0).optString("url")) ? 30 : 0);
         JSONArray result = new JSONArray();
         for (JSONObject row : ranked) {
             SubtitleQuality q = evidence.get(row.optString("url"));
             if (q != null && q.fingerprint != null && !seen.add(q.fingerprint)) continue;
-            int score = subtitleContentScore(code, row, evidence);
-            boolean healthy = q != null && score >= 100 && q.invalid == 0 && q.damaged == 0 && q.bodyFingerprint != null;
+            boolean cut = truncated.contains(row.optString("url"));
+            int score = scores.get(row.optString("url")) - (cut ? 30 : 0);
+            boolean healthy = !cut && healthySubtitle(q, score);
             // Diversity only within a near-equal, healthy score band; never promote damaged/unknown text over good alternatives.
             if (!healthy || band - score > 3) {
                 for (JSONObject alternate : deferred) result.put(alternate);
                 deferred.clear();
                 bodies.clear();
+                representatives.clear();
                 band = score;
             }
             if (q != null && q.loopedAnnotation > 0) row.put("name", row.optString("name") + " · 疑似正文复读");
             if (q != null && q.cues > 0 && q.invalid > 0) row.put("name", row.optString("name") + " · 时轴异常");
             else if (q != null && (q.cues == 0 || q.score() < 50)) row.put("name", row.optString("name") + " · 建议备选");
+            if (cut) row.put("name", row.optString("name") + " · 疑似残缺副本");
             if (healthy && !bodies.add(q.bodyFingerprint)) {
                 row.put("name", row.optString("name") + " · 同正文·不同时间轴");
                 deferred.add(row);
                 continue;
             }
+            boolean near = false;
+            if (healthy) for (SubtitleQuality representative : representatives)
+                if (nearSubtitleBody(q, representative, work, deadline)) { near = true; break; }
+            if (near) {
+                row.put("name", row.optString("name") + " · 正文近似副本");
+                deferred.add(row);
+                continue;
+            }
+            if (healthy) representatives.add(q);
             result.put(row);
         }
         for (JSONObject alternate : deferred) result.put(alternate);
         for (int i = 0; i < result.length(); i++) result.getJSONObject(i).put("flag", i == 0 ? 1 : 2);
         return result;
+    }
+
+    private static boolean healthySubtitle(SubtitleQuality q, int score) {
+        return q != null && score >= 100 && q.invalid == 0 && q.damaged == 0 && q.bodyFingerprint != null;
+    }
+
+    static boolean truncatedSubtitlePrefix(SubtitleQuality shorter, SubtitleQuality longer, int[] work) {
+        return truncatedSubtitlePrefix(shorter, longer, work, Long.MAX_VALUE);
+    }
+
+    private static boolean truncatedSubtitlePrefix(SubtitleQuality shorter, SubtitleQuality longer, int[] work, long deadline) {
+        if (System.nanoTime() >= deadline) return false;
+        if (shorter == null || longer == null || shorter.cues < 100 || shorter.cues * 100L > longer.cues * 85L
+                || longer.latestEnd - shorter.latestEnd < 600000) return false;
+        for (int i = 0; i < (shorter.cues - 2) * 5; i += 5) {
+            if (work[0]-- <= 0 || ((work[0] & 255) == 0 && System.nanoTime() >= deadline)) return false;
+            for (int j = 0; j < 4; j++) if (shorter.cueData[i + j] != longer.cueData[i + j]) return false;
+        }
+        return true;
+    }
+
+    static boolean nearSubtitleBody(SubtitleQuality a, SubtitleQuality b, int[] work) {
+        return nearSubtitleBody(a, b, work, Long.MAX_VALUE);
+    }
+
+    private static boolean nearSubtitleBody(SubtitleQuality a, SubtitleQuality b, int[] work, long deadline) {
+        if (System.nanoTime() >= deadline) return false;
+        if (a.cues < 100 || b.cues < 100 || Math.abs(a.cues - b.cues) > 6) return false;
+        for (int shift = -3; shift <= 3; shift++) {
+            int matched = 0, substantial = 0;
+            int required = (int) ((Math.max(a.cues - 6, b.cues - 6) * 995L + 999) / 1000);
+            for (int i = 3; i < a.cues - 3; i++) {
+                if (work[0]-- <= 0 || ((work[0] & 255) == 0 && System.nanoTime() >= deadline)) return false;
+                if (matched + a.cues - 3 - i < required) break;
+                int j = i + shift;
+                if (j < 3 || j >= b.cues - 3) continue;
+                if (a.cueData[i * 5 + 2] != b.cueData[j * 5 + 2] || a.cueData[i * 5 + 3] != b.cueData[j * 5 + 3]) continue;
+                matched++;
+                if (a.cueData[i * 5 + 4] >= 6) substantial++;
+            }
+            if (matched * 1000L >= Math.max(a.cues - 6, b.cues - 6) * 995L && substantial >= 100) return true;
+        }
+        return false;
     }
 
     static long subtitleQualityBudget(long startedAtNanos, long nowNanos) {
@@ -490,13 +589,14 @@ public class GMSubs extends Spider {
                     }
                 });
             }
-            done.await(Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS);
+            // Reserve comparison time inside the existing quality budget, not on top of playback startup.
+            done.await(Math.max(0, deadline - TimeUnit.MILLISECONDS.toNanos(40) - System.nanoTime()), TimeUnit.NANOSECONDS);
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
         } finally {
             for (Call call : calls) call.cancel();
         }
-        return rankSubtitleContents(code, subs, new HashMap<>(evidence));
+        return rankSubtitleContents(code, subs, new HashMap<>(evidence), deadline);
     }
 
     /** GM stores the webview descriptor as data:text/plain;base64, plus the JSON. */
