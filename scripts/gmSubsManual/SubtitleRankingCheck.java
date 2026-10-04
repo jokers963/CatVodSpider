@@ -15,24 +15,35 @@ public final class SubtitleRankingCheck {
         JSONArray original = GMSubs.rankSubtitles(args[0], data);
         Map<String, GMSubs.SubtitleQuality> evidence = new LinkedHashMap<>();
         JSONArray details = new JSONArray();
+        long cueEvidenceBytes = 0;
         for (int i = 0; i < data.length(); i++) {
             JSONObject row = data.getJSONObject(i);
             String url = row.getString("url");
             Path file = Path.of(args[2], url.substring(url.lastIndexOf('/') + 1));
             JSONObject detail = new JSONObject().put("apiOrder", i + 1).put("url", url);
             try {
+                long started = System.nanoTime();
                 GMSubs.SubtitleQuality q = GMSubs.analyzeSubtitle(Files.readAllBytes(file));
+                cueEvidenceBytes += q.cueData.length * 8L;
                 evidence.put(url, q);
                 detail.put("cues", q.cues).put("invalid", q.invalid).put("empty", q.empty)
                         .put("noise", q.noise).put("dialogue", q.dialogue).put("isolatedLatin", q.isolatedLatin)
                         .put("loopedAnnotation", q.loopedAnnotation).put("score", q.score())
-                        .put("fingerprint", q.fingerprint).put("bodyFingerprint", q.bodyFingerprint);
+                        .put("fingerprint", q.fingerprint).put("bodyFingerprint", q.bodyFingerprint)
+                        .put("analysisMillis", (System.nanoTime() - started) / 1000000.0);
             } catch (Exception uncertain) { detail.put("ungraded", uncertain.getMessage()); }
             details.put(detail);
         }
+        // Reuse the private runtime score (including filename mismatch), rather than duplicating its rules offline.
+        java.lang.reflect.Method scoring = GMSubs.class.getDeclaredMethod("subtitleContentScore", String.class, JSONObject.class, Map.class);
+        scoring.setAccessible(true);
+        for (int i = 0; i < data.length(); i++)
+            details.getJSONObject(i).put("contentScore", scoring.invoke(null, args[0], data.getJSONObject(i), evidence));
+        long rankingStarted = System.nanoTime();
         JSONArray ranked = GMSubs.rankSubtitleContents(args[0], original, evidence);
         JSONObject report = new JSONObject().put("code", args[0]).put("before", original.length())
-                .put("after", ranked.length()).put("analyzed", evidence.size()).put("ranked", ranked).put("details", details);
+                .put("after", ranked.length()).put("analyzed", evidence.size()).put("ranked", ranked).put("details", details)
+                .put("rankingMillis", (System.nanoTime() - rankingStarted) / 1000000.0).put("cueEvidenceBytes", cueEvidenceBytes);
         Files.writeString(Path.of(args[3]), report.toString(2));
         String first = ranked.length() == 0 ? "none" : ranked.getJSONObject(0).getString("url");
         GMSubs.SubtitleQuality q = evidence.get(first);

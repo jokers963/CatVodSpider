@@ -49,6 +49,103 @@ public class GMSubsTest {
     }
 
     @Test
+    public void nearCopiesWithChangedCreditsDoNotOccupyTheFrontAndKeepAllAxes() throws Exception {
+        String plain = spacedCaptions(150, "今天我们一起去公园。", 0);
+        String credits = plain.replaceFirst("今天我们一起去公园。", "字幕制作 http://subs.example");
+        JSONArray rows = GMSubs.rankSubtitles("TEST-013", new JSONArray()
+                .put(item("TEST-013.srt", "https://example.com/plain.srt", "srt"))
+                .put(item("TEST-013-credit.srt", "https://example.com/credit.srt", "srt"))
+                .put(item("TEST-013-shift.srt", "https://example.com/shift.srt", "srt"))
+                .put(item("TEST-013-other.srt", "https://example.com/other.srt", "srt")));
+        JSONArray ranked = GMSubs.rankSubtitleContents("TEST-013", rows, Map.of(
+                "https://example.com/plain.srt", quality(plain), "https://example.com/credit.srt", quality(credits),
+                "https://example.com/shift.srt", quality(spacedCaptions(150, "今天我们一起去公园。", 6000)),
+                "https://example.com/other.srt", quality(spacedCaptions(150, "今天我们一起去看电影。", 0))));
+        assertEquals(4, ranked.length());
+        assertTrue(ranked.getJSONObject(0).getString("url").endsWith("plain.srt"));
+        assertTrue(ranked.getJSONObject(1).getString("url").endsWith("other.srt"));
+        assertTrue(ranked.getJSONObject(2).getString("name").endsWith("正文近似副本"));
+        assertTrue(ranked.getJSONObject(3).getString("name").endsWith("同正文·不同时间轴"));
+        assertFalse(rows.getJSONObject(1).getString("name").contains("副本"));
+    }
+
+    @Test
+    public void matchingTruncatedPrefixIsDemotedButNotDeletedOrShifted() throws Exception {
+        GMSubs.SubtitleQuality shortVersion = quality(spacedCaptions(150, "今天我们一起去公园。", 0));
+        GMSubs.SubtitleQuality fullVersion = quality(spacedCaptions(300, "今天我们一起去公园。", 0));
+        String shortFingerprint = shortVersion.fingerprint;
+        JSONArray ranked = GMSubs.rankSubtitleContents("TEST-014", GMSubs.rankSubtitles("TEST-014", new JSONArray()
+                .put(item("TEST-014.srt", "https://example.com/short.srt", "srt"))
+                .put(item("TEST-014-full.srt", "https://example.com/full.srt", "srt"))
+                .put(item("TEST-014-other.srt", "https://example.com/other.srt", "srt"))
+                .put(item("TEST-014-unknown.srt", "https://example.com/unknown.srt", "srt"))), Map.of(
+                "https://example.com/short.srt", shortVersion, "https://example.com/full.srt", fullVersion,
+                "https://example.com/other.srt", quality(spacedCaptions(300, "今天我们一起去看电影。", 0))));
+        assertEquals(4, ranked.length());
+        assertTrue(ranked.getJSONObject(0).getString("url").endsWith("full.srt"));
+        assertTrue(ranked.getJSONObject(2).getString("name").endsWith("疑似残缺副本"));
+        assertEquals(shortFingerprint, shortVersion.fingerprint);
+        assertEquals(1, ranked.getJSONObject(0).getInt("flag"));
+    }
+
+    @Test
+    public void relationRulesProtectDistinctTextShortUtterancesDifferentCutsAndInsufficientEvidence() throws Exception {
+        GMSubs.SubtitleQuality full = quality(spacedCaptions(300, "今天我们一起去公园。", 0));
+        GMSubs.SubtitleQuality shorter = quality(spacedCaptions(150, "今天我们一起去公园。", 0));
+        assertTrue(GMSubs.truncatedSubtitlePrefix(shorter, full, new int[]{1000000}));
+        assertFalse(GMSubs.truncatedSubtitlePrefix(shorter, full, new int[]{0}));
+        assertFalse(GMSubs.truncatedSubtitlePrefix(quality(spacedCaptions(150, "今天我们一起去公园。", 1)), full, new int[]{1000000}));
+        assertFalse(GMSubs.truncatedSubtitlePrefix(quality(spacedCaptions(150, "今天我们一起去看电影。", 0)), full, new int[]{1000000}));
+        assertFalse(GMSubs.truncatedSubtitlePrefix(quality(spacedCaptions(99, "今天我们一起去公园。", 0)), full, new int[]{1000000}));
+        assertFalse(GMSubs.truncatedSubtitlePrefix(quality(spacedCaptions(260, "今天我们一起去公园。", 0)), full, new int[]{1000000}));
+        assertFalse(GMSubs.nearSubtitleBody(full, quality(spacedCaptions(300, "今天我们一起去看电影。", 0)), new int[]{1000000}));
+        assertFalse(GMSubs.nearSubtitleBody(full, full, new int[]{0}));
+        assertFalse(GMSubs.nearSubtitleBody(quality(captions(300, "好的")), quality(captions(300, "好的")), new int[]{1000000}));
+        assertFalse(GMSubs.nearSubtitleBody(full, quality(spacedCaptions(290, "今天我们一起去公园。", 0)), new int[]{1000000}));
+        // A meaningful interior change is not a credits-only difference in this 150-cue sample.
+        String changed = spacedCaptions(150, "今天我们一起去公园。", 0).replace("00:30:00,000 --> 00:30:02,000\n今天我们一起去公园。", "00:30:00,000 --> 00:30:02,000\n今天我们一起去看电影。");
+        assertFalse(GMSubs.nearSubtitleBody(shorter, quality(changed), new int[]{1000000}));
+    }
+
+    @Test
+    public void subtitleSourceDomainIsNotMistakenForAnotherVideoCode() throws Exception {
+        for (String prefix : new String[]{"hhd800.com@", "www.abw366.example@", "https://hhd800.com@"}) {
+            JSONArray rows = GMSubs.rankSubtitles("TEST-015", new JSONArray()
+                    .put(item(prefix + "TEST-015.srt", "https://example.com/right.srt", "srt"))
+                    .put(item("TEST-016.srt", "https://example.com/wrong.srt", "srt")));
+            JSONArray ranked = GMSubs.rankSubtitleContents("TEST-015", rows, Map.of(
+                    "https://example.com/right.srt", quality(captions(150, "今天我们去公园。")),
+                    "https://example.com/wrong.srt", quality(captions(1000, "今天我们去看电影。"))));
+            assertTrue(ranked.getJSONObject(0).getString("url").endsWith("right.srt"));
+        }
+        assertEquals("REAL-795", GMSubs.codeFromTitle("REAL-795 IPX-343"));
+    }
+
+    @Test
+    public void expiredRelationDeadlineKeepsCandidatesWithoutInventingNewRiskLabels() throws Exception {
+        JSONArray rows = GMSubs.rankSubtitles("TEST-017", new JSONArray()
+                .put(item("TEST-017.srt", "https://example.com/short.srt", "srt"))
+                .put(item("TEST-017-full.srt", "https://example.com/full.srt", "srt")));
+        java.lang.reflect.Method method = GMSubs.class.getDeclaredMethod("rankSubtitleContents", String.class, JSONArray.class, Map.class, long.class);
+        method.setAccessible(true);
+        JSONArray ranked = (JSONArray) method.invoke(null, "TEST-017", rows, Map.of(
+                "https://example.com/short.srt", quality(spacedCaptions(150, "今天我们一起去公园。", 0)),
+                "https://example.com/full.srt", quality(spacedCaptions(300, "今天我们一起去公园。", 0))), System.nanoTime() - 1);
+        assertEquals(2, ranked.length());
+        for (int i = 0; i < ranked.length(); i++) assertFalse(ranked.getJSONObject(i).getString("name").contains("副本"));
+    }
+
+    @Test
+    public void perCueEvidenceHasABoundedPrimitiveStorageAndPreservesAllFormats() throws Exception {
+        GMSubs.SubtitleQuality largest = quality(captions(20000, "好"));
+        assertEquals(20000, largest.cues);
+        assertEquals(100000, largest.cueData.length); // 800 KB maximum per analyzed file; not cached.
+        GMSubs.SubtitleQuality srt = quality("1\n00:00:01,200 --> 00:00:03,450\n你好朋友今天辛苦了\n");
+        GMSubs.SubtitleQuality ass = quality("[Events]\nDialogue: 0,0:00:01.20,0:00:03.45,Default,,0,0,0,,你好朋友今天辛苦了\n");
+        assertArrayEquals(srt.cueData, ass.cueData);
+    }
+
+    @Test
     public void dominantLongAnnotationLoopsAreDemotedWithoutDeletingCandidates() throws Exception {
         String ordinary = spacedCaptions(120, "今天我们一起去公园。", 3000000);
         GMSubs.SubtitleQuality loop = quality(spacedCaptions(80, "（未知的长串识别标签）", 0) + ordinary);

@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$OutputDir,
-    [string]$FixtureRoot = ''
+    [string]$FixtureRoot = '',
+    [string]$AppClassesJar = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -9,6 +10,8 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $jdk = 'E:\DevTools\Gradle.gradle\jdks\jetbrains_s_r_o_-21-amd64-windows.2\bin'
 $android = 'E:\DevTools\Android\sdk\platforms\android-37.0\android.jar'
 $app = "$root\app\build\intermediates\compile_app_classes_jar\debug\bundleDebugClassesToCompileJar\classes.jar"
+if ($AppClassesJar) { $app = (Resolve-Path -LiteralPath $AppClassesJar).Path }
+if (-not (Test-Path -LiteralPath $app)) { throw 'Missing compiled app classes; build them or pass -AppClassesJar from the same baseline.' }
 $api = 'E:\DevTools\Gradle.gradle\caches\9.6.1\transforms\06fa3c3720c12a4360e2059f5c6324f6\transformed\okhttp-api.jar'
 $runtime = 'E:\DevTools\Gradle.gradle\caches\9.6.1\transforms\19afaaf8fd72c385630816a12d1e7dfa\transformed\okhttp-runtime.jar'
 $okio = 'E:\DevTools\Gradle.gradle\caches\modules-2\files-2.1\com.squareup.okio\okio-jvm\3.18.1\a3a8128bb3a0157d23ecc18c17e8330d9c0ac96c\okio-jvm-3.18.1.jar'
