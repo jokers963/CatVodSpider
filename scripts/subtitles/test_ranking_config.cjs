@@ -25,9 +25,12 @@ for (const site of formal.sites) {
   assert.equal(site.ext.subtitleLibrary, 'https://pub-662c4b411cfb4cf69f52f71f22140341.r2.dev/');
   delete site.ext.subtitleLibrary;
 }
-assert.equal(formal.spider, `https://jokers963.github.io/CatVodSpider/jar/gm_subs-v39.jar?v=39;md5;${md5}`);
-assert.deepEqual(read('jar/gm_subs-v39.jar'), read(jar), 'Formal v39 must reuse the verified test bytes');
+assert.equal(formal.spider, 'https://jokers963.github.io/CatVodSpider/jar/gm_subs-v40.jar?v=40;md5;c6a36e891a26e269300069fe7c317fef');
+assert.equal(hash('jar/gm_subs-v40.jar', 'sha256'), '3f9495e93e15b440b2704d51454506bd153ec3caf8a90395e0a37bf94010a605');
+assert.equal(hash('jar/gm_subs-v40.jar', 'md5'), 'c6a36e891a26e269300069fe7c317fef');
+assert.equal(read('jar/gm_subs-v40.jar.md5').toString().trim(), 'c6a36e891a26e269300069fe7c317fef');
+assert.deepEqual(read('jar/gm_subs-v39.jar'), read(jar), 'Previous v39 rollback must reuse verified fix3 bytes');
 assert.equal(hash('jar/gm_subs-v38.jar', 'sha256'), '52a182633f21b6fa53f12bd6aa8279f8f15e1ebe36436f417938438a35d4fc04');
 test.spider = formal.spider;
 assert.deepEqual(test, formal, 'Only test JAR and removal of library lookup may differ');
-console.log('Ranking test config: fix3/v39 bytes equal, Xunlei-only isolation and v38 rollback preservation checked');
+console.log('Ranking test config: old fix3 test isolated from formal v40, v39/v38 rollback preservation checked');
