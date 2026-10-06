@@ -2,19 +2,34 @@
 
 本文件用于快速接手，不代替用户当次授权，不保证站点已经完成验收。
 
+## 唯一现状卡（2026-10-06）
+
+| 项 | 当前事实 |
+| --- | --- |
+| 正式入口 | `https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json`（手机只填此地址） |
+| Spider | `gm_subs-v40.jar?v=40`，MD5 `c6a36e891a26e269300069fe7c317fef`；v39/v38/v37 保留回退 |
+| 正式五站 | MissAV `?v=9`、AV01 `?v=5`、肉视频 `?v=6`、Hanime1 `?v=3`、JavGuru `?v=4` |
+| Jable | **已关闭**（脚本/实现保留）；未经用户新指令不恢复 |
+| 手机验收 | **v40 手机 QA 未做**；发布≠实机通过；不截图 |
+| 勿恢复 | SupJav、MemoJav、NBD-022、旧 `json/supjav.json`、已关闭的 Jable |
+| 非正式入口 | 仓库 `CNAME`=`fm.t4tv.hz.cz` 不是正式点播地址；`jokers963/luoyuqiu-api` 已清空，勿再发正式配置；`LuoYuQiu.java`（libvio）不是正式站点入口（正式为 `csp_GMSubs`） |
+| 播放器 | [TV:luoyuqiu AGENTS](https://github.com/jokers963/TV/blob/luoyuqiu/AGENTS.md)；现状以本卡 + [AI_HANDOFF 顶部](AI_HANDOFF.md) 为准 |
+
+下方边界与发布规则仍有效；与本卡冲突时以本卡为准。版本/站点细节核对以 `json/luoyuqiu.json` 为准。
+
 ## 阅读顺序
 
-1. [AI_HANDOFF.md](AI_HANDOFF.md)：当前状态、版本、权限、协作登记与下一步。
-2. [LUOYUQIU_ARCHITECTURE.md](LUOYUQIU_ARCHITECTURE.md)：只读当前任务涉及的原理章节及源码。
-3. 核对当前代码/远程发布/工作树差异，再继续用户具体任务；不要重复全仓调研。
+1. 本文件顶部「唯一现状卡」。
+2. [AI_HANDOFF.md](AI_HANDOFF.md) 顶部：部署证据、任务登记；下方旧记录是历史。
+3. [LUOYUQIU_ARCHITECTURE.md](LUOYUQIU_ARCHITECTURE.md)：只读当前任务涉及的原理章节及源码（文内版本快照可能滞后，以现状卡为准）。
+4. 核对当前代码/远程发布/工作树差异，再继续用户具体任务；不要重复全仓调研。
 
 ## 工作边界
 
 - 本仓库负责远程配置、GMSubs、站点 userscript 与运行 JAR；配套播放器实际开发入口为 [jokers963/TV:luoyuqiu](https://github.com/jokers963/TV/tree/luoyuqiu)，先读该分支 [AGENTS.md](https://github.com/jokers963/TV/blob/luoyuqiu/AGENTS.md)。默认分支 `fongmi` 仅作上游同步参考。
-- 正式手机入口是 `https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json`。不要填写电脑本地文件或 GitHub blob 页面。
-- SupJav 已移除、NBD-022 排查取消，旧 `json/supjav.json` 已退役；MemoJav 亦已按用户要求取消，不恢复。2026-10-03 用户要求暂时关闭 Jable，正式/当前测试配置仅保留 MissAV、AV01、肉视频、Hanime1、JavGuru 五站；Jable 脚本/实现保留，但未经用户新指令不恢复。2026-10-04 用户授权正式接口升级 v39，沿用公开字幕库优先、迅雷 fallback 新排序；v38/v37 保留供回退。部署完成与未验收范围以 AI_HANDOFF 顶部为准，下方旧记录不能作为恢复任务的依据。
+- 正式手机入口是 github.io 上的 `json/luoyuqiu.json`。不要填写电脑本地文件、GitHub blob 页面、CNAME 自定义域，或已清空的 `luoyuqiu-api`。
+- 不恢复「勿恢复」清单中的项。Jable 脚本/实现保留。正式配置与脚本 `?v=` 以现状卡 / JSON 为准；部署证据见 AI_HANDOFF 顶部。发布不代表手机或最佳表达验收。
 - 实际播放器定制分支为 `jokers963/TV:luoyuqiu`，本机工作目录为 `D:/CodexWorkspace/Android/TV563Release`；`fongmi` 是另一分支。手机遵守用户“不要截图”的要求。
-- 2026-10-04 用户要求直接正式发布近副本/截断/名称修复候选，v40 已经 PR #5 合并、CI/Pages/公网核对完成；只更换正式 JAR/MD5，五站和库优先不变，保留 v39/v38/v37 回退。以 AI_HANDOFF 顶部部署证据为准，发布不代表手机或最佳表达验收。
 - 保护用户未提交改动；旧 `交接.md` 不删除/覆盖，其历史内容不能代替当前源码。禁止破坏性 Git 操作、强推或未经请求同步上游。
 - TV 本地工作树及运行文件保持只读；文档不授予运行修改或发布权限，权限以用户当次明确授权为准。
 - 不恢复已取消的站点/线路；MissAV 不擅自改回带 `name` 的 `finalUrl`；GM 的 `type: match` 不代表媒体解析已经结束。
@@ -28,3 +43,5 @@
 每个阶段留下提交/发布版本、测试与实机证据、未完成项及下一步，更新 AI_HANDOFF。没有具体任务时先报告状态，不擅自实现潜在优化。
 
 **发布流程（2026-10-02 用户拍板）**：小改动（json 微调、测试、文档）豆宝可直接推 main，用户在手机上验证，有问题立即回退；大改动（动 jar、加新站、换域名）先与用户对方案再动手。分支 PR 仅用于大改动或与 Codex 并行协作时隔离。
+
+**JAR 发布清单（摘要）**：用 [scripts/gmRelease/build-check.ps1](scripts/gmRelease/build-check.ps1) 产出净化包（勿把 `gmSubsJar`/未净化候选当正式）；写入 `jar/gm_subs-vN.jar` + MD5 文件；正式 JSON 只改 spider 字段的版本/MD5；PR 或按上条规则推 main → 等 CI/Pages → 核对公网 JSON/JAR/MD5 与回退包；**当前正式发布人记录见 AI_HANDOFF 任务表（v40 为 Codex，手机由用户验证）**。详单见 [docs/JAR_PUBLISH.md](docs/JAR_PUBLISH.md)。

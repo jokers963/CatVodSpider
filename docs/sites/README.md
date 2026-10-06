@@ -1,19 +1,21 @@
 # 站点实现档案
 
-更新时间：2026-10-02。这里记录当前正式站点的实现过程、运行原理、验证方法和可复用经验。故障时间线仍放在 `docs/handovers/`，旧实验放在 `docs/history/`；不要用历史状态覆盖当前实现。
+更新时间：2026-10-06。这里记录站点的实现过程、运行原理、验证方法和可复用经验。故障时间线仍放在 `docs/handovers/`，旧实验放在 `docs/history/`；不要用历史状态覆盖当前实现。
 
 ## 当前站点
 
 核心作者栏按项目所有者的直接确认记录，不替代各文档中的后续协作提交历史。
 
-| 站点 | 核心作者 | 主要接入模式 | 播放模式 | 实现档案 |
-| --- | --- | --- | --- | --- |
-| MissAV | Codex | DOM 抓取 + 页面全局变量 | 详情页 HLS 直链 | [MissAV](missav.md) |
-| Jable | Codex | DOM 抓取 + AJAX 分页 + 验证页兼容 | 详情页 HLS 直链 | [Jable](jable.md) |
-| AV01 | Claude Opus 5.5 | JSON API + 地区/授权接口 | 带 token 的 HLS 主清单 | [AV01](av01.md) |
-| 肉视频（Rou） | Codex | DOM + 页面内编码 hydration | 本地代理解包伪 PNG HLS | [肉视频](rou.md) |
-| Hanime1 | Codex | DOM 抓取 + 固定分类/筛选 | 多清晰度 MP4 直链 | [Hanime1](hanime1.md) |
-| JavGuru | Codex | DOM + 第三方网页播放器 | WebView 启播后嗅探 HLS | [JavGuru](javguru.md) |
+正式配置当前五站见根目录 [AGENTS 唯一现状卡](../../AGENTS.md)；Jable **已从正式/测试入口关闭**（实现保留）。
+
+| 站点 | 正式配置 | 核心作者 | 主要接入模式 | 播放模式 | 实现档案 |
+| --- | --- | --- | --- | --- | --- |
+| MissAV | 在用 `?v=9` | Codex | DOM 抓取 + 页面全局变量 | 详情页 HLS 直链 | [MissAV](missav.md) |
+| AV01 | 在用 `?v=5` | Claude Opus 5.5 | JSON API + 地区/授权接口 | 带 token 的 HLS 主清单 | [AV01](av01.md) |
+| 肉视频（Rou） | 在用 `?v=6` | Codex | DOM + 页面内编码 hydration | 本地代理解包伪 PNG HLS | [肉视频](rou.md) |
+| Hanime1 | 在用 `?v=3` | Codex | DOM 抓取 + 固定分类/筛选 | 多清晰度 MP4 直链 | [Hanime1](hanime1.md) |
+| JavGuru | 在用 `?v=4` | Codex | DOM + 第三方网页播放器 | WebView 启播后嗅探 HLS | [JavGuru](javguru.md) |
+| Jable | **已关闭**（脚本保留） | Codex | DOM 抓取 + AJAX 分页 + 验证页兼容 | 详情页 HLS 直链 | [Jable](jable.md) |
 
 ## 共用运行链路
 

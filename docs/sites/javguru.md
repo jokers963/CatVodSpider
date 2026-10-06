@@ -1,6 +1,6 @@
 # JavGuru 实现档案
 
-当前实现：`js/javguru.user.js` 1.0.2，正式脚本查询版本 `v=3`。播放故障与手机证据见 `docs/handovers/2026-10-02-doubao-to-codex-javguru-exoplayer.md`。
+当前实现：`js/javguru.user.js` 1.0.2，正式脚本查询版本 `v=4`（与 `json/luoyuqiu.json` 一致）。播放故障与手机证据见 `docs/handovers/2026-10-02-doubao-to-codex-javguru-exoplayer.md`。
 
 ## 站点定位与接入选择
 
