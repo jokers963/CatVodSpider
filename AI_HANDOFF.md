@@ -1,6 +1,22 @@
 # 落雨秋 AI 接手与协作记录
 
-更新日期：2026-10-04。本文件只保留当前状态；历史实验、旧版本与失败证据见 [完整历史快照](docs/history/AI_HANDOFF-2026-10-01.md)。历史不授予权限，不代表当前任务。
+## 唯一现状卡（≤15 行，2026-10-06）
+
+1. **正式入口**：`https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json`（勿用 blob、本地路径、CNAME 域或 `luoyuqiu-api`）。
+2. **JAR**：`gm_subs-v40.jar?v=40`；MD5 `c6a36e891a26e269300069fe7c317fef`；回退 v39/v38/v37。
+3. **五站脚本**：MissAV `?v=9`、AV01 `?v=5`、肉视频 `?v=6`、Hanime1 `?v=3`、JavGuru `?v=4`。
+4. **Jable**：正式/测试入口已关闭；脚本保留；无新指令不恢复。
+5. **手机**：v40 加载/绘制/切换等 **QA 未做**；不截图；发布≠验收通过。
+6. **勿恢复**：SupJav、MemoJav、NBD-022、旧 `supjav.json`、已关 Jable。
+7. **CNAME**：仓库 `CNAME`=`fm.t4tv.hz.cz`，**不是**正式点播入口（github.io 才是）。
+8. **luoyuqiu-api**：仓库已清空；**勿**再发布正式配置到该仓。
+9. **LuoYuQiu.java**：libvio 页面解析实验类；正式站点入口是 `csp_GMSubs` + userscript，不是它。
+10. **同卡权威**：与本文件下方历史段或架构文档冲突时，以本卡 + [AGENTS.md](AGENTS.md) 为准；细节以 `json/luoyuqiu.json` 核对。
+
+---
+
+
+更新日期：2026-10-06（顶部现状卡）；正文历史段仍含 2026-10-04 及更早部署证据。历史实验见 [完整历史快照](docs/history/AI_HANDOFF-2026-10-01.md)。历史不授予权限，不代表当前任务。
 
 **当前 v40 正式发布完成（2026-10-04）**：用户明确要求“直接发正式版”，[PR #5](https://github.com/jokers963/CatVodSpider/pull/5) 已合并；实现提交 `270ac6b`、资源提交 `f7314ce`、main 合并提交 `c01de3d`。[正式 CI](https://github.com/jokers963/CatVodSpider/actions/runs/37172713644) 和 [Pages 部署](https://github.com/jokers963/CatVodSpider/actions/runs/37172713359) 均 success。2026-10-04 03:00:28 UTC 裸原[正式配置](https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json) HTTP 200、与本地 JSON 深比较一致，和发布前 `a5a8dd7` 仅 spider 不同；指向 v40/MD5，五站/库优先/Jable关闭不变。公网 `gm_subs-v40.jar` 1223950字节，SHA256 `3F9495E93E15B440B2704D51454506BD153EC3CAF8A90395E0A37BF94010A605`、MD5 `c6a36e891a26e269300069fe7c317fef`，与已验证-final候选及本地逐字节一致；公网 v39/v38/v37 JAR 逐字节符合本地，MD5 文件逐字节符合 Git 提交（本地文本可能 CRLF），计算 MD5 一致，回退包未改。
 
@@ -113,7 +129,10 @@ Hanime1、肉视频各一个首页无可识别番号样本正常播放：Hanime1
 | 播放器目录 | `D:/CodexWorkspace/Android/TV563Release` |
 | 上游参考 | `TV:fongmi`；不是当前 APK 的构建分支，不盲目合并 |
 | 正式配置 | `https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json` |
-| 正式 JAR | `jar/gm_subs-v39.jar?v=39`，配置含 MD5，PR #4 / main `e165173` 已合并，CI/Pages/公网校验通过；v38/v37 保留回退。五站无 JAR 覆写，Jable 暂时关闭，MemoJav 已移除 |
+| CNAME / 自定义域 | 仓库根 `CNAME` 为 `fm.t4tv.hz.cz`；**非正式入口**，手机勿填；以 github.io 为准 |
+| 旧 api 仓 | `jokers963/luoyuqiu-api` 已清空；勿再发布正式配置 |
+| LuoYuQiu.java | 非正式点播入口（libvio 实验）；正式为 `csp_GMSubs` |
+| 正式 JAR | `jar/gm_subs-v40.jar?v=40`，MD5 `c6a36e891a26e269300069fe7c317fef`，PR #5 / main `c01de3d` 已合并，CI/Pages/公网校验通过；v39/v38/v37 保留回退。五站无 JAR 覆写，Jable 暂时关闭，MemoJav 已移除。**v40 手机 QA 未做** |
 | 手机实装 | 2026-10-02 ADB 核对 `com.jokers963.luoyuqiu`，`5.6.3-lyq.3` / `56303`，Android 13 |
 
 最新 main 正式站点与脚本 URL 版本：`missav` v9、`av01` v5、`rou` v6、`hanime1` v3、`javguru` v4；Jable 暂时关闭（脚本 v12 保留，不在正式配置），MemoJav 已按用户要求取消并在 main `979ba99` 移除，不恢复。旧 `json/supjav.json` 已退役，不作为兼容入口。

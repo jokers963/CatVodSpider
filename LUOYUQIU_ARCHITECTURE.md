@@ -1,5 +1,8 @@
 # 落雨秋：配置、Spider 与网站脚本原理
 
+> **版本快照可能滞后**：正式入口、JAR、五站与脚本 `?v=` 以根目录 [AGENTS.md 唯一现状卡](AGENTS.md) 与 `json/luoyuqiu.json` 为准；本文保留原理说明。下方「截至 … 文档复核」表格是历史快照，不是当前发布状态。
+
+
 原始研究日期：2026-09-27；入口、正式版本与站点索引更新于 2026-10-02。本文是源码研究与维护说明，不是全部站点稳定性验收报告。
 
 配套文档：[定制播放器开发入口](https://github.com/jokers963/TV/blob/luoyuqiu/README.md) · [历史播放器底层原理](https://github.com/jokers963/TV/blob/fongmi/LUOYUQIU_ARCHITECTURE.md)。实际定制源码在 `luoyuqiu`，下方 TV 的 `fongmi` 基线仅用于解释原始研究。
@@ -41,18 +44,13 @@ https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json
 
 手机应填写完整 JSON 地址，而不是 GitHub 的 `blob/main/...` 查看页面、GitHub Pages 根目录或 JAR 地址。电脑上的本地文件改变不等于远程发布完成；需要确认远程仓库、Pages 部署和实际 HTTP 返回内容。
 
-截至 2026-10-02 文档复核，正式配置为：
+**当前（以 AGENTS 现状卡 / JSON 为准，2026-10-06）**：`gm_subs-v40` + MD5；正式五站 MissAV/AV01/肉视频/Hanime1/JavGuru（脚本 `?v=` 分别为 9/5/6/3/4）；Jable 已关闭。下表为 2026-10-02 历史快照，勿当作现状：
 
-| 项目 | 快照 |
+| 项目 | 历史快照（可能过时） |
 | --- | --- |
-| Spider JAR | `jar/gm_subs-v38.jar?v=38`，正式配置含 MD5；v37 保留供回退 |
-| 站点 | MissAV、Jable、AV01、肉视频、Hanime1、JavGuru |
-| MissAV 脚本 | URL `v=9` |
-| Jable 脚本 | URL `v=12` |
-| AV01 脚本 | URL `v=5` |
-| 肉视频脚本 | URL `v=6` |
-| Hanime1 脚本 | URL `v=3` |
-| JavGuru 脚本 | URL `v=3` |
+| Spider JAR | 当时为 `jar/gm_subs-v38.jar?v=38` |
+| 站点 | 当时含 MissAV、Jable、AV01、肉视频、Hanime1、JavGuru |
+| 脚本 URL | MissAV `v=9`、Jable `v=12`、AV01 `v=5`、肉视频 `v=6`、Hanime1 `v=3`、JavGuru 当时 `v=3`（现正式为 `v=4`） |
 
 JSON、JAR URL 版本、脚本 URL 版本、userscript 元数据版本和 APK 版本是不同层。URL 查询参数会影响宿主插件缓存键，但不是部署成功或缓存已刷新的证明。GM 初始化时会下载脚本，并可能在下载失败时使用本地脚本缓存。
 
@@ -109,7 +107,7 @@ GM 的详情扩展 `vod_play_data` 会被转换为宿主认识的线路/集数�
 
 MissAV 当前采用普通直链的 `vod_play_url`，不要擅自改回带 `name` 的 GM `finalUrl` 描述。验证页面是真实访问条件；不应伪造验证成功或自动点击验证来掩盖问题。
 
-六站的逐站实现过程、路由、播放原理和可复用经验见 [站点实现档案](docs/sites/README.md)。
+各站的逐站实现过程（正式在线路由见 AGENTS 现状卡）、路由、播放原理和可复用经验见 [站点实现档案](docs/sites/README.md)。
 
 ## 6. GMSubs：媒体代理与字幕
 
