@@ -75,6 +75,32 @@
         return list;
     }
 
+    // 诊断：解析失败时收集页面现场信息，通过 msg 带回
+    function diagnose() {
+        const info = {};
+        try { info.title = document.title; } catch (_) { info.title = "?"; }
+        try { info.url = location.href; } catch (_) { info.url = "?"; }
+        try {
+            const all = document.querySelectorAll("a[href]");
+            info.aCount = all.length;
+            info.zhCount = 0;
+            const samples = [];
+            all.forEach(function (a) {
+                const h = a.getAttribute("href") || "";
+                if (h.indexOf("/zh/") >= 0) {
+                    info.zhCount++;
+                    if (samples.length < 5) samples.push(h);
+                }
+            });
+            info.samples = samples;
+        } catch (_) { info.aCount = "?"; }
+        try {
+            info.imgCount = document.querySelectorAll("img").length;
+            info.challenged = !!document.querySelector("#challenge-stage, #challenge-form, #cf-challenge-running, input[name='cf-turnstile-response]");
+        } catch (_) {}
+        return info;
+    }
+
     function pageCount() {
         let count = 1;
         document.querySelectorAll("a[href*='/page/']").forEach(function (a) {
@@ -212,9 +238,17 @@
         sent = true;
         clearInterval(poller);
         GmSpiderInject.HideWebview();
-        if (!ready) result.msg = document.readyState === "complete"
-                ? method === "detailContent" ? "页面已加载，但未获取到播放地址" : "当前页面没有匹配内容"
+        if (!ready) {
+            const diag = diagnose();
+            result.msg = document.readyState === "complete"
+                ? (method === "detailContent" ? "页面已加载，但未获取到播放地址"
+                    : "当前页面没有匹配内容")
+                  + " [诊断]标题:" + diag.title + " |链接总数:" + diag.aCount
+                  + " |/zh/链接:" + diag.zhCount + " |图片:" + diag.imgCount
+                  + " |验证页:" + (diag.challenged ? "是" : "否")
+                  + " |样例:" + (diag.samples || []).join(",")
                 : "页面加载超时，请检查网络后重试";
+        }
         GmSpiderInject.SetSpiderResult(JSON.stringify(result));
     }
 
