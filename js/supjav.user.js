@@ -112,20 +112,15 @@
                 || document.querySelector("h1")?.textContent?.trim()
                 || document.title;
             const image = document.querySelector('meta[property="og:image"]')?.content || "";
-            // Player links: look for iframes or player tab links
-            const eps = [];
-            const seen = new Set();
-            document.querySelectorAll("iframe[src], a[href]").forEach(function (el) {
-                const href = el.getAttribute("src") || el.getAttribute("href") || "";
-                if (!href) return;
-                const lower = href.toLowerCase();
-                // Player iframes or tabs (FST/ST/etc.)
-                if (el.tagName === "IFRAME" && /embed|play|video/i.test(href)) {
-                    const url = absUrl(href);
-                    if (!seen.has(url)) { seen.add(url); eps.push("播放$" + url); }
-                }
+            // 播放器标签：a.btn-server[data-link]，有几条线路就出几个播放源
+            const servers = [];
+            document.querySelectorAll("a.btn-server[data-link]").forEach(function (a) {
+                const name = (a.textContent || "").trim() || "线路";
+                if (a.getAttribute("data-link")) servers.push(name);
             });
-            if (!eps.length) eps.push("播放$" + ids[0]);
+            const eps = servers.length ? servers.map(function (name) {
+                return name + "$" + ids[0] + "#" + name;
+            }) : ["播放$" + ids[0]];
             return {list: [{
                 vod_id: ids[0],
                 vod_name: title,
@@ -140,8 +135,44 @@
                 }]
             }]};
         },
+        // 播放页：自动点对应线路标签，等 #vserver 注入播放器后嗅探媒体请求
+        // NBD-022 教训：没人点标签就不发请求，所以必须自动点
         playerContent: function () { return {type: "match"}; }
     };
+
+    // playerContent 模式：自动点击线路标签触发播放器加载
+    function armPlayer() {
+        if (method !== "playerContent") return;
+        // 从 ext.url 里解析出线路名（id#线路名）
+        let serverName = "";
+        try {
+            const ext = JSON.parse(GmSpiderInject.GetSpiderArgs());
+            const url = (ext[2] && ext[2].ext && ext[2].ext.url) || "";
+            const m = /#(.+)$/.exec(url);
+            if (m) serverName = decodeURIComponent(m[1]);
+        } catch (_) {}
+        let clicked = false;
+        const clicker = setInterval(function () {
+            if (clicked) return;
+            try {
+                const tabs = document.querySelectorAll("a.btn-server[data-link]");
+                if (!tabs.length) return;
+                let target = null;
+                if (serverName) {
+                    tabs.forEach(function (t) {
+                        if ((t.textContent || "").trim() === serverName) target = t;
+                    });
+                }
+                if (!target) target = document.querySelector("a.btn-server.active") || tabs[0];
+                if (target) {
+                    clicked = true;
+                    clearInterval(clicker);
+                    target.click();
+                }
+            } catch (_) {}
+        }, 500);
+        setTimeout(function () { clearInterval(clicker); }, 15000);
+    }
 
     function navigationStartedAt() {
         if (typeof performance !== "undefined") {
@@ -203,6 +234,7 @@
         GmSpiderInject.SetSpiderResult(JSON.stringify(result));
     }
 
+    armPlayer();
     const poller = setInterval(sendResult, 500);
     if (document.readyState === "complete") sendResult();
     else if (typeof unsafeWindow !== "undefined" && unsafeWindow.addEventListener) {
