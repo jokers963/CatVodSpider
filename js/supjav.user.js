@@ -112,15 +112,20 @@
                 || document.querySelector("h1")?.textContent?.trim()
                 || document.title;
             const image = document.querySelector('meta[property="og:image"]')?.content || "";
-            // 播放器标签：a.btn-server[data-link]，有几条线路就出几个播放源
+            // 播放器：a.btn-server[data-link]，经 JumpChain 拼成 iframe 地址
+            // JumpChain(vurl) = "https://lk1.supremejav.com/supjav.php?l="+vurl+"&bg="+bg
+            // bg 取自 #dz_video 的 bg 属性（JS 动态设置）
+            const bg = document.querySelector("#dz_video")?.getAttribute("bg") || "";
             const servers = [];
             document.querySelectorAll("a.btn-server[data-link]").forEach(function (a) {
                 const name = (a.textContent || "").trim() || "线路";
-                if (a.getAttribute("data-link")) servers.push(name);
+                const link = a.getAttribute("data-link") || "";
+                if (link) servers.push({
+                    name: name,
+                    url: "https://lk1.supremejav.com/supjav.php?l=" + link + "&bg=" + bg
+                });
             });
-            const eps = servers.length ? servers.map(function (name) {
-                return name + "$" + ids[0];
-            }) : ["播放$" + ids[0]];
+            const eps = servers.length ? servers : [{name: "播放", url: ids[0]}];
             return {list: [{
                 vod_id: ids[0],
                 vod_name: title,
@@ -129,37 +134,14 @@
                 vod_play_data: [{
                     from: "SupJav",
                     media: eps.map(function (e) {
-                        const parts = e.split("$");
-                        return {name: parts[0] || "播放", type: "webview", ext: {url: parts[1] || e}};
+                        return {name: e.name, type: "webview", ext: {url: e.url}};
                     })
                 }]
             }]};
         },
-        // 播放页：自动点对应线路标签，等 #vserver 注入播放器后嗅探媒体请求
-        // NBD-022 教训：没人点标签就不发请求，所以必须自动点
+        // 播放页：直接加载 JumpChain 拼出的 iframe 地址，嗅探最终媒体请求
         playerContent: function () { return {type: "match"}; }
     };
-
-    // playerContent 模式：自动点击线路标签触发播放器加载
-    function armPlayer() {
-        if (method !== "playerContent") return;
-        let clicked = false;
-        const clicker = setInterval(function () {
-            if (clicked) return;
-            try {
-                const tabs = document.querySelectorAll("a.btn-server[data-link]");
-                if (!tabs.length) return;
-                // 直接点默认 active 的那条（一般是第一条），不猜线路名
-                const target = document.querySelector("a.btn-server.active") || tabs[0];
-                if (target) {
-                    clicked = true;
-                    clearInterval(clicker);
-                    target.click();
-                }
-            } catch (_) {}
-        }, 500);
-        setTimeout(function () { clearInterval(clicker); }, 15000);
-    }
 
     function navigationStartedAt() {
         if (typeof performance !== "undefined") {
@@ -221,7 +203,6 @@
         GmSpiderInject.SetSpiderResult(JSON.stringify(result));
     }
 
-    armPlayer();
     const poller = setInterval(sendResult, 500);
     if (document.readyState === "complete") sendResult();
     else if (typeof unsafeWindow !== "undefined" && unsafeWindow.addEventListener) {
