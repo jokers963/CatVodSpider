@@ -39,10 +39,14 @@
             if (!name) return;
             seen.add(id);
             const img = post.querySelector("img.thumb, img");
+            const picRaw = img ? (img.getAttribute("src") || img.getAttribute("data-src")
+                || img.getAttribute("data-original") || img.getAttribute("data-lazy-src") || "") : "";
+            // 去掉懒加载占位图（1px gif / base64）
+            const pic = /base64|1x1|placeholder|loading/i.test(picRaw) ? "" : picRaw;
             list.push({
                 vod_id: id,
                 vod_name: name,
-                vod_pic: absUrl(img ? (img.getAttribute("src") || "") : ""),
+                vod_pic: absUrl(pic),
                 vod_remarks: (post.querySelector(".meta")?.textContent || "").trim()
             });
         });
