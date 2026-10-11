@@ -119,7 +119,7 @@
                 if (a.getAttribute("data-link")) servers.push(name);
             });
             const eps = servers.length ? servers.map(function (name) {
-                return name + "$" + ids[0] + "#" + name;
+                return name + "$" + ids[0];
             }) : ["播放$" + ids[0]];
             return {list: [{
                 vod_id: ids[0],
@@ -143,27 +143,14 @@
     // playerContent 模式：自动点击线路标签触发播放器加载
     function armPlayer() {
         if (method !== "playerContent") return;
-        // 从 ext.url 里解析出线路名（id#线路名）
-        let serverName = "";
-        try {
-            const ext = JSON.parse(GmSpiderInject.GetSpiderArgs());
-            const url = (ext[2] && ext[2].ext && ext[2].ext.url) || "";
-            const m = /#(.+)$/.exec(url);
-            if (m) serverName = decodeURIComponent(m[1]);
-        } catch (_) {}
         let clicked = false;
         const clicker = setInterval(function () {
             if (clicked) return;
             try {
                 const tabs = document.querySelectorAll("a.btn-server[data-link]");
                 if (!tabs.length) return;
-                let target = null;
-                if (serverName) {
-                    tabs.forEach(function (t) {
-                        if ((t.textContent || "").trim() === serverName) target = t;
-                    });
-                }
-                if (!target) target = document.querySelector("a.btn-server.active") || tabs[0];
+                // 直接点默认 active 的那条（一般是第一条），不猜线路名
+                const target = document.querySelector("a.btn-server.active") || tabs[0];
                 if (target) {
                     clicked = true;
                     clearInterval(clicker);
