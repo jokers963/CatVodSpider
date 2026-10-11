@@ -39,10 +39,11 @@
             if (!name) return;
             seen.add(id);
             const img = post.querySelector("img.thumb, img");
-            const picRaw = img ? (img.getAttribute("src") || img.getAttribute("data-src")
-                || img.getAttribute("data-original") || img.getAttribute("data-lazy-src") || "") : "";
-            // 去掉懒加载占位图（1px gif / base64）
-            const pic = /base64|1x1|placeholder|loading/i.test(picRaw) ? "" : picRaw;
+            // 懒加载站点：data-original 才是真图，src 可能是占位图
+            const picRaw = img ? (img.getAttribute("data-original") || img.getAttribute("data-src")
+                || img.getAttribute("data-lazy-src") || img.getAttribute("src") || "") : "";
+            // 去掉懒加载占位图（1px gif / base64 / placeholder）
+            const pic = /base64|1x1|placeholder|loading|blank\.gif|empty\.gif/i.test(picRaw) ? "" : picRaw;
             list.push({
                 vod_id: id,
                 vod_name: name,
@@ -61,10 +62,13 @@
                 if (!name) return;
                 seen.add(id);
                 const img = link.querySelector("img");
+                const picRaw2 = img ? (img.getAttribute("data-original") || img.getAttribute("data-src")
+                    || img.getAttribute("src") || "") : "";
+                const pic2 = /base64|1x1|placeholder|loading|blank\.gif|empty\.gif/i.test(picRaw2) ? "" : picRaw2;
                 list.push({
                     vod_id: id,
                     vod_name: name,
-                    vod_pic: absUrl(img ? (img.getAttribute("src") || "") : ""),
+                    vod_pic: absUrl(pic2),
                     vod_remarks: ""
                 });
             });
