@@ -110,9 +110,9 @@ async function main() {
     assert.ok(site.ext.playUrlMatch.includes('https://streamtape.com/get_video*'));
     assert.ok(site.ext.playUrlMatch.includes('https://*.tapecontent.net/radosgw/*'));
     assert.match(userSrc0(), /@match\s+https:\/\/streamtape\.com\/e\/\*/);
-    assert.match(site.ext.userScript, /supjav\.user\.js\?v=10$/);
+    assert.match(site.ext.userScript, /supjav\.user\.js\?v=11$/);
     const userSrc = fs.readFileSync(__dirname + '/supjav.user.js', 'utf8');
-    assert.match(userSrc, /@version\s+2\.4\.0/);
+    assert.match(userSrc, /@version\s+2\.4\.1/);
     assert.match(userSrc, /@match\s+https:\/\/jokers963\.github\.io\/CatVodSpider\/\*/);
     assert.ok(!/clickServer/.test(userSrc));
     // ST: lk1 → streamtape embed; result is bare {type:'match'}, WebView shown, then top-level jump with referrer meta; no click.
@@ -145,20 +145,53 @@ async function main() {
         assert.equal(stAsFst.type, 'url'); assert.equal(stAsFst.ext.url, '');
     }
 
-    // On the streamtape embed page: no SetSpiderResult, no click; only after the user-started 'playing' → mute/pause + hide.
+    // On the streamtape embed page: no SetSpiderResult, no click. Ad cleanup: cfg noads/adblock=true, window.open stubbed,
+    // high z-index cover + ad iframes removed, player nodes kept, CSS enlarges .play-overlay; 'playing' → mute/pause + hide.
     {
-        let tick, listener; const ev = {hidden: 0, set: 0}; const video = {muted: false, paused: false,
-            addEventListener: (n, f) => { if (n === 'playing') listener = f; }, pause() { this.paused = true; }, click() { throw new Error('no click'); }};
-        vm.runInNewContext(fs.readFileSync(__dirname + '/supjav.user.js', 'utf8'), {
-            document: {readyState: 'complete', querySelector: s => s === 'video' ? video : null, querySelectorAll: () => { throw new Error('no DOM scan'); }},
+        let tick, listener; const ev = {hidden: 0, set: 0};
+        const noClick = () => { throw new Error('no programmatic click'); };
+        const mk = (tag, props = {}) => ({tagName: tag, id: '', className: '', click: noClick, parentNode: null, closest: () => null, ...props});
+        const video = mk('VIDEO', {muted: false, paused: false, closest: () => ({}),
+            addEventListener: (n, f) => { if (n === 'playing') listener = f; }, pause() { this.paused = true; }});
+        const kids = [];
+        const body = {get children() { return kids.slice(); }, removeChild: el => { const i = kids.indexOf(el); if (i < 0) throw new Error('not a child'); kids.splice(i, 1); el.parentNode = null; }};
+        const add = el => { el.parentNode = body; kids.push(el); return el; };
+        const cover = add(mk('DIV', {style: {position: 'fixed', zIndex: '300000'}}));
+        const adFrame = add(mk('IFRAME'));
+        const inner = add(mk('IFRAME', {id: 'innerframe'}));
+        const adb = add(mk('DIV', {id: 'adb', style: {position: 'static', zIndex: 'auto'}}));
+        const overlay = add(mk('DIV', {className: 'play-overlay', closest: () => ({}), style: {position: 'absolute', zIndex: '5000'}}));
+        const plain = add(mk('DIV', {style: {position: 'static', zIndex: 'auto'}}));
+        const styles = [];
+        const cfg = {token: 't', fileid: 'f', adblock: false, noads: false, blockadblock: false};
+        const sandbox = {
+            document: {readyState: 'complete', body, head: {appendChild: n => styles.push(n)}, getElementById: () => null,
+                createElement: () => ({}), documentElement: {},
+                querySelector: s => s === 'video' ? video : null,
+                querySelectorAll: s => s === 'iframe' ? kids.filter(k => k.tagName === 'IFRAME') : []},
+            getComputedStyle: el => el.style || {position: 'static', zIndex: 'auto'},
             location: {href: 'https://streamtape.com/e/AbC123xyz/x.mp4'}, navigator: {userAgent: 'x'}, performance: {timeOrigin: Date.now()}, Date, URL, Promise, JSON,
             GmSpiderInject: {GetSpiderArgs: () => JSON.stringify(['playerContent', 'ST', '{}', '[]']), HideWebview() { ev.hidden++; }, ShowWebview() {}, SetSpiderResult() { ev.set++; }},
-            setInterval: f => { tick = f; return 1; }, clearInterval() {}, setTimeout: () => 1
-        });
+            setInterval: f => { tick = f; return 1; }, clearInterval() {}, setTimeout: () => 1,
+            open: () => { throw new Error('popup opened'); }, dxJCTDPJzmXu: cfg
+        };
+        sandbox.unsafeWindow = sandbox;
+        vm.createContext(sandbox);
+        vm.runInContext(fs.readFileSync(__dirname + '/supjav.user.js', 'utf8'), sandbox);
+        assert.equal(sandbox.open('https://ad.example/'), null);
+        assert.equal(cfg.adblock, true); assert.equal(cfg.noads, true);
+        assert.ok(!kids.includes(cover) && !kids.includes(adFrame) && !kids.includes(adb));
+        assert.ok(kids.includes(inner) && kids.includes(overlay) && kids.includes(plain));
+        assert.equal(styles.length, 1);
+        assert.match(styles[0].textContent, /\.play-overlay\{position:fixed!important;.*z-index:2147483647!important/);
+        const late = add(mk('DIV', {style: {position: 'fixed', zIndex: '999999'}}));
         tick();
+        assert.ok(!kids.includes(late));
         assert.equal(video.paused, false); assert.equal(ev.hidden, 0);
         listener();
         assert.equal(video.muted, true); assert.equal(video.paused, true); assert.equal(ev.hidden, 1); assert.equal(ev.set, 0);
+        const src = fs.readFileSync(__dirname + '/supjav.user.js', 'utf8');
+        assert.ok(!/\.click\(\)|dispatchEvent|new\s+(Mouse|Pointer|Touch)Event/.test(src), 'no programmatic clicks');
     }
 
     console.log('SupJav adapter checks passed.');

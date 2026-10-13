@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      2.4.0
+// @version      2.4.1
 // @description  SupJav WebView adapter for the open-source GM spider runtime. TEST ONLY - not in formal config.
 // @match        https://supjav.com/*
 // @match        https://jokers963.github.io/CatVodSpider/*
@@ -205,9 +205,75 @@
         location.replace(embed);
     }
 
-    // 在 streamtape 嵌入页（@match）里：不点击任何元素、不关闭遮罩；只在用户点播放、视频真正开始后
-    // 暂停并静音网页内的 <video> 并隐藏 WebView，避免与外部播放器同时出声。
+    // 在 streamtape 嵌入页（@match）里：绝不以程序点击任何元素。只做去广告：
+    // 1) 页面配置对象 {token,fileid,adblock,noads} 置 noads=true、adblock=true —— 站点播放处理器是
+    //    `pcl<2 && !cfg.adblock → return`（首击给广告），adblock=true 后用户第一下就起播；noads=true 使
+    //    `!noads && adblock → 跳 advtpe.com` 的检测分支不成立，也跳过 40s 后的统计上报。
+    // 2) window.open / mkp 置空（弹窗/popunder 库都经由它们）。
+    // 3) 移除盖在页面上的透明全屏层（popunder 库注入的 z-index:300000 div）和广告 iframe/脚本节点；
+    //    .play-overlay 放大为全屏并置于最上层，触摸任何位置都落在播放按钮上。
+    // 4) 用户点播放、视频真正开始后静音暂停网页内 <video> 并隐藏 WebView，避免与外部播放器同时出声。
+    const ST_CSS = ".play-overlay{position:fixed!important;left:0!important;top:0!important;right:0!important;bottom:0!important;"
+        + "width:100vw!important;height:100vh!important;z-index:2147483647!important;display:block;pointer-events:auto!important;cursor:pointer}"
+        + "#adb,.adblockblock,.ad,iframe:not(#innerframe){display:none!important}";
+
+    function stConfigs(win) {
+        const out = [];
+        try {
+            Object.keys(win).forEach(function (k) {
+                let v;
+                try { v = win[k]; } catch (_) { return; }
+                if (v && typeof v === "object" && "token" in v && "fileid" in v && "adblock" in v) out.push(v);
+            });
+        } catch (_) {}
+        return out;
+    }
+
+    function stIsAdLayer(el, win) {
+        if (!el || !el.tagName) return false;
+        const tag = el.tagName.toUpperCase();
+        if (tag === "IFRAME") return el.id !== "innerframe";
+        if (el.closest && el.closest(".play-overlay, .plyr-container, .plyr, video")) return false;
+        if (el.id === "adb" || /(^|\s)(adblockblock|ad)(\s|$)/.test(el.className || "")) return true;
+        let st;
+        try { st = win.getComputedStyle(el); } catch (_) { return false; }
+        const z = parseInt(st.zIndex, 10);
+        return (st.position === "fixed" || st.position === "absolute") && z >= 1000;
+    }
+
+    function stClean(doc, win) {
+        let removed = 0;
+        stConfigs(win).forEach(function (c) { c.noads = true; c.adblock = true; });
+        try {
+            if (!doc.getElementById("__st_css")) {
+                const css = doc.createElement("style");
+                css.id = "__st_css";
+                css.textContent = ST_CSS;
+                (doc.head || doc.documentElement).appendChild(css);
+            }
+        } catch (_) {}
+        const body = doc.body;
+        if (body) {
+            new Set(Array.from(body.children).concat(Array.from(doc.querySelectorAll("iframe")))).forEach(function (el) {
+                try {
+                    if (el.parentNode && stIsAdLayer(el, win)) { el.parentNode.removeChild(el); removed++; }
+                } catch (_) {}
+            });
+        }
+        return removed;
+    }
+
+    function stBlockPopups(win) {
+        const nop = function () { return null; };
+        ["open", "mkp"].forEach(function (k) {
+            try { Object.defineProperty(win, k, {value: nop, writable: false, configurable: false}); }
+            catch (_) { try { win[k] = nop; } catch (__) {} }
+        });
+    }
+
     function streamtapeGuard() {
+        const win = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
+        stBlockPopups(win);
         let done = false;
         const quiet = function (v) {
             if (done) return;
@@ -215,13 +281,20 @@
             try { v.muted = true; v.pause(); } catch (_) {}
             try { GmSpiderInject.HideWebview(); } catch (_) {}
         };
-        const hook = setInterval(function () {
+        const tick = function () {
+            stClean(document, win);
             const v = document.querySelector("video");
-            if (!v || v.__stHooked) return;
-            v.__stHooked = true;
-            v.addEventListener("playing", function () { quiet(v); });
-            clearInterval(hook);
-        }, 500);
+            if (v && !v.__stHooked) {
+                v.__stHooked = true;
+                v.addEventListener("playing", function () { quiet(v); });
+            }
+        };
+        tick();
+        setInterval(tick, 300);
+        try {
+            new MutationObserver(function () { stClean(document, win); })
+                .observe(document.documentElement, {childList: true, subtree: true});
+        } catch (_) {}
     }
 
     function playerMedium() {
