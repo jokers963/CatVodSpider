@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      2.3.0
+// @version      2.4.0
 // @description  SupJav WebView adapter for the open-source GM spider runtime. TEST ONLY - not in formal config.
 // @match        https://supjav.com/*
 // @match        https://jokers963.github.io/CatVodSpider/*
+// @match        https://streamtape.com/e/*
 // @grant        unsafeWindow
 // @grant        GM_xmlhttpRequest
 // ==/UserScript==
@@ -14,11 +15,13 @@
             : JSON.parse(GmSpiderInject.GetSpiderArgs());
     const method = args.shift();
 
-    // 线路：EVS / VAS / FST（EVS、FST 为 p,a,c,k,e,d → hls4；VAS 为 /api/stream POST）；ST/VOE 已取消；LUC 仅 720p 不收。
-    const LINES = ["EVS", "VAS", "FST"];
+    // 线路：EVS / VAS / FST（EVS、FST 为 p,a,c,k,e,d → hls4；VAS 为 /api/stream POST）；
+    // ST（Streamtape）= 用户手动点播放 + GM 嗅探 get_video（不自动点击、不点广告）；VOE 未收；LUC 仅 720p 不收。
+    const LINES = ["EVS", "VAS", "FST", "ST"];
+    const ST_HOST = /^https:\/\/streamtape\.com\/e\/[0-9a-z]+(\/|$)/i;
     const VAS_HOST = /^https:\/\/vvaassjjav\.xyz\/e\/([0-9a-z]+)/i;
     const LK1 = "https://lk1.supremejav.com/";
-    const EMBED_HOSTS = /^https:\/\/(evsishere\.xyz|fc2stream\.tv|vvaassjjav\.xyz)\//;
+    const EMBED_HOSTS = /^https:\/\/(evsishere\.xyz|fc2stream\.tv|vvaassjjav\.xyz|streamtape\.com)\//;
 
     function absUrl(href) {
         try { return new URL(href, location.href).href; }
@@ -153,6 +156,7 @@
         if (!first) return null;
         const embed = String(first.finalUrl || "").split("#")[0];
         if (!EMBED_HOSTS.test(embed)) return null;
+        if (ST_HOST.test(embed)) return null; // ST 不走直链（get_video 需在网页播放器内由用户起播）
         const vas = VAS_HOST.exec(embed);
         if (vas) return resolveVas(embed, vas[1]);
         let url = hlsFromEmbed(first.responseText, embed);
@@ -180,6 +184,46 @@
         }}};
     }
 
+    // ST：lk1 → streamtape 嵌入页地址；只解析，不取媒体地址。
+    async function resolveStEmbed(code) {
+        if (!code) return "";
+        const first = await gmGet(LK1 + "supjav.php?c=" + code, "https://supjav.com/");
+        const embed = first ? String(first.finalUrl || "").split("#")[0] : "";
+        return ST_HOST.test(embed) ? embed : "";
+    }
+
+    // ST 播放阶段运行在 supjav.com（json playerContent.loadUrl=${stpage:-Pages}）：streamtape 嵌入页无 supjav Referer 返回 404，
+    // supjav 页面自身是 Referrer-Policy: same-origin，故先加 <meta name=referrer content=origin> 再顶层跳转，
+    // 让嵌入页收到 Referer: https://supjav.com/。返回 {type:"match"} 后 GM 等待 playUrlMatch 命中（用户自己点播放）。
+    function openStEmbed(embed) {
+        try {
+            const meta = document.createElement("meta");
+            meta.setAttribute("name", "referrer");
+            meta.setAttribute("content", "origin");
+            (document.head || document.documentElement).appendChild(meta);
+        } catch (_) {}
+        location.replace(embed);
+    }
+
+    // 在 streamtape 嵌入页（@match）里：不点击任何元素、不关闭遮罩；只在用户点播放、视频真正开始后
+    // 暂停并静音网页内的 <video> 并隐藏 WebView，避免与外部播放器同时出声。
+    function streamtapeGuard() {
+        let done = false;
+        const quiet = function (v) {
+            if (done) return;
+            done = true;
+            try { v.muted = true; v.pause(); } catch (_) {}
+            try { GmSpiderInject.HideWebview(); } catch (_) {}
+        };
+        const hook = setInterval(function () {
+            const v = document.querySelector("video");
+            if (!v || v.__stHooked) return;
+            v.__stHooked = true;
+            v.addEventListener("playing", function () { quiet(v); });
+            clearInterval(hook);
+        }, 500);
+    }
+
     function playerMedium() {
         try { return JSON.parse(args[1] || "{}"); } catch (_) { return {}; }
     }
@@ -202,10 +246,13 @@
                     const line = (a.textContent || "").trim().toUpperCase();
                     const link = a.getAttribute("data-link") || "";
                     if (LINES.indexOf(line) < 0 || !/^[0-9a-f]+$/i.test(link)) return;
+                    const replace = {page: page, c: reverse(link), line: line, cd: String(i + 1)};
+                    // ST 播放阶段需加载 supjav.com 页面（作为跳转嵌入页的 Referer 来源），其它线路仍加载 Pages 空白页。
+                    if (line === "ST") replace.stpage = "https://supjav.com/";
                     (byLine[line] = byLine[line] || []).push({
                         name: groups.length > 1 ? "CD" + (i + 1) : "播放",
                         type: "webview",
-                        ext: {replace: {page: page, c: reverse(link), line: line, cd: String(i + 1)}}
+                        ext: {replace: replace}
                     });
                 });
             });
@@ -223,6 +270,11 @@
         },
         playerContent: async function () {
             const rep = (playerMedium().ext || {}).replace || {};
+            if (rep.line === "ST") {
+                const embed = await resolveStEmbed(rep.c);
+                if (!embed) return {type: "url", ext: {url: "", header: {}}, msg: "ST 嵌入页解析失败，请换线路重试"};
+                return {type: "match", embed: embed};
+            }
             const direct = await resolveDirect(rep.c);
             if (direct) return direct;
             // 播放阶段加载的是自家 Pages 空白页（无 Cloudflare），没有详情页按钮可点，失败直接提示换线路。
@@ -238,6 +290,8 @@
         return Date.now();
     }
 
+    if (/^https:\/\/streamtape\.com\//.test(location.href || "")) { streamtapeGuard(); return; }
+
     let sent = false;
     let busy = false;
     let verificationShown = false;
@@ -247,6 +301,14 @@
         if (sent) return;
         sent = true;
         clearInterval(poller);
+        if (result && result.type === "match" && result.embed) {
+            // ST：WebView 保持显示供用户手动点播放；先交结果让 GM 进入等待嗅探，再跳转嵌入页。
+            const embed = result.embed;
+            try { GmSpiderInject.ShowWebview(); } catch (_) {}
+            GmSpiderInject.SetSpiderResult(JSON.stringify({type: "match"}));
+            openStEmbed(embed);
+            return;
+        }
         try { GmSpiderInject.HideWebview(); } catch (_) {}
         GmSpiderInject.SetSpiderResult(JSON.stringify(result));
     }
@@ -259,7 +321,9 @@
         if (!spider[method]) { deliver({list: [], msg: "请求参数异常，请重试"}); return; }
         if (method === "playerContent") {
             // 直链解析走原生 HTTP，不依赖所在页面内容；仅在验证页时等待（Pages 页正常不会出现）。
-            if (challenged() && Date.now() - startedAt < 60000) {
+            // ST 只需要一个 supjav.com 源的页面做跳转（Cloudflare 验证页同样是 supjav.com 源），不等待验证。
+            const isSt = ((playerMedium().ext || {}).replace || {}).line === "ST";
+            if (!isSt && challenged() && Date.now() - startedAt < 60000) {
                 if (!verificationShown) { verificationShown = true; GmSpiderInject.ShowWebview(); }
                 return;
             }
@@ -290,7 +354,7 @@
                 : (method === "categoryContent" || method === "searchContent") && !result.list.length)
                 && waiting < 25000) return;
         result.msg = method === "detailContent" && document.readyState === "complete"
-                ? "没有可用线路（仅支持 EVS/VAS/FST）"
+                ? "没有可用线路（仅支持 EVS/VAS/FST/ST）"
                 : document.readyState === "complete" ? "当前页面没有匹配内容" : "页面加载超时，请检查网络后重试";
         deliver(result);
     }

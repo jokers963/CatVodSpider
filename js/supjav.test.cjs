@@ -27,6 +27,9 @@ function pack(src) {
 const btn = (text, link) => ({textContent: text, getAttribute: k => k === 'data-link' ? link : null});
 const group = btns => ({querySelectorAll: () => btns});
 
+const userSrc0 = () => fs.readFileSync(__dirname + '/supjav.user.js', 'utf8');
+const m0Probe = vod => vod.vod_play_data[0].media[0].ext.replace;
+
 async function main() {
     const home = await run('homeContent', ['true'], {readyState: 'complete', querySelectorAll: () => [], querySelector: () => null});
     assert.equal(home.class[0].type_id, 'censored-jav');
@@ -42,7 +45,9 @@ async function main() {
     });
     const vod = detail.list[0];
     assert.equal(vod.vod_id, 'https://supjav.com/464721.html');
-    assert.deepEqual(vod.vod_play_data.map(d => d.from), ['FC2PPV-4991168 EVS', 'FC2PPV-4991168 VAS', 'FC2PPV-4991168 FST']);
+    assert.deepEqual(vod.vod_play_data.map(d => d.from), ['FC2PPV-4991168 EVS', 'FC2PPV-4991168 VAS', 'FC2PPV-4991168 FST', 'FC2PPV-4991168 ST']);
+    assert.deepEqual(vod.vod_play_data[3].media[0].ext.replace, {page: 'https://supjav.com/464721.html', c: 'daed', line: 'ST', cd: '1', stpage: 'https://supjav.com/'});
+    assert.ok(!('stpage' in m0Probe(vod)));
     assert.deepEqual(vod.vod_play_data[0].media.map(m => m.name), ['CD1', 'CD2']);
     const m0 = vod.vod_play_data[0].media[0];
     assert.equal(m0.type, 'webview');
@@ -101,12 +106,61 @@ async function main() {
     const site = cfg.sites[0];
     assert.equal(site.key, 'supjav');
     assert.equal(site.ext.debug, false);
-    assert.equal(site.ext.spider.playerContent.loadUrl, 'https://jokers963.github.io/CatVodSpider/');
-    assert.match(site.ext.userScript, /supjav\.user\.js\?v=9$/);
+    assert.equal(site.ext.spider.playerContent.loadUrl, '${stpage:-https://jokers963.github.io/CatVodSpider/}');
+    assert.ok(site.ext.playUrlMatch.includes('https://streamtape.com/get_video*'));
+    assert.ok(site.ext.playUrlMatch.includes('https://*.tapecontent.net/radosgw/*'));
+    assert.match(userSrc0(), /@match\s+https:\/\/streamtape\.com\/e\/\*/);
+    assert.match(site.ext.userScript, /supjav\.user\.js\?v=10$/);
     const userSrc = fs.readFileSync(__dirname + '/supjav.user.js', 'utf8');
-    assert.match(userSrc, /@version\s+2\.3\.0/);
+    assert.match(userSrc, /@version\s+2\.4\.0/);
     assert.match(userSrc, /@match\s+https:\/\/jokers963\.github\.io\/CatVodSpider\/\*/);
     assert.ok(!/clickServer/.test(userSrc));
+    // ST: lk1 → streamtape embed; result is bare {type:'match'}, WebView shown, then top-level jump with referrer meta; no click.
+    {
+        const shown = [], hidden = [], appended = []; let replaced = '';
+        const stMedium = JSON.stringify({name: '播放', type: 'webview', ext: {replace: {page: 'p', c: 'rev', line: 'ST', cd: '1', stpage: 'https://supjav.com/'}}});
+        const loc = {href: 'https://supjav.com/', origin: 'https://supjav.com', replace: u => { replaced = u; }};
+        let resolveR; const got = new Promise(r => { resolveR = r; });
+        vm.runInNewContext(fs.readFileSync(__dirname + '/supjav.user.js', 'utf8'), {
+            document: {readyState: 'complete', querySelector: () => null, querySelectorAll: () => [],
+                head: {appendChild: n => appended.push(n)},
+                createElement: () => { const a = {}; return {setAttribute: (k, v) => { a[k] = v; }, a}; }},
+            location: loc, navigator: {userAgent: 'TestUA/1.0'}, performance: {timeOrigin: Date.now()}, Date, URL, Promise, JSON,
+            GmSpiderInject: {GetSpiderArgs: () => JSON.stringify(['playerContent', 'ST', stMedium, '[]']),
+                HideWebview() { hidden.push(1); }, ShowWebview() { shown.push(1); }, SetSpiderResult: v => resolveR(JSON.parse(v))},
+            GM_xmlhttpRequest: d => d.onload({status: 200, finalUrl: 'https://streamtape.com/e/AbC123xyz/x.mp4', responseText: ''}),
+            setInterval: () => 1, clearInterval() {}, setTimeout: () => 1
+        });
+        const st = await got;
+        assert.deepEqual(st, {type: 'match'});
+        assert.equal(shown.length, 1); assert.equal(hidden.length, 0);
+        assert.equal(replaced, 'https://streamtape.com/e/AbC123xyz/x.mp4');
+        assert.deepEqual(appended.map(n => n.a), [{name: 'referrer', content: 'origin'}]);
+        // ST embed from lk1 that is not streamtape → empty url + msg; ST never returned as direct url for other lines.
+        const bad = await run('playerContent', ['ST', stMedium, '[]'], {querySelector: () => null, querySelectorAll: () => []},
+            {GM_xmlhttpRequest: d => d.onload({status: 200, finalUrl: 'https://evil.example/e/1', responseText: ''})});
+        assert.equal(bad.type, 'url'); assert.equal(bad.ext.url, ''); assert.ok(bad.msg);
+        const stAsFst = await run('playerContent', ['FST', medium, '[]'], {querySelector: () => null, querySelectorAll: () => []},
+            {GM_xmlhttpRequest: d => d.onload({status: 200, finalUrl: 'https://streamtape.com/e/AbC123xyz/x.mp4', responseText: embedHtml})});
+        assert.equal(stAsFst.type, 'url'); assert.equal(stAsFst.ext.url, '');
+    }
+
+    // On the streamtape embed page: no SetSpiderResult, no click; only after the user-started 'playing' → mute/pause + hide.
+    {
+        let tick, listener; const ev = {hidden: 0, set: 0}; const video = {muted: false, paused: false,
+            addEventListener: (n, f) => { if (n === 'playing') listener = f; }, pause() { this.paused = true; }, click() { throw new Error('no click'); }};
+        vm.runInNewContext(fs.readFileSync(__dirname + '/supjav.user.js', 'utf8'), {
+            document: {readyState: 'complete', querySelector: s => s === 'video' ? video : null, querySelectorAll: () => { throw new Error('no DOM scan'); }},
+            location: {href: 'https://streamtape.com/e/AbC123xyz/x.mp4'}, navigator: {userAgent: 'x'}, performance: {timeOrigin: Date.now()}, Date, URL, Promise, JSON,
+            GmSpiderInject: {GetSpiderArgs: () => JSON.stringify(['playerContent', 'ST', '{}', '[]']), HideWebview() { ev.hidden++; }, ShowWebview() {}, SetSpiderResult() { ev.set++; }},
+            setInterval: f => { tick = f; return 1; }, clearInterval() {}, setTimeout: () => 1
+        });
+        tick();
+        assert.equal(video.paused, false); assert.equal(ev.hidden, 0);
+        listener();
+        assert.equal(video.muted, true); assert.equal(video.paused, true); assert.equal(ev.hidden, 1); assert.equal(ev.set, 0);
+    }
+
     console.log('SupJav adapter checks passed.');
 }
 main().catch(e => { console.error(e); process.exitCode = 1; });
