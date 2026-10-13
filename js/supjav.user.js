@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      2.4.2
+// @version      2.5.0
 // @description  SupJav WebView adapter for the open-source GM spider runtime. TEST ONLY - not in formal config.
 // @match        https://supjav.com/*
 // @match        https://jokers963.github.io/CatVodSpider/*
@@ -43,10 +43,13 @@
         return /base64|1x1|placeholder|loading|blank\.gif|empty\.gif/i.test(raw || "") ? "" : (raw || "");
     }
 
+    // 解析目标文档：默认当前页面；中转模式下为 GM_xmlhttpRequest 取回并 DOMParser 解析的 HTML。
+    let DOC = document;
+
     function videos() {
         const list = [];
         const seen = new Set();
-        document.querySelectorAll("div.post").forEach(function (post) {
+        DOC.querySelectorAll("div.post").forEach(function (post) {
             const link = post.querySelector("a.img[href], h3 a[href]");
             if (!link) return;
             const href = link.getAttribute("href") || "";
@@ -73,7 +76,7 @@
 
     function pageCount() {
         let count = 1;
-        document.querySelectorAll("a[href]").forEach(function (a) {
+        DOC.querySelectorAll("a[href]").forEach(function (a) {
             const m = /\/page\/(\d+)\/?(\?|#|$)/.exec(a.getAttribute("href") || "");
             if (m) count = Math.max(count, parseInt(m[1], 10));
         });
@@ -444,12 +447,12 @@
         searchContent: function () { return {list: videos(), pagecount: pageCount()}; },
         detailContent: function (ids) {
             const page = ids[0];
-            const h1 = (document.querySelector(".archive-title h1, h1") || {}).textContent;
-            const title = ((document.querySelector('meta[property="og:title"]') || {}).content || h1 || document.title || "").trim();
-            const image = (document.querySelector('meta[property="og:image"]') || {}).content || "";
+            const h1 = (DOC.querySelector(".archive-title h1, h1") || {}).textContent;
+            const title = ((DOC.querySelector('meta[property="og:title"]') || {}).content || h1 || DOC.title || "").trim();
+            const image = (DOC.querySelector('meta[property="og:image"]') || {}).content || "";
             const code = workCode(title);
-            let groups = Array.from(document.querySelectorAll(".cd-server"));
-            if (!groups.length) groups = [document];
+            let groups = Array.from(DOC.querySelectorAll(".cd-server"));
+            if (!groups.length) groups = [DOC];
             const byLine = {};
             groups.forEach(function (group, i) {
                 group.querySelectorAll("a.btn-server[data-link]").forEach(function (a) {
@@ -457,8 +460,8 @@
                     const link = a.getAttribute("data-link") || "";
                     if (LINES.indexOf(line) < 0 || !/^[0-9a-f]+$/i.test(link)) return;
                     const replace = {page: page, c: reverse(link), line: line, cd: String(i + 1)};
-                    // ST 播放阶段需加载 supjav.com 页面（作为跳转嵌入页的 Referer 来源），其它线路仍加载 Pages 空白页。
-                    if (line === "ST") replace.stpage = "https://supjav.com/";
+                    // ST 播放阶段加载 supjav.com/robots.txt（CF 边缘缓存、不出验证；作为跳转嵌入页的 Referer 来源），其它线路仍加载 Pages 空白页。
+                    if (line === "ST") replace.stpage = "https://supjav.com/robots.txt";
                     (byLine[line] = byLine[line] || []).push({
                         name: groups.length > 1 ? "CD" + (i + 1) : "播放",
                         type: "webview",
@@ -474,7 +477,7 @@
                 vod_id: page,
                 vod_name: title,
                 vod_pic: absUrl(image),
-                vod_content: ((document.querySelector('meta[name="description"]') || {}).content || "").trim(),
+                vod_content: ((DOC.querySelector('meta[name="description"]') || {}).content || "").trim(),
                 vod_play_data: playData
             }]};
         },
@@ -522,6 +525,52 @@
         try { GmSpiderInject.HideWebview(); } catch (_) {}
         GmSpiderInject.SetSpiderResult(JSON.stringify(result));
     }
+    // ---- 中转模式（2.5.0）：列表/搜索/详情先加载 supjav.com/robots.txt（Cloudflare 边缘缓存命中，不出验证），
+    // 目标地址放在 #hash；用 GM_xmlhttpRequest 原生取 HTML 解析。若原生请求被 CF 拦（403/验证页），
+    // 记 30 分钟“原生被拦”并在同一 WebView 跳转到目标页走原流程（此时才可能出验证，cf_clearance 存于共享 CookieManager）。
+    const RELAY_PAGE = /^https:\/\/supjav\.com\/robots\.txt(?:[?#]|$)/;
+    const GM_BLOCK_KEY = "lyqSupjavGmBlockedUntil";
+    function relayTarget() {
+        if (!RELAY_PAGE.test(location.href || "")) return "";
+        let h = String(location.hash || "").replace(/^#/, "");
+        try { h = decodeURIComponent(h); } catch (_) {}
+        if (!h) return "";
+        let u = "";
+        try { u = new URL(h, "https://supjav.com/").href; } catch (_) { return ""; }
+        return /^https:\/\/supjav\.com\/(?!robots\.txt)/.test(u) ? u : "";
+    }
+    function looksChallenged(html) {
+        // 注意：正常页面也含 /cdn-cgi/challenge-platform/ 信标脚本，不能据此判断。
+        return /<title>\s*(Just a moment|Attention Required)|window\._cf_chl_opt|id="challenge-form"|id="cf-challenge-running"/i.test(html || "");
+    }
+    function gmBlocked() {
+        try { return Number(localStorage.getItem(GM_BLOCK_KEY) || 0) > Date.now(); } catch (_) { return false; }
+    }
+    function markGmBlocked() {
+        try { localStorage.setItem(GM_BLOCK_KEY, String(Date.now() + 30 * 60 * 1000)); } catch (_) {}
+    }
+    async function relay(target) {
+        if (!gmBlocked()) {
+            const r = await gmGet(target, "https://supjav.com/");
+            const html = r ? String(r.responseText || "") : "";
+            if (html && !looksChallenged(html) && typeof DOMParser === "function") {
+                try {
+                    DOC = new DOMParser().parseFromString(html, "text/html");
+                    const result = spider[method].apply(spider, args);
+                    if (method === "detailContent" && !(result.list[0] && result.list[0].vod_play_data)) {
+                        result.msg = "没有可用线路（仅支持 EVS/VAS/FST/ST）";
+                    } else if (method !== "detailContent" && !result.list.length) {
+                        result.msg = "当前页面没有匹配内容";
+                    }
+                    return result;
+                } catch (_) { DOC = document; }
+            }
+            markGmBlocked();
+        }
+        location.replace(target);
+        return null;
+    }
+
     function challenged() {
         return !!document.querySelector("#challenge-stage, #challenge-form, #cf-challenge-running, input[name='cf-turnstile-response']")
                 || /just a moment|checking your browser|verify you are human|请稍候|验证您是否为真人/i.test(document.title || "");
@@ -541,6 +590,12 @@
             Promise.resolve(spider.playerContent()).then(deliver, function () {
                 deliver({type: "url", ext: {url: "", header: {}}, msg: "播放地址解析失败，请换线路重试"});
             });
+            return;
+        }
+        const target = relayTarget();
+        if (target) {
+            busy = true;
+            relay(target).then(function (r) { if (r) deliver(r); }, function () { location.replace(target); });
             return;
         }
         const waiting = Date.now() - startedAt;

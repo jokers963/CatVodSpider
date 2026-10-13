@@ -171,7 +171,7 @@
       "filterable": 0,
       "timeout": 60,
       "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/supjav.user.js?v=12",
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/supjav.user.js?v=13",
         "subtitleLibrary": "https://pub-662c4b411cfb4cf69f52f71f22140341.r2.dev/",
         "debug": false,
         "webViewSettings": {
@@ -194,11 +194,11 @@
           "https://*.tapecontent.net/radosgw/*"
         ],
         "spider": {
-          "homeContent": {"loadUrl": "https://supjav.com/"},
-          "categoryContent": {"loadUrl": "https://supjav.com/category/${tid}/page/${pg:-1}/"},
-          "detailContent": {"loadUrl": "${id}"},
+          "homeContent": {"loadUrl": "https://jokers963.github.io/CatVodSpider/"},
+          "categoryContent": {"loadUrl": "https://supjav.com/robots.txt#/category/${tid}/page/${pg:-1}/"},
+          "detailContent": {"loadUrl": "https://supjav.com/robots.txt#${id}"},
           "playerContent": {"loadUrl": "${stpage:-https://jokers963.github.io/CatVodSpider/}"},
-          "searchContent": {"loadUrl": "https://supjav.com/?s=${key}"}
+          "searchContent": {"loadUrl": "https://supjav.com/robots.txt#/?s=${key}"}
         }
       },
       "style": {

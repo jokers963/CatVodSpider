@@ -1,6 +1,6 @@
 # SupJav
 
-更新时间：2026-10-13。正式配置 `json/luoyuqiu.json`（key `supjav`，脚本 `js/supjav.user.js?v=12`，@version 2.4.2）；开发通道 `json/luoyuqiu-supjav-test.json`（同脚本，名称带「测试」，先在此验证再同步正式）。
+更新时间：2026-10-13。正式配置 `json/luoyuqiu.json`（key `supjav`，脚本 `js/supjav.user.js?v=13`，@version 2.5.0）；开发通道 `json/luoyuqiu-supjav-test.json`（同脚本，名称带「测试」，先在此验证再同步正式）。
 
 ## 线路（顺序 EVS / VAS / FST / ST）
 
@@ -13,11 +13,18 @@
 
 不收：**LUC**（仅 720p，且有更好线路）、**VOE**。多 CD 时每条线路下按 CD1/CD2… 分集，作品编码（FC2PPV-xxxx / ABC-123）写入 `vod_play_from` 供 GMSubs 字幕匹配。
 
+## 减少 Cloudflare 验证（2.5.0）
+
+- 实测（2026-10-13，box）：supjav.com 的 HTML 页（首页/分类/搜索/详情/404/feed）对非浏览器 TLS 指纹（curl、Python urllib）一律 403 验证页，仅 Chrome 指纹放行；`/robots.txt`、`/favicon.ico` 为 CF 边缘缓存（`cf-cache-status: HIT`），任何客户端都不出验证；`lk1.supremejav.com/supjav.php?c=` 也不出验证。WP REST 需登录（401），无可用镜像（supjav.net 为停放域名）。
+- gm.jar：WebView 每次调用新建，但 Cookie 走全局 `CookieManager`（只有脚本显式 `GM_removeAllCookies` 才清，本脚本不用）；UA 为 WebView 默认 UA（配置未设 `userAgentString`），各阶段一致。`GM_xmlhttpRequest`（HttpURLConnection）不带 WebView Cookie，非 200 走 onerror。
+- 做法：home 改载 Pages（只返回固定分类，原先每次开站都要过一次 supjav 验证）；category/search/detail 改载 `https://supjav.com/robots.txt#<目标>`，脚本先用 `GM_xmlhttpRequest` 取目标 HTML 并 `DOMParser` 解析（原生请求若未被 CF 拦则全程无验证，约 1 秒）；若 403/验证页则在 localStorage 记 30 分钟并在同一 WebView `location.replace(目标)` 走原流程（此时才可能出验证，验证通过的 cf_clearance 留在共享 CookieManager）。ST 的 Referer 中转页改为 robots.txt。
+- 正常页面也含 `/cdn-cgi/challenge-platform/` 信标脚本，验证页判断只看 `Just a moment` 标题 / `_cf_chl_opt` / `challenge-form`。
+
 ## 路由与五方法
 
-- home `https://supjav.com/`：只返回固定分类（有码/无码/素人/中字/去码/英字），不抓推荐。
+- home（Pages 首页）：只返回固定分类（有码/无码/素人/中字/去码/英字），不抓推荐。
 - category `https://supjav.com/category/${tid}/page/${pg:-1}/`；search `https://supjav.com/?s=${key}`：`div.post` 卡片，页数取 `/page/N/` 最大值。
-- detail `${id}`（vod_id = 完整详情 URL）：读 `.cd-server a.btn-server[data-link]`，媒体 `type:webview`，`ext.replace = {page, c: 反转后的 data-link, line, cd}`；ST 另带 `stpage=https://supjav.com/`。
+- detail `${id}`（vod_id = 完整详情 URL）：读 `.cd-server a.btn-server[data-link]`，媒体 `type:webview`，`ext.replace = {page, c: 反转后的 data-link, line, cd}`；ST 另带 `stpage=https://supjav.com/robots.txt`。
 - player `${stpage:-https://jokers963.github.io/CatVodSpider/}`：EVS/VAS/FST 加载自家 Pages 空白页（无 Cloudflare），用 `GM_xmlhttpRequest`（原生 HTTP、可设 Referer、串行）请求 `lk1.supremejav.com/supjav.php?c=<反转码>`（Referer `https://supjav.com/`）→ 302 到嵌入页（finalUrl），再按上表解析。失败返回空 URL + 「请换线路」提示，不伪造。
 
 ## ST 细节（为什么这样做）
