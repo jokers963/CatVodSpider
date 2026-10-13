@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      2.2.0
+// @version      2.3.0
 // @description  SupJav WebView adapter for the open-source GM spider runtime. TEST ONLY - not in formal config.
 // @match        https://supjav.com/*
 // @match        https://jokers963.github.io/CatVodSpider/*
@@ -14,10 +14,11 @@
             : JSON.parse(GmSpiderInject.GetSpiderArgs());
     const method = args.shift();
 
-    // 线路：只收 EVS / FST（已验证 p,a,c,k,e,d → hls4）；ST/VOE 用户已取消；VAS/LUC 未验证，默认不收。
-    const LINES = ["EVS", "FST"];
+    // 线路：EVS / VAS / FST（EVS、FST 为 p,a,c,k,e,d → hls4；VAS 为 /api/stream POST）；ST/VOE 已取消；LUC 仅 720p 不收。
+    const LINES = ["EVS", "VAS", "FST"];
+    const VAS_HOST = /^https:\/\/vvaassjjav\.xyz\/e\/([0-9a-z]+)/i;
     const LK1 = "https://lk1.supremejav.com/";
-    const EMBED_HOSTS = /^https:\/\/(evsishere\.xyz|fc2stream\.tv)\//;
+    const EMBED_HOSTS = /^https:\/\/(evsishere\.xyz|fc2stream\.tv|vvaassjjav\.xyz)\//;
 
     function absUrl(href) {
         try { return new URL(href, location.href).href; }
@@ -122,19 +123,24 @@
         return "";
     }
 
-    function gmGet(url, referer) {
+    function gmGet(url, referer, body) {
         return new Promise(function (resolve) {
             if (typeof GM_xmlhttpRequest !== "function") { resolve(null); return; }
             let settled = false;
             const finish = function (r) { if (!settled) { settled = true; resolve(r); } };
+            const headers = {"Referer": referer, "User-Agent": navigator.userAgent};
+            const req = {method: "GET", url: url, timeout: 15000, headers: headers};
+            if (body !== undefined) {
+                req.method = "POST";
+                req.data = JSON.stringify(body);
+                headers["Content-Type"] = "application/json";
+            }
             try {
-                GM_xmlhttpRequest({
-                    method: "GET", url: url, timeout: 15000,
-                    headers: {"Referer": referer, "User-Agent": navigator.userAgent},
+                GM_xmlhttpRequest(Object.assign(req, {
                     onload: function (r) { finish(r && r.status === 200 ? r : null); },
                     onerror: function () { finish(null); },
                     ontimeout: function () { finish(null); }
-                });
+                }));
             } catch (_) { finish(null); }
             setTimeout(function () { finish(null); }, 20000);
         });
@@ -147,6 +153,8 @@
         if (!first) return null;
         const embed = String(first.finalUrl || "").split("#")[0];
         if (!EMBED_HOSTS.test(embed)) return null;
+        const vas = VAS_HOST.exec(embed);
+        if (vas) return resolveVas(embed, vas[1]);
         let url = hlsFromEmbed(first.responseText, embed);
         if (!url) {
             const second = await gmGet(embed, LK1);
@@ -156,6 +164,19 @@
         const origin = (/^https:\/\/[^/]+/.exec(embed) || [""])[0];
         return {type: "url", ext: {url: url, header: {
             "User-Agent": navigator.userAgent, "Referer": origin + "/", "Origin": origin
+        }}};
+    }
+
+    // VAS（Vidara）：codecs 只认 av1/h265，H.264 是默认档；部分片源只有 AV1/H.265 转码。
+    // device=web 时这类片源给 AV1，device=android 给 H.265（更易硬解）；有 H.264 时两者都返回 H.264。
+    async function resolveVas(embed, filecode) {
+        const r = await gmGet("https://vvaassjjav.xyz/api/stream", embed, {filecode: filecode, device: "android", codecs: []});
+        if (!r) return null;
+        let url = "";
+        try { url = String(JSON.parse(r.responseText).streaming_url || ""); } catch (_) {}
+        if (!/^https:\/\/[^/]+\/.*\.m3u8(\?|$)/.test(url)) return null;
+        return {type: "url", ext: {url: url, header: {
+            "User-Agent": navigator.userAgent, "Referer": "https://vvaassjjav.xyz/", "Origin": "https://vvaassjjav.xyz"
         }}};
     }
 
@@ -269,7 +290,7 @@
                 : (method === "categoryContent" || method === "searchContent") && !result.list.length)
                 && waiting < 25000) return;
         result.msg = method === "detailContent" && document.readyState === "complete"
-                ? "没有可用线路（仅支持 EVS/FST）"
+                ? "没有可用线路（仅支持 EVS/VAS/FST）"
                 : document.readyState === "complete" ? "当前页面没有匹配内容" : "页面加载超时，请检查网络后重试";
         deliver(result);
     }

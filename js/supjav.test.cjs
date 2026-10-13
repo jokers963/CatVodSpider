@@ -32,7 +32,7 @@ async function main() {
     assert.equal(home.class[0].type_id, 'censored-jav');
     assert.deepEqual(home.list, []);
 
-    // Multi-CD detail: lines = EVS/FST only, episodes = CD, code reversed, ST/VOE/VAS dropped.
+    // Multi-CD detail: lines = EVS/FST only, episodes = CD, code reversed, ST/VOE dropped, order EVS/VAS/FST.
     const groups = [group([btn('EVS', 'abc1'), btn('ST', 'dead'), btn('VOE', 'beef')]),
                     group([btn('EVS', 'abc2'), btn('FST', 'f00d'), btn('VAS', 'cafe')])];
     const detail = await run('detailContent', [['https://supjav.com/464721.html']], {
@@ -42,12 +42,13 @@ async function main() {
     });
     const vod = detail.list[0];
     assert.equal(vod.vod_id, 'https://supjav.com/464721.html');
-    assert.deepEqual(vod.vod_play_data.map(d => d.from), ['FC2PPV-4991168 EVS', 'FC2PPV-4991168 FST']);
+    assert.deepEqual(vod.vod_play_data.map(d => d.from), ['FC2PPV-4991168 EVS', 'FC2PPV-4991168 VAS', 'FC2PPV-4991168 FST']);
     assert.deepEqual(vod.vod_play_data[0].media.map(m => m.name), ['CD1', 'CD2']);
     const m0 = vod.vod_play_data[0].media[0];
     assert.equal(m0.type, 'webview');
     assert.deepEqual(m0.ext.replace, {page: 'https://supjav.com/464721.html', c: '1cba', line: 'EVS', cd: '1'});
     assert.equal(vod.vod_play_data[1].media[0].ext.replace.cd, '2');
+    assert.equal(vod.vod_play_data[1].media[0].ext.replace.c, 'efac');
 
     // Player: GM_xmlhttpRequest follows lk1 302 → embed, unpack → hls4 absolute + embed headers.
     const embedHtml = '<script>' + pack('var links={"hls2":"https://x.acek-cdn.com/hls2/a/master.m3u8?t=1","hls4":"/stream/AbC/xyz/179/435/master.m3u8"};jwplayer("vplayer").setup({})') + '</script>';
@@ -77,14 +78,33 @@ async function main() {
         {GM_xmlhttpRequest: d => d.onload({status: 200, finalUrl: 'https://evil.example/e/1', responseText: embedHtml})});
     assert.equal(none.ext.url, '');
 
+    // VAS: lk1 302 → vvaassjjav embed → POST /api/stream JSON → streaming_url.
+    const vc = [];
+    const gmv = d => { vc.push(d);
+        if (d.method === 'GET') d.onload({status: 200, finalUrl: 'https://vvaassjjav.xyz/e/2f6d7185d1e3#DLDSS-564', responseText: '<html></html>'});
+        else d.onload({status: 200, responseText: JSON.stringify({streaming_url: 'https://s8.97bf1.com/hls/Tok/master.m3u8'})}); };
+    const pv = await run('playerContent', ['VAS', medium, '[]'], {querySelector: () => null, querySelectorAll: () => []}, {GM_xmlhttpRequest: gmv});
+    assert.equal(vc.length, 2);
+    assert.equal(vc[1].method, 'POST');
+    assert.equal(vc[1].url, 'https://vvaassjjav.xyz/api/stream');
+    assert.equal(vc[1].headers.Referer, 'https://vvaassjjav.xyz/e/2f6d7185d1e3');
+    assert.equal(vc[1].headers['Content-Type'], 'application/json');
+    assert.deepEqual(JSON.parse(vc[1].data), {filecode: '2f6d7185d1e3', device: 'android', codecs: []});
+    assert.equal(pv.ext.url, 'https://s8.97bf1.com/hls/Tok/master.m3u8');
+    assert.deepEqual(pv.ext.header, {'User-Agent': 'TestUA/1.0', 'Referer': 'https://vvaassjjav.xyz/', 'Origin': 'https://vvaassjjav.xyz'});
+    // API failure (non-200 → onerror) → empty url + msg.
+    const pf = await run('playerContent', ['VAS', medium, '[]'], {querySelector: () => null, querySelectorAll: () => []},
+        {GM_xmlhttpRequest: d => d.method === 'GET' ? d.onload({status: 200, finalUrl: 'https://vvaassjjav.xyz/e/abc', responseText: ''}) : d.onerror({})});
+    assert.equal(pf.ext.url, ''); assert.ok(pf.msg);
+
     const cfg = JSON.parse(fs.readFileSync(__dirname + '/../json/luoyuqiu-supjav-test.json', 'utf8'));
     const site = cfg.sites[0];
     assert.equal(site.key, 'supjav');
     assert.equal(site.ext.debug, false);
     assert.equal(site.ext.spider.playerContent.loadUrl, 'https://jokers963.github.io/CatVodSpider/');
-    assert.match(site.ext.userScript, /supjav\.user\.js\?v=8$/);
+    assert.match(site.ext.userScript, /supjav\.user\.js\?v=9$/);
     const userSrc = fs.readFileSync(__dirname + '/supjav.user.js', 'utf8');
-    assert.match(userSrc, /@version\s+2\.2\.0/);
+    assert.match(userSrc, /@version\s+2\.3\.0/);
     assert.match(userSrc, /@match\s+https:\/\/jokers963\.github\.io\/CatVodSpider\/\*/);
     assert.ok(!/clickServer/.test(userSrc));
     console.log('SupJav adapter checks passed.');
