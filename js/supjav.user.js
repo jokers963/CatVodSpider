@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      2.1.0
+// @version      2.2.0
 // @description  SupJav WebView adapter for the open-source GM spider runtime. TEST ONLY - not in formal config.
 // @match        https://supjav.com/*
+// @match        https://jokers963.github.io/CatVodSpider/*
 // @grant        unsafeWindow
 // @grant        GM_xmlhttpRequest
 // ==/UserScript==
@@ -158,17 +159,6 @@
         }}};
     }
 
-    // 兜底：GM_xmlhttpRequest 不可用/失败时，点详情页对应按钮，让站点自己插 iframe，交给 playUrlMatch 嗅探。
-    function clickServer(line, cd) {
-        const groups = document.querySelectorAll(".cd-server");
-        const group = groups[Math.max(0, (parseInt(cd, 10) || 1) - 1)] || document;
-        const btns = group.querySelectorAll ? group.querySelectorAll("a.btn-server[data-link]") : [];
-        for (const b of btns) {
-            if ((b.textContent || "").trim().toUpperCase() === line) { try { b.click(); } catch (_) {} return true; }
-        }
-        return false;
-    }
-
     function playerMedium() {
         try { return JSON.parse(args[1] || "{}"); } catch (_) { return {}; }
     }
@@ -214,7 +204,7 @@
             const rep = (playerMedium().ext || {}).replace || {};
             const direct = await resolveDirect(rep.c);
             if (direct) return direct;
-            if (clickServer(String(rep.line || ""), rep.cd)) return {type: "match"};
+            // 播放阶段加载的是自家 Pages 空白页（无 Cloudflare），没有详情页按钮可点，失败直接提示换线路。
             return {type: "url", ext: {url: "", header: {}}, msg: "播放地址解析失败，请换线路重试"};
         }
     };
@@ -247,7 +237,7 @@
         if (sent || busy) return;
         if (!spider[method]) { deliver({list: [], msg: "请求参数异常，请重试"}); return; }
         if (method === "playerContent") {
-            // 直链解析走原生 HTTP，不依赖 supjav 页面内容；仅在验证页时等待。
+            // 直链解析走原生 HTTP，不依赖所在页面内容；仅在验证页时等待（Pages 页正常不会出现）。
             if (challenged() && Date.now() - startedAt < 60000) {
                 if (!verificationShown) { verificationShown = true; GmSpiderInject.ShowWebview(); }
                 return;

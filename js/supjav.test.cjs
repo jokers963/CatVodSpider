@@ -70,11 +70,9 @@ async function main() {
     assert.deepEqual(calls2, ['https://supjav.com/', 'https://lk1.supremejav.com/']);
     assert.equal(player2.ext.url, 'https://evsishere.xyz/stream/AbC/xyz/179/435/master.m3u8');
 
-    // Unknown host / no GM API → fallback click + match; nothing clickable → empty url, not forged.
-    let clicked = 0;
-    const doc = {querySelector: () => null, querySelectorAll: s => s === '.cd-server' ? [group([{textContent: 'FST', click() { clicked++; }}])] : []};
-    const fb = await run('playerContent', ['FST', medium, '[]'], doc);
-    assert.equal(fb.type, 'match'); assert.equal(clicked, 1);
+    // No GM API → no click fallback any more (player page is not the detail page) → empty url + msg.
+    const fb = await run('playerContent', ['FST', medium, '[]'], {querySelector: () => null, querySelectorAll: () => { throw new Error('no DOM access'); }});
+    assert.equal(fb.type, 'url'); assert.equal(fb.ext.url, ''); assert.ok(fb.msg);
     const none = await run('playerContent', ['FST', medium, '[]'], {querySelector: () => null, querySelectorAll: () => []},
         {GM_xmlhttpRequest: d => d.onload({status: 200, finalUrl: 'https://evil.example/e/1', responseText: embedHtml})});
     assert.equal(none.ext.url, '');
@@ -83,8 +81,12 @@ async function main() {
     const site = cfg.sites[0];
     assert.equal(site.key, 'supjav');
     assert.equal(site.ext.debug, false);
-    assert.equal(site.ext.spider.playerContent.loadUrl, '${page}');
-    assert.match(site.ext.userScript, /supjav\.user\.js\?v=\d+$/);
+    assert.equal(site.ext.spider.playerContent.loadUrl, 'https://jokers963.github.io/CatVodSpider/');
+    assert.match(site.ext.userScript, /supjav\.user\.js\?v=8$/);
+    const userSrc = fs.readFileSync(__dirname + '/supjav.user.js', 'utf8');
+    assert.match(userSrc, /@version\s+2\.2\.0/);
+    assert.match(userSrc, /@match\s+https:\/\/jokers963\.github\.io\/CatVodSpider\/\*/);
+    assert.ok(!/clickServer/.test(userSrc));
     console.log('SupJav adapter checks passed.');
 }
 main().catch(e => { console.error(e); process.exitCode = 1; });
