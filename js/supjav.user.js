@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      2.6.0
+// @version      2.7.0
 // @description  SupJav WebView adapter for the open-source GM spider runtime. TEST ONLY - not in formal config.
 // @match        https://supjav.com/*
 // @match        https://jokers963.github.io/CatVodSpider/*
@@ -518,6 +518,7 @@
     let busy = false;
     let verificationShown = false;
     let challengeSeenAt = 0;
+    let settleAt = 0;
     const startedAt = navigationStartedAt();
     function deliver(result) {
         if (sent) return;
@@ -534,6 +535,46 @@
         try { GmSpiderInject.HideWebview(); } catch (_) {}
         GmSpiderInject.SetSpiderResult(JSON.stringify(result));
     }
+    // ---- 同源中转（2.7.0）：分类/搜索/详情先载 supjav.com/robots.txt（CF 边缘缓存，不出验证），
+    // 在 WebView 内用 fetch 同源取目标页（与网页导航同一网络栈：同一 Cookie/cf_clearance、UA、TLS），DOMParser 解析。
+    // 只发 1 个 HTML 请求，不加载整页的几十个站内脚本/样式与广告，降低触发 CF 频率/限速的概率；
+    // 若 fetch 得到 403/验证页，则 location.replace(目标页) 让 CF 验证在页面中照常完成（不自动点击）。
+    const RELAY_PAGE = /^https:\/\/supjav\.com\/robots\.txt(?:[?#]|$)/;
+    function relayTarget() {
+        if (!RELAY_PAGE.test(location.href || "")) return "";
+        let h = String(location.hash || "").replace(/^#/, "");
+        try { h = decodeURIComponent(h); } catch (_) {}
+        if (!h) return "";
+        let u = "";
+        try { u = new URL(h, "https://supjav.com/").href; } catch (_) { return ""; }
+        return /^https:\/\/supjav\.com\/(?!robots\.txt)/.test(u) ? u : "";
+    }
+    function looksChallenged(html) {
+        // 正常页面也含 /cdn-cgi/challenge-platform/ 信标脚本，不能据此判断。
+        return /<title>\s*(Just a moment|Attention Required)|window\._cf_chl_opt|id="challenge-form"|id="cf-challenge-running"/i.test(html || "");
+    }
+    async function relay(target) {
+        const W = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
+        if (typeof W.fetch === "function" && typeof DOMParser === "function") {
+            try {
+                const res = await W.fetch(target, {credentials: "same-origin", redirect: "follow", cache: "no-store"});
+                const html = res && res.ok ? await res.text() : "";
+                if (html && !looksChallenged(html)) {
+                    DOC = new DOMParser().parseFromString(html, "text/html");
+                    const result = spider[method].apply(spider, args);
+                    if (method === "detailContent" && !(result.list[0] && result.list[0].vod_play_data)) {
+                        result.msg = "没有可用线路（仅支持 EVS/VAS/FST/ST）";
+                    } else if (method !== "detailContent" && !result.list.length) {
+                        result.msg = "当前页面没有匹配内容";
+                    }
+                    return result;
+                }
+            } catch (_) { DOC = document; }
+        }
+        location.replace(target);
+        return null;
+    }
+
     function challenged() {
         return !!document.querySelector("#challenge-stage, #challenge-form, #cf-challenge-running, input[name='cf-turnstile-response']")
                 || /just a moment|checking your browser|verify you are human|请稍候|验证您是否为真人/i.test(document.title || "");
@@ -555,12 +596,27 @@
             });
             return;
         }
+        const target = relayTarget();
+        if (target) {
+            busy = true;
+            relay(target).then(function (r) { if (r) deliver(r); }, function () { location.replace(target); });
+            return;
+        }
         const waiting = Date.now() - startedAt;
         const result = spider[method].apply(spider, args);
         const hasContent = method === "homeContent" ? result.class.length > 0
                 : method === "detailContent" ? !!(result.list[0] && result.list[0].vod_play_data)
                 : result.list.length > 0;
-        if (hasContent) { deliver(result); return; }
+        if (hasContent) {
+            // supjav.com 真实页面（多为刚过 CF 验证后的回跳）：等 load 完成再留 1.5 秒，让 CF 页内信标/Cookie 写入完成再交结果。
+            if (/^https:\/\/supjav\.com\//.test(location.href || "")) {
+                if (document.readyState !== "complete") return;
+                if (!settleAt) { settleAt = Date.now() + 1500; setTimeout(sendResult, 1600); }
+                if (Date.now() < settleAt) return;
+            }
+            deliver(result);
+            return;
+        }
         if (challenged()) {
             if (!verificationShown) {
                 verificationShown = true;

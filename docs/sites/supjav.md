@@ -1,6 +1,6 @@
 # SupJav
 
-更新时间：2026-10-13。正式配置 `json/luoyuqiu.json`（key `supjav`，脚本 `js/supjav.user.js?v=14`，@version 2.6.0）；开发通道 `json/luoyuqiu-supjav-test.json`（同脚本，名称带「测试」，先在此验证再同步正式）。
+更新时间：2026-10-13。正式配置 `json/luoyuqiu.json`（key `supjav`，脚本 `js/supjav.user.js?v=15`，@version 2.6.0）；开发通道 `json/luoyuqiu-supjav-test.json`（同脚本，名称带「测试」，先在此验证再同步正式）。
 
 ## 线路（顺序 EVS / VAS / FST / ST）
 
@@ -54,3 +54,10 @@
 ## 历史
 
 2026-10-01 旧 1.0.26（WebView 点击 + 嗅探，GM 不注入跨域 iframe）删除；2026-10-11 起测试版 2.x 重做；2026-10-13 用户明确要求正式上线（commit 见 AI_HANDOFF）。
+
+## Cloudflare 验证（2.7.0，同源中转）
+
+- 排查结论：脚本与 gm.jar / FongMi 5.7.3 都没有清除 Cookie 的调用；host 都是 supjav.com，cf_clearance 的 Domain 能覆盖到；各阶段 UA 一致（都是 WebView 默认 UA，未设置 userAgentString）；blockList 不含 CF 域名；blockNetworkImage 与 MissAV 相同。
+- 差异点：supjav 带 `_cfuvid`（限速），每次整页加载会产生大量同域资源请求。
+- 做法：分类、搜索、详情三个阶段改为加载 CF 边缘缓存的 `https://supjav.com/robots.txt#<目标>`（不会触发验证），再在页内用 `fetch(credentials:same-origin)` 取 HTML（与 WebView 共用 Cookie、UA 和 TLS），用 DOMParser 解析。每个阶段只发 1 个 HTML 请求。
+- fetch 失败、返回 403 或验证页时，`location.replace(目标)` 回退为整页导航，交给用户手动完成验证（不自动点击）。验证通过后真实页面加载完成，再等 1.5 秒交结果，让 Cookie 落盘。

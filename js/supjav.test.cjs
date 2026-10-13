@@ -10,7 +10,7 @@ function run(method, extraArgs, document, extra = {}) {
         navigator: {userAgent: 'TestUA/1.0'}, performance: {timeOrigin: Date.now()}, Date, URL, Promise, JSON,
         GmSpiderInject: {GetSpiderArgs: () => JSON.stringify([method, ...extraArgs]),
             HideWebview() {}, ShowWebview() {}, SetSpiderResult: v => resolve(JSON.parse(v))},
-        setInterval: () => 1, clearInterval() {}, setTimeout: () => 1, ...extra
+        setInterval: () => 1, clearInterval() {}, setTimeout: (f, ms) => ms <= 2000 ? setTimeout(f, ms) : 1, ...extra
     });
     return done;
 }
@@ -110,9 +110,9 @@ async function main() {
     assert.ok(site.ext.playUrlMatch.includes('https://streamtape.com/get_video*'));
     assert.ok(site.ext.playUrlMatch.includes('https://*.tapecontent.net/radosgw/*'));
     assert.match(userSrc0(), /@match\s+https:\/\/streamtape\.com\/e\/\*/);
-    assert.match(site.ext.userScript, /supjav\.user\.js\?v=14$/);
+    assert.match(site.ext.userScript, /supjav\.user\.js\?v=15$/);
     const userSrc = fs.readFileSync(__dirname + '/supjav.user.js', 'utf8');
-    assert.match(userSrc, /@version\s+2\.6\.0/);
+    assert.match(userSrc, /@version\s+2\.7\.0/);
     assert.match(userSrc, /@match\s+https:\/\/jokers963\.github\.io\/CatVodSpider\/\*/);
     assert.ok(!/clickServer/.test(userSrc));
     // ST: lk1 → streamtape embed; result is bare {type:'match'}, WebView shown, then top-level jump with referrer meta; no click.
@@ -263,15 +263,15 @@ async function main() {
         const site = JSON.parse(fs.readFileSync(__dirname + '/../json/' + file, 'utf8')).sites.find(x => x.key === 'supjav');
         const sp = site.ext.spider;
         assert.equal(sp.homeContent.loadUrl, 'https://jokers963.github.io/CatVodSpider/');
-        assert.equal(sp.categoryContent.loadUrl, 'https://supjav.com/category/${tid}/page/${pg:-1}/');
-        assert.equal(sp.searchContent.loadUrl, 'https://supjav.com/?s=${key}');
-        assert.equal(sp.detailContent.loadUrl, '${id}');
+        assert.equal(sp.categoryContent.loadUrl, 'https://supjav.com/robots.txt#/category/${tid}/page/${pg:-1}/');
+        assert.equal(sp.searchContent.loadUrl, 'https://supjav.com/robots.txt#/?s=${key}');
+        assert.equal(sp.detailContent.loadUrl, 'https://supjav.com/robots.txt#${id}');
         assert.equal(site.ext.webViewSettings.userAgentString, undefined, 'keep WebView default UA like MissAV (cf_clearance is UA-bound)');
         assert.ok(!site.ext.webViewSettings.blockList.some(x => /cloudflare|turnstile|supjav\.com/i.test(x)));
     }
     {
         const src = fs.readFileSync(__dirname + '/supjav.user.js', 'utf8');
-        assert.ok(!/robots\.txt#|DOMParser|GM_xmlhttpRequest\(\{[^}]*supjav\.com/.test(src.replace(/\/\/.*$/gm, '')));
+        assert.ok(!/GM_xmlhttpRequest\(\{[^}]*supjav\.com/.test(src.replace(/\/\/.*$/gm, '')), 'never fetch supjav.com HTML via native HTTP');
         // on a supjav page that is still loading (e.g. CF challenge), nothing runs until 'load'
         let loadCb = null, argsRead = 0;
         vm.runInNewContext(src, {
@@ -282,6 +282,38 @@ async function main() {
             setInterval: () => { throw new Error('no polling before load'); }, clearInterval() {}, setTimeout: () => 1
         });
         assert.equal(typeof loadCb, 'function'); assert.equal(argsRead, 0);
+    }
+
+    // 2.7.0 same-origin relay: robots.txt#target → window.fetch (WebView cookies/UA) + DOMParser; challenge/403 → navigate.
+    {
+        const listHtml = '<html><head><title>SupJav</title><script src="/cdn-cgi/challenge-platform/scripts/jsd/main.js"></script></head><body><div class="post">x</div></body></html>';
+        const parsed = html => ({title: '', querySelector: () => null,
+            querySelectorAll: q => q === 'div.post' && /class="post"/.test(html)
+                ? [{querySelector: s => s.startsWith('a.img') ? {getAttribute: k => ({href: 'https://supjav.com/464694.html', title: 'FC2PPV 4991238 X'})[k] || null, textContent: ''} : null}]
+                : q === 'a[href]' ? [{getAttribute: () => '/category/censored-jav/page/7/'}] : []});
+        const mk = fetchImpl => {
+            let replaced = ''; let resolveR; const got = new Promise(r => { resolveR = r; });
+            const gmCalls = [];
+            const win = {fetch: fetchImpl};
+            vm.runInNewContext(fs.readFileSync(__dirname + '/supjav.user.js', 'utf8'), {
+                document: {readyState: 'complete', title: '', querySelector: () => null, querySelectorAll: () => []},
+                location: {href: 'https://supjav.com/robots.txt#/category/censored-jav/page/2/', hash: '#/category/censored-jav/page/2/', replace: u => { replaced = u; resolveR(null); }},
+                navigator: {userAgent: 'UA'}, performance: {timeOrigin: Date.now()}, Date, URL, Promise, JSON,
+                DOMParser: function () { this.parseFromString = parsed; }, unsafeWindow: win,
+                GmSpiderInject: {GetSpiderArgs: () => JSON.stringify(['categoryContent', 'censored-jav', '2', true, {}]), HideWebview() {}, ShowWebview() {}, SetSpiderResult: v => resolveR(JSON.parse(v))},
+                GM_xmlhttpRequest: d => gmCalls.push(d.url), setInterval: () => 1, clearInterval() {}, setTimeout: () => 1
+            });
+            return got.then(r => ({r, replaced, gmCalls}));
+        };
+        const fetched = [];
+        const ok = await mk((u, o) => { fetched.push([u, o.credentials]); return Promise.resolve({ok: true, text: () => Promise.resolve(listHtml)}); });
+        assert.deepEqual(fetched, [['https://supjav.com/category/censored-jav/page/2/', 'same-origin']]);
+        assert.equal(ok.r.list[0].vod_id, 'https://supjav.com/464694.html'); assert.equal(ok.r.pagecount, 7);
+        assert.deepEqual(ok.gmCalls, [], 'no native HTTP to supjav.com');
+        const cf = await mk(() => Promise.resolve({ok: false, text: () => Promise.resolve('<title>Just a moment...</title>')}));
+        assert.equal(cf.r, null); assert.equal(cf.replaced, 'https://supjav.com/category/censored-jav/page/2/');
+        const ch = await mk(() => Promise.resolve({ok: true, text: () => Promise.resolve('<html><head><title>Just a moment...</title></head></html>')}));
+        assert.equal(ch.replaced, 'https://supjav.com/category/censored-jav/page/2/');
     }
 
     console.log('SupJav adapter checks passed.');
