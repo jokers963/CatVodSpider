@@ -1,6 +1,6 @@
 # SupJav
 
-更新时间：2026-10-13。正式配置 `json/luoyuqiu.json`（key `supjav`，脚本 `js/supjav.user.js?v=13`，@version 2.5.0）；开发通道 `json/luoyuqiu-supjav-test.json`（同脚本，名称带「测试」，先在此验证再同步正式）。
+更新时间：2026-10-13。正式配置 `json/luoyuqiu.json`（key `supjav`，脚本 `js/supjav.user.js?v=14`，@version 2.6.0）；开发通道 `json/luoyuqiu-supjav-test.json`（同脚本，名称带「测试」，先在此验证再同步正式）。
 
 ## 线路（顺序 EVS / VAS / FST / ST）
 
@@ -13,12 +13,14 @@
 
 不收：**LUC**（仅 720p，且有更好线路）、**VOE**。多 CD 时每条线路下按 CD1/CD2… 分集，作品编码（FC2PPV-xxxx / ABC-123）写入 `vod_play_from` 供 GMSubs 字幕匹配。
 
-## 减少 Cloudflare 验证（2.5.0）
+## Cloudflare 验证（2.6.0，对齐 MissAV）
 
-- 实测（2026-10-13，box）：supjav.com 的 HTML 页（首页/分类/搜索/详情/404/feed）对非浏览器 TLS 指纹（curl、Python urllib）一律 403 验证页，仅 Chrome 指纹放行；`/robots.txt`、`/favicon.ico` 为 CF 边缘缓存（`cf-cache-status: HIT`），任何客户端都不出验证；`lk1.supremejav.com/supjav.php?c=` 也不出验证。WP REST 需登录（401），无可用镜像（supjav.net 为停放域名）。
-- gm.jar：WebView 每次调用新建，但 Cookie 走全局 `CookieManager`（只有脚本显式 `GM_removeAllCookies` 才清，本脚本不用）；UA 为 WebView 默认 UA（配置未设 `userAgentString`），各阶段一致。`GM_xmlhttpRequest`（HttpURLConnection）不带 WebView Cookie，非 200 走 onerror。
-- 做法：home 改载 Pages（只返回固定分类，原先每次开站都要过一次 supjav 验证）；category/search/detail 改载 `https://supjav.com/robots.txt#<目标>`，脚本先用 `GM_xmlhttpRequest` 取目标 HTML 并 `DOMParser` 解析（原生请求若未被 CF 拦则全程无验证，约 1 秒）；若 403/验证页则在 localStorage 记 30 分钟并在同一 WebView `location.replace(目标)` 走原流程（此时才可能出验证，验证通过的 cf_clearance 留在共享 CookieManager）。ST 的 Referer 中转页改为 robots.txt。
-- 正常页面也含 `/cdn-cgi/challenge-platform/` 信标脚本，验证页判断只看 `Just a moment` 标题 / `_cf_chl_opt` / `challenge-form`。
+- 两站 CF 同为 `cType: 'managed'` 托管验证（无更严规则）；gm.jar 共享 CookieManager、默认 WebView UA，MissAV 配置未设 UA/header，SupJav 也不设。
+- 与 MissAV 的差异及处理：
+  1. 2.4.2 起整份脚本 `@run-at document-start`，在 supjav.com 页面（含 CF 验证页）验证脚本运行前就执行；2.6.0 起仅 streamtape 嵌入页早执行，supjav/Pages 页等 `load` 后才运行（同 MissAV 的默认时机）。
+  2. 2.5.0 的 robots.txt 中转会用 GM_xmlhttpRequest（HttpURLConnection，非浏览器 TLS 指纹）直接请求 supjav.com HTML，必被 403 验证，且同 IP 的非浏览器请求可能拉低 CF 对该 IP 的评分；随后再跳页又多一次导航。2.6.0 撤回：分类/搜索/详情与 MissAV 一样直接加载真实页面，不再用原生请求访问 supjav.com（lk1.supremejav.com 播放中转保留，属不同站点、本身不出验证）。
+  3. 保留：首页载 Pages（只返回固定分类，少一次 supjav 加载）；ST 的 Referer 中转页用 `supjav.com/robots.txt`（CF 边缘缓存，不出验证、无额外跳转）。
+  4. blockList 仅广告域，不含 cloudflare/turnstile/supjav.com。
 
 ## 路由与五方法
 

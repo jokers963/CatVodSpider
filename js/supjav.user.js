@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      2.5.0
+// @version      2.6.0
 // @description  SupJav WebView adapter for the open-source GM spider runtime. TEST ONLY - not in formal config.
 // @match        https://supjav.com/*
 // @match        https://jokers963.github.io/CatVodSpider/*
@@ -11,7 +11,16 @@
 // @grant        GM_xmlhttpRequest
 // ==/UserScript==
 (function () {
-    // document-start：GM 在 onPageStarted 注入（与默认 idle 同一时刻求值，只是不再等 load）。
+    // @run-at document-start 只为 streamtape 嵌入页尽早挂去广告钩子；supjav.com / Pages 页面（含 CF 验证页）
+    // 与 MissAV 相同：等 load 之后才执行任何代码，不在验证脚本运行期间改动页面环境。
+    const EARLY = typeof location !== "undefined" && /^https:\/\/streamtape\.com\//.test(location.href || "");
+    const WL = typeof unsafeWindow !== "undefined" ? unsafeWindow : (typeof window !== "undefined" ? window : null);
+    if (!EARLY && typeof document !== "undefined" && document.readyState && document.readyState !== "complete"
+            && WL && typeof WL.addEventListener === "function") {
+        WL.addEventListener("load", main, {once: true});
+    } else main();
+
+    function main() {
     // 同一文档只运行一次；supjav 页已跳往 ST 嵌入页后不再重跑。
     const W0 = typeof unsafeWindow !== "undefined" ? unsafeWindow : (typeof window !== "undefined" ? window : {});
     try { if (W0.top && W0.top !== W0) return; } catch (_) { return; } // 只在顶层文档运行
@@ -43,7 +52,7 @@
         return /base64|1x1|placeholder|loading|blank\.gif|empty\.gif/i.test(raw || "") ? "" : (raw || "");
     }
 
-    // 解析目标文档：默认当前页面；中转模式下为 GM_xmlhttpRequest 取回并 DOMParser 解析的 HTML。
+    // 解析目标文档（当前页面）。
     let DOC = document;
 
     function videos() {
@@ -525,52 +534,6 @@
         try { GmSpiderInject.HideWebview(); } catch (_) {}
         GmSpiderInject.SetSpiderResult(JSON.stringify(result));
     }
-    // ---- 中转模式（2.5.0）：列表/搜索/详情先加载 supjav.com/robots.txt（Cloudflare 边缘缓存命中，不出验证），
-    // 目标地址放在 #hash；用 GM_xmlhttpRequest 原生取 HTML 解析。若原生请求被 CF 拦（403/验证页），
-    // 记 30 分钟“原生被拦”并在同一 WebView 跳转到目标页走原流程（此时才可能出验证，cf_clearance 存于共享 CookieManager）。
-    const RELAY_PAGE = /^https:\/\/supjav\.com\/robots\.txt(?:[?#]|$)/;
-    const GM_BLOCK_KEY = "lyqSupjavGmBlockedUntil";
-    function relayTarget() {
-        if (!RELAY_PAGE.test(location.href || "")) return "";
-        let h = String(location.hash || "").replace(/^#/, "");
-        try { h = decodeURIComponent(h); } catch (_) {}
-        if (!h) return "";
-        let u = "";
-        try { u = new URL(h, "https://supjav.com/").href; } catch (_) { return ""; }
-        return /^https:\/\/supjav\.com\/(?!robots\.txt)/.test(u) ? u : "";
-    }
-    function looksChallenged(html) {
-        // 注意：正常页面也含 /cdn-cgi/challenge-platform/ 信标脚本，不能据此判断。
-        return /<title>\s*(Just a moment|Attention Required)|window\._cf_chl_opt|id="challenge-form"|id="cf-challenge-running"/i.test(html || "");
-    }
-    function gmBlocked() {
-        try { return Number(localStorage.getItem(GM_BLOCK_KEY) || 0) > Date.now(); } catch (_) { return false; }
-    }
-    function markGmBlocked() {
-        try { localStorage.setItem(GM_BLOCK_KEY, String(Date.now() + 30 * 60 * 1000)); } catch (_) {}
-    }
-    async function relay(target) {
-        if (!gmBlocked()) {
-            const r = await gmGet(target, "https://supjav.com/");
-            const html = r ? String(r.responseText || "") : "";
-            if (html && !looksChallenged(html) && typeof DOMParser === "function") {
-                try {
-                    DOC = new DOMParser().parseFromString(html, "text/html");
-                    const result = spider[method].apply(spider, args);
-                    if (method === "detailContent" && !(result.list[0] && result.list[0].vod_play_data)) {
-                        result.msg = "没有可用线路（仅支持 EVS/VAS/FST/ST）";
-                    } else if (method !== "detailContent" && !result.list.length) {
-                        result.msg = "当前页面没有匹配内容";
-                    }
-                    return result;
-                } catch (_) { DOC = document; }
-            }
-            markGmBlocked();
-        }
-        location.replace(target);
-        return null;
-    }
-
     function challenged() {
         return !!document.querySelector("#challenge-stage, #challenge-form, #cf-challenge-running, input[name='cf-turnstile-response']")
                 || /just a moment|checking your browser|verify you are human|请稍候|验证您是否为真人/i.test(document.title || "");
@@ -590,12 +553,6 @@
             Promise.resolve(spider.playerContent()).then(deliver, function () {
                 deliver({type: "url", ext: {url: "", header: {}}, msg: "播放地址解析失败，请换线路重试"});
             });
-            return;
-        }
-        const target = relayTarget();
-        if (target) {
-            busy = true;
-            relay(target).then(function (r) { if (r) deliver(r); }, function () { location.replace(target); });
             return;
         }
         const waiting = Date.now() - startedAt;
@@ -634,4 +591,5 @@
     else if (typeof unsafeWindow !== "undefined" && unsafeWindow.addEventListener) {
         unsafeWindow.addEventListener("load", start, {once: true});
     } else start();
+    }
 })();
