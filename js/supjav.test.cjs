@@ -110,9 +110,9 @@ async function main() {
     assert.ok(site.ext.playUrlMatch.includes('https://streamtape.com/get_video*'));
     assert.ok(site.ext.playUrlMatch.includes('https://*.tapecontent.net/radosgw/*'));
     assert.match(userSrc0(), /@match\s+https:\/\/streamtape\.com\/e\/\*/);
-    assert.match(site.ext.userScript, /supjav\.user\.js\?v=11$/);
+    assert.match(site.ext.userScript, /supjav\.user\.js\?v=12$/);
     const userSrc = fs.readFileSync(__dirname + '/supjav.user.js', 'utf8');
-    assert.match(userSrc, /@version\s+2\.4\.1/);
+    assert.match(userSrc, /@version\s+2\.4\.2/);
     assert.match(userSrc, /@match\s+https:\/\/jokers963\.github\.io\/CatVodSpider\/\*/);
     assert.ok(!/clickServer/.test(userSrc));
     // ST: lk1 → streamtape embed; result is bare {type:'match'}, WebView shown, then top-level jump with referrer meta; no click.
@@ -192,6 +192,69 @@ async function main() {
         assert.equal(video.muted, true); assert.equal(video.paused, true); assert.equal(ev.hidden, 1); assert.equal(ev.set, 0);
         const src = fs.readFileSync(__dirname + '/supjav.user.js', 'utf8');
         assert.ok(!/\.click\(\)|dispatchEvent|new\s+(Mouse|Pointer|Touch)Event/.test(src), 'no programmatic clicks');
+    }
+
+    // 2.4.2: document-start hooks + tap shield (late-injection safe). No programmatic clicks; the user's own tap is handled.
+    {
+        class ET { constructor() { this.l = []; } addEventListener(t, f, o) { this.l.push({t, f, o}); } }
+        class Anchor extends ET { constructor(h) { super(); this.h = h; this.clicked = 0; } getAttribute() { return this.h; } click() { this.clicked++; } }
+        class Form extends ET { getAttribute() { return 'https://pyppo.com/f'; } submit() { this.sent = true; } }
+        class Node0 extends ET { constructor() { super(); this.kids = []; } appendChild(el) { this.kids.push(el); return el; } insertBefore(el) { this.kids.push(el); return el; } }
+        const observers = [];
+        class MO { constructor(cb) { this.cb = cb; observers.push(this); } observe() {} }
+        const video = Object.assign(new ET(), {tagName: 'VIDEO', src: '', play() { this.played = true; return Promise.resolve(); }, pause() {}});
+        const overlay = {style: {display: ''}, closest: q => q === '.play-overlay' ? overlay : null};
+        const doc = Object.assign(new Node0(), {readyState: 'loading', documentElement: {}, head: null, body: null,
+            querySelector: q => q === '.play-overlay' ? overlay : q === 'video' ? video : null,
+            querySelectorAll: () => [], getElementById: id => id === 'mainvideo' ? video : id === 'botlink' ? {textContent: '//streamtape.com/get_video?id=AbC&expires=1&ip=X&token=T'} : null,
+            createElement: () => ({setAttribute() {}})});
+        const win = Object.assign(new ET(), {document: doc, EventTarget: ET, HTMLAnchorElement: Anchor, HTMLFormElement: Form, Node: Node0,
+            MutationObserver: MO, getComputedStyle: () => ({}), open: () => 'popup',
+            location: {href: 'https://streamtape.com/e/AbC/x.mp4'}, navigator: {userAgent: 'x'}, performance: {timeOrigin: Date.now()}, Date, URL, Promise, JSON,
+            GmSpiderInject: {GetSpiderArgs: () => '["playerContent","ST","{}","[]"]', HideWebview() {}, ShowWebview() {}, SetSpiderResult() { throw new Error('no result on embed'); }},
+            setInterval: () => 1, clearInterval() {}, setTimeout: () => 1});
+        ET.prototype.addEventListener = ET.prototype.addEventListener; // original
+        Object.setPrototypeOf(doc, Node0.prototype);
+        win.unsafeWindow = win; win.window = win; win.MutationObserver = MO;
+        vm.createContext(win);
+        vm.runInContext(fs.readFileSync(__dirname + '/supjav.user.js', 'utf8'), win);
+        // a second injection into the same document is a no-op
+        vm.runInContext(fs.readFileSync(__dirname + '/supjav.user.js', 'utf8'), win);
+        const shields = win.l.filter(x => x.o && x.o.capture);
+        assert.deepEqual(shields.map(x => x.t).sort(), ['auxclick', 'click', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'touchend', 'touchstart']);
+        // ad code registering tap handlers on document/window afterwards is dropped; element listeners kept
+        const before = doc.l.length; doc.addEventListener('click', () => {}, true); win.addEventListener('touchend', () => {}, true);
+        assert.equal(doc.l.length, before); assert.equal(win.l.length, shields.length, JSON.stringify(win.l.map(x => [x.t, x.o])));
+        doc.addEventListener('DOMContentLoaded', () => {}); assert.equal(doc.l.length, before + 1);
+        const el = new ET(); el.addEventListener('click', () => {}); assert.equal(el.l.length, 1);
+        // external anchors/forms neutralised, same-site anchors untouched
+        const ext = new Anchor('intent://pyppo.com/4/1#Intent;end'); ext.click(); assert.equal(ext.clicked, 0);
+        const ext2 = new Anchor('https://pyppo.com/x'); ext2.click(); assert.equal(ext2.clicked, 0);
+        const own = new Anchor('/e/AbC'); own.click(); assert.equal(own.clicked, 1);
+        const f = new Form(); f.submit(); assert.ok(!f.sent);
+        assert.equal(win.open('https://pyppo.com/'), null);
+        // ad script insertion blocked; site scripts allowed; config script rewritten before execution
+        const host = new Node0();
+        const adTag = {tagName: 'SCRIPT', src: 'https://llvpn.com/tag.min.js', getAttribute() { return this.src; }};
+        const jq = {tagName: 'SCRIPT', src: 'https://streamtape.com/js/jquery.min.js', getAttribute() { return this.src; }};
+        host.appendChild(adTag); host.appendChild(jq);
+        assert.deepEqual(host.kids, [jq]);
+        const cfgScript = {tagName: 'SCRIPT', src: '', textContent: 'window.x={"token":"t","adblock":false,"blockadblock":false,"noads":false,"fileid":"f"};'};
+        const loader = {tagName: 'SCRIPT', src: '', textContent: "(function(s){s.dataset.zone='1',s.src='https://llvpn.com/tag.min.js'})(x)",
+            parentNode: {removeChild() { loader.removed = true; }}, removeAttribute() {}};
+        observers.forEach(o => o.cb([{addedNodes: [cfgScript, loader]}]));
+        assert.match(cfgScript.textContent, /"adblock":true/); assert.match(cfgScript.textContent, /"noads":true/);
+        assert.ok(loader.removed); assert.equal(loader.type, 'javascript/blocked');
+        // the user's real tap: shield stops propagation and starts playback exactly like the site handler
+        const evt = t => ({type: t, target: overlay, stopped: 0, prevented: 0, stopImmediatePropagation() { this.stopped++; }, stopPropagation() {}, preventDefault() { this.prevented++; }});
+        const touch = evt('touchend'); shields.find(x => x.t === 'touchend').f(touch);
+        assert.equal(touch.stopped, 1); assert.equal(touch.prevented, 0); assert.equal(video.src, '');
+        const click = evt('click'); shields.find(x => x.t === 'click').f(click);
+        assert.equal(click.stopped, 1);
+        assert.equal(video.src, 'https://streamtape.com/get_video?id=AbC&expires=1&ip=X&token=T&stream=1');
+        assert.equal(overlay.style.display, 'none'); assert.ok(video.played);
+        const src = fs.readFileSync(__dirname + '/supjav.user.js', 'utf8');
+        assert.match(src, /@run-at\s+document-start/);
     }
 
     console.log('SupJav adapter checks passed.');

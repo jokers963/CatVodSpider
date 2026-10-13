@@ -1,15 +1,22 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      2.4.1
+// @version      2.4.2
 // @description  SupJav WebView adapter for the open-source GM spider runtime. TEST ONLY - not in formal config.
 // @match        https://supjav.com/*
 // @match        https://jokers963.github.io/CatVodSpider/*
 // @match        https://streamtape.com/e/*
+// @run-at       document-start
 // @grant        unsafeWindow
 // @grant        GM_xmlhttpRequest
 // ==/UserScript==
 (function () {
+    // document-start：GM 在 onPageStarted 注入（与默认 idle 同一时刻求值，只是不再等 load）。
+    // 同一文档只运行一次；supjav 页已跳往 ST 嵌入页后不再重跑。
+    const W0 = typeof unsafeWindow !== "undefined" ? unsafeWindow : (typeof window !== "undefined" ? window : {});
+    try { if (W0.top && W0.top !== W0) return; } catch (_) { return; } // 只在顶层文档运行
+    if (W0.__lyqSupjavRan) return;
+    try { W0.__lyqSupjavRan = true; } catch (_) {}
     const args = typeof GmSpiderInject === "undefined"
             ? ["homeContent", "true"]
             : JSON.parse(GmSpiderInject.GetSpiderArgs());
@@ -252,6 +259,7 @@
                 (doc.head || doc.documentElement).appendChild(css);
             }
         } catch (_) {}
+        try { Array.from(doc.querySelectorAll("script[src]")).forEach(function (el) { if (stIsAdScript(el)) stNeutralizeScript(el); }); } catch (_) {}
         const body = doc.body;
         if (body) {
             new Set(Array.from(body.children).concat(Array.from(doc.querySelectorAll("iframe")))).forEach(function (el) {
@@ -271,9 +279,138 @@
         });
     }
 
+    // 已知广告/弹窗来源（llvpn.com tag = Monetag zone 11822409 → pyppo.com intent:// 跳转；另两个为 popunder 加载器）。
+    const ST_AD_HOST = /(^|\.)(llvpn\.com|pyppo\.com|mulchimbiber\.com|conermoocher\.com|advtpe\.com|yandex\.ru|prebid|doubleclick\.net|googlesyndication\.com)$/i;
+    const ST_TAP_EVENTS = ["click", "touchstart", "touchend", "pointerdown", "pointerup", "mousedown", "mouseup", "auxclick"];
+
+    function stScriptHost(src) {
+        try { return new URL(src, "https://streamtape.com/").hostname; } catch (_) { return ""; }
+    }
+
+    // 外链脚本：只放行 streamtape 同站与 recaptcha（嵌入页统计用）；内联广告加载器（llvpn tag、prebid 队列）按特征阻断；内联 popunder 库与页面配置同在一段脚本，不删，靠监听钩子与点按截断使其失效。
+    function stIsAdScript(el) {
+        if (!el || String(el.tagName || "").toUpperCase() !== "SCRIPT") return false;
+        const src = el.src || (el.getAttribute && el.getAttribute("src")) || "";
+        if (src) {
+            const host = stScriptHost(src);
+            return !(host === "streamtape.com" || /(^|\.)google\.com$|(^|\.)gstatic\.com$/.test(host)) || ST_AD_HOST.test(host);
+        }
+        const text = el.textContent || "";
+        return /llvpn\.com|tag\.min\.js|dataset\.zone\s*=|pbjs\.que/i.test(text);
+    }
+
+    function stNeutralizeScript(el) {
+        try { el.type = "javascript/blocked"; } catch (_) {}
+        try { el.removeAttribute("src"); } catch (_) {}
+        try { if (el.parentNode) el.parentNode.removeChild(el); } catch (_) {}
+    }
+
+    function stIsExternalHref(href) {
+        const h = String(href || "").trim();
+        if (!h || h.charAt(0) === "#" || /^javascript:/i.test(h)) return false;
+        if (/^(intent|market|tg|whatsapp|sms|tel|mailto):/i.test(h)) return true;
+        try { return new URL(h, "https://streamtape.com/").hostname !== "streamtape.com"; } catch (_) { return true; }
+    }
+
+    // 早期（document-start）钩子：丢弃 document/window 上新注册的点按类监听（popunder 库挂在这两处），
+    // 播放器绑定在元素上的监听不受影响；外链 a 元素的 click 方法置空；阻断广告脚本插入。
+    function stEarlyHooks(win) {
+        try {
+            const ET = win.EventTarget && win.EventTarget.prototype;
+            if (ET && !Object.prototype.hasOwnProperty.call(ET, "__lyqWrapped")) {
+                const orig = ET.addEventListener;
+                ET.addEventListener = function (type, fn, opt) {
+                    if ((this === win || this === win.document || (this && this.document === win.document && this.document)) && ST_TAP_EVENTS.indexOf(String(type)) >= 0 && !(fn && fn.__lyqOwn)) return;
+                    return orig.call(this, type, fn, opt);
+                };
+                ET.__lyqWrapped = true;
+            }
+        } catch (_) {}
+        try {
+            const A = win.HTMLAnchorElement && win.HTMLAnchorElement.prototype;
+            if (A && !Object.prototype.hasOwnProperty.call(A, "__lyqWrapped")) {
+                const oc = A.click;
+                A.click = function () { if (stIsExternalHref(this.getAttribute("href"))) return; return oc.call(this); };
+                A.__lyqWrapped = true;
+            }
+        } catch (_) {}
+        try {
+            const F = win.HTMLFormElement && win.HTMLFormElement.prototype;
+            if (F && !Object.prototype.hasOwnProperty.call(F, "__lyqWrapped")) {
+                const os = F.submit;
+                F.submit = function () { if (stIsExternalHref(this.getAttribute("action"))) return; return os.call(this); };
+                F.__lyqWrapped = true;
+            }
+        } catch (_) {}
+        try {
+            const N = win.Node && win.Node.prototype;
+            if (N && !Object.prototype.hasOwnProperty.call(N, "__lyqWrapped")) {
+                ["appendChild", "insertBefore"].forEach(function (k) {
+                    const o = N[k];
+                    N[k] = function (el) { if (stIsAdScript(el)) return el; return o.apply(this, arguments); };
+                });
+                N.__lyqWrapped = true;
+            }
+        } catch (_) {}
+        try {
+            new win.MutationObserver(function (list) {
+                list.forEach(function (m) {
+                    Array.prototype.forEach.call(m.addedNodes || [], function (n) {
+                        if (stIsAdScript(n)) { stNeutralizeScript(n); return; }
+                        // 页面配置在内联脚本里：执行前把 "noads":false 改为 true（跳过首击广告与 advtpe 检测分支）。
+                        if (n && String(n.tagName || "").toUpperCase() === "SCRIPT" && !n.src && /"fileid"/.test(n.textContent || "")) {
+                            try { n.textContent = n.textContent.replace(/"noads":false/, '"noads":true').replace(/"adblock":false/, '"adblock":true'); } catch (_) {}
+                        }
+                        if (n && String(n.tagName || "").toUpperCase() === "META" && /refresh/i.test(n.getAttribute("http-equiv") || "")) {
+                            try { n.parentNode.removeChild(n); } catch (_) {}
+                        }
+                    });
+                });
+            }).observe(win.document.documentElement || win.document, {childList: true, subtree: true});
+        } catch (_) {}
+    }
+
+    // 用户的真实点按（不是程序点击）：window 捕获阶段最先收到，晚注入时也先于 document 上已注册的 popunder 监听。
+    // 点在播放层上 → 直接执行与站点处理器相同的起播动作（隐藏遮罩、mainvideo.src = botlink + &stream=1），
+    // 并阻止事件继续传播；其它点按也一律截断，避免广告库拿到用户手势去跳 intent://。
+    function stTapShield(win, doc) {
+        const shield = function (e) {
+            try { e.stopImmediatePropagation(); e.stopPropagation(); } catch (_) {}
+            const t = e.target;
+            try {
+                const a = t && t.closest && t.closest("a[href]");
+                if (a && stIsExternalHref(a.getAttribute("href"))) e.preventDefault();
+            } catch (_) {}
+            if (e.type !== "click") return;
+            try { e.preventDefault(); } catch (_) {}
+            stStartPlayback(win, doc);
+        };
+        shield.__lyqOwn = true;
+        ST_TAP_EVENTS.forEach(function (type) {
+            try { win.addEventListener(type, shield, {capture: true, passive: false}); } catch (_) {}
+        });
+    }
+
+    function stStartPlayback(win, doc) {
+        const overlay = doc.querySelector(".play-overlay");
+        const video = doc.getElementById("mainvideo") || doc.querySelector("video");
+        const link = ((doc.getElementById("botlink") || {}).textContent || "").trim();
+        if (!video || !link || win.__lyqStStarted) return false;
+        const url = (/^\/\//.test(link) ? "https:" : "") + link + "&stream=1";
+        if (!/^https:\/\/streamtape\.com\/get_video\?/.test(url)) return false;
+        win.__lyqStStarted = true;
+        try { if (overlay) overlay.style.display = "none"; } catch (_) {}
+        try { video.src = url; } catch (_) {}
+        try { if (win.player) win.player.currentTrack = 0; } catch (_) {}
+        try { const p = video.play && video.play(); if (p && p.catch) p.catch(function () {}); } catch (_) {}
+        return true;
+    }
+
     function streamtapeGuard() {
         const win = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
         stBlockPopups(win);
+        stEarlyHooks(win);
+        stTapShield(win, document);
         let done = false;
         const quiet = function (v) {
             if (done) return;
@@ -432,9 +569,14 @@
         deliver(result);
     }
 
-    const poller = setInterval(sendResult, 500);
-    if (document.readyState === "complete") sendResult();
+    // 非 streamtape 页保持原 document-idle 时机：load 之后才开始轮询。
+    let poller = 0;
+    function start() {
+        poller = setInterval(sendResult, 500);
+        sendResult();
+    }
+    if (document.readyState === "complete") start();
     else if (typeof unsafeWindow !== "undefined" && unsafeWindow.addEventListener) {
-        unsafeWindow.addEventListener("load", sendResult, {once: true});
-    } else sendResult();
+        unsafeWindow.addEventListener("load", start, {once: true});
+    } else start();
 })();
