@@ -1,19 +1,22 @@
 # 落雨秋 AI 接手与协作记录
 
-## 唯一现状卡（≤15 行，2026-10-06）
+## 唯一现状卡（≤15 行，2026-10-13）
 
 1. **正式入口**：`https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json`（勿用 blob、本地路径、CNAME 域或 `luoyuqiu-api`）。
 2. **JAR**：`gm_subs-v40.jar?v=40`；MD5 `c6a36e891a26e269300069fe7c317fef`；回退 v39/v38/v37。
-3. **五站脚本**：MissAV `?v=9`、AV01 `?v=5`、肉视频 `?v=6`、Hanime1 `?v=3`、JavGuru `?v=4`。
+3. **六站脚本**：MissAV `?v=9`、AV01 `?v=5`、肉视频 `?v=6`、Hanime1 `?v=3`、JavGuru `?v=4`、SupJav `?v=12`（2026-10-13 正式上线，线路 EVS/VAS/FST 1080p + ST 720p 备用，见 [supjav 档案](docs/sites/supjav.md)；开发通道 `json/luoyuqiu-supjav-test.json`）。
 4. **Jable**：正式/测试入口已关闭；脚本保留；无新指令不恢复。
 5. **手机**：v40 加载/绘制/切换等 **QA 未做**；不截图；发布≠验收通过。
-6. **勿恢复**：SupJav、MemoJav、NBD-022、旧 `supjav.json`、已关 Jable。
+6. **勿恢复**：MemoJav、NBD-022、旧 `supjav.json`、已关 Jable（SupJav 已于 2026-10-13 按用户明确要求正式上线，移出本清单）。
 7. **CNAME**：仓库 `CNAME`=`fm.t4tv.hz.cz`，**不是**正式点播入口（github.io 才是）。
 8. **luoyuqiu-api**：仓库已清空；**勿**再发布正式配置到该仓。
 9. **LuoYuQiu.java**：libvio 页面解析实验类；正式站点入口是 `csp_GMSubs` + userscript，不是它。
-10. **同卡权威**：与本文件下方历史段或架构文档冲突时，以本卡 + [AGENTS.md](AGENTS.md) 为准；细节以 `json/luoyuqiu.json` 核对。
+10. **播放器**：用户手机用**上游 FongMi TV 5.7.3**（ExoPlayer）；「落雨秋」是配置名，不是自建播放器。下方历史段中的 `5.6.3-lyq.*` 定制 App 记录仅为历史。
+11. **同卡权威**：与本文件下方历史段或架构文档冲突时，以本卡 + [AGENTS.md](AGENTS.md) 为准；细节以 `json/luoyuqiu.json` 核对。
 
 ---
+
+**SupJav 正式上线（2026-10-13）**：用户确认 ST 在手机（上游 FongMi TV 5.7.3）可播、720p，保留为备用线路，并明确要求上线正式。`json/luoyuqiu.json` 末尾新增 `supjav`（与开发通道 `?v=12` 条目逐字段一致，仅名称去掉「测试」）；其余五站、JAR v40 不变。测试版历程：2.1.0 EVS/FST 直链 → 2.2.0 播放阶段改载 Pages → 2.3.0 VAS → 2.4.0 ST 手动点播放 + 嗅探 → 2.4.1 去遮罩/首击广告 → 2.4.2 document-start + 点按截断 + 广告脚本/外链跳转阻断（修 `intent://pyppo.com` 跳转）。`test_config`/`test_ranking_config` 改为：正式 = 字幕测试五站 + SupJav。提交与公网核对见本段所在提交（`feat: supjav 正式上线`）。
 
 
 更新日期：2026-10-06（顶部现状卡）；正文历史段仍含 2026-10-04 及更早部署证据。历史实验见 [完整历史快照](docs/history/AI_HANDOFF-2026-10-01.md)。历史不授予权限，不代表当前任务。

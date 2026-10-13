@@ -2,18 +2,18 @@
 
 本文件用于快速接手，不代替用户当次授权，不保证站点已经完成验收。
 
-## 唯一现状卡（2026-10-06）
+## 唯一现状卡（2026-10-13）
 
 | 项 | 当前事实 |
 | --- | --- |
 | 正式入口 | `https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json`（手机只填此地址） |
 | Spider | `gm_subs-v40.jar?v=40`，MD5 `c6a36e891a26e269300069fe7c317fef`；v39/v38/v37 保留回退 |
-| 正式五站 | MissAV `?v=9`、AV01 `?v=5`、肉视频 `?v=6`、Hanime1 `?v=3`、JavGuru `?v=4` |
+| 正式六站 | MissAV `?v=9`、AV01 `?v=5`、肉视频 `?v=6`、Hanime1 `?v=3`、JavGuru `?v=4`、SupJav `?v=12`（2026-10-13 用户要求正式上线；线路 EVS/VAS/FST/ST，见 [docs/sites/supjav.md](docs/sites/supjav.md)；开发通道 `json/luoyuqiu-supjav-test.json`） |
 | Jable | **已关闭**（脚本/实现保留）；未经用户新指令不恢复 |
 | 手机验收 | **v40 手机 QA 未做**；发布≠实机通过；不截图 |
-| 勿恢复 | SupJav、MemoJav、NBD-022、旧 `json/supjav.json`、已关闭的 Jable |
+| 勿恢复 | MemoJav、NBD-022、旧 `json/supjav.json`（已由正式 `supjav` 条目取代）、已关闭的 Jable |
 | 非正式入口 | 仓库 `CNAME`=`fm.t4tv.hz.cz` 不是正式点播地址；`jokers963/luoyuqiu-api` 已清空，勿再发正式配置；`LuoYuQiu.java`（libvio）不是正式站点入口（正式为 `csp_GMSubs`） |
-| 播放器 | [TV:luoyuqiu AGENTS](https://github.com/jokers963/TV/blob/luoyuqiu/AGENTS.md)；现状以本卡 + [AI_HANDOFF 顶部](AI_HANDOFF.md) 为准 |
+| 播放器 | 用户实际使用**上游 FongMi TV 5.7.3**（ExoPlayer）；「落雨秋」是本配置的名称，不是自建播放器。`jokers963/TV:luoyuqiu` 定制分支为历史/备用，不是当前手机所用 App |
 
 下方边界与发布规则仍有效；与本卡冲突时以本卡为准。版本/站点细节核对以 `json/luoyuqiu.json` 为准。
 
@@ -26,10 +26,10 @@
 
 ## 工作边界
 
-- 本仓库负责远程配置、GMSubs、站点 userscript 与运行 JAR；配套播放器实际开发入口为 [jokers963/TV:luoyuqiu](https://github.com/jokers963/TV/tree/luoyuqiu)，先读该分支 [AGENTS.md](https://github.com/jokers963/TV/blob/luoyuqiu/AGENTS.md)。默认分支 `fongmi` 仅作上游同步参考。
+- 本仓库负责远程配置、GMSubs、站点 userscript 与运行 JAR。用户手机使用上游 FongMi TV 5.7.3，兼容性以上游 App 为准；[jokers963/TV:luoyuqiu](https://github.com/jokers963/TV/tree/luoyuqiu) 定制分支仅为历史参考，不是当前在用播放器。
 - 正式手机入口是 github.io 上的 `json/luoyuqiu.json`。不要填写电脑本地文件、GitHub blob 页面、CNAME 自定义域，或已清空的 `luoyuqiu-api`。
 - 不恢复「勿恢复」清单中的项。Jable 脚本/实现保留。正式配置与脚本 `?v=` 以现状卡 / JSON 为准；部署证据见 AI_HANDOFF 顶部。发布不代表手机或最佳表达验收。
-- 实际播放器定制分支为 `jokers963/TV:luoyuqiu`，本机工作目录为 `D:/CodexWorkspace/Android/TV563Release`；`fongmi` 是另一分支。手机遵守用户“不要截图”的要求。
+- 用户在用的是上游 FongMi TV 5.7.3（「落雨秋」只是配置名）；历史定制分支 `jokers963/TV:luoyuqiu`（本机目录 `D:/CodexWorkspace/Android/TV563Release`）不是当前 App。手机遵守用户“不要截图”的要求。
 - 保护用户未提交改动；旧 `交接.md` 不删除/覆盖，其历史内容不能代替当前源码。禁止破坏性 Git 操作、强推或未经请求同步上游。
 - TV 本地工作树及运行文件保持只读；文档不授予运行修改或发布权限，权限以用户当次明确授权为准。
 - 不恢复已取消的站点/线路；MissAV 不擅自改回带 `name` 的 `finalUrl`；GM 的 `type: match` 不代表媒体解析已经结束。

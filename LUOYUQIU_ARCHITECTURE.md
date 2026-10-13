@@ -1,11 +1,11 @@
 # 落雨秋：配置、Spider 与网站脚本原理
 
-> **版本快照可能滞后**：正式入口、JAR、五站与脚本 `?v=` 以根目录 [AGENTS.md 唯一现状卡](AGENTS.md) 与 `json/luoyuqiu.json` 为准；本文保留原理说明。下方「截至 … 文档复核」表格是历史快照，不是当前发布状态。
+> **版本快照可能滞后**：正式入口、JAR、站点与脚本 `?v=` 以根目录 [AGENTS.md 唯一现状卡](AGENTS.md) 与 `json/luoyuqiu.json` 为准；本文保留原理说明。下方「截至 … 文档复核」表格是历史快照，不是当前发布状态。
 
 
 原始研究日期：2026-09-27；入口、正式版本与站点索引更新于 2026-10-02。本文是源码研究与维护说明，不是全部站点稳定性验收报告。
 
-配套文档：[定制播放器开发入口](https://github.com/jokers963/TV/blob/luoyuqiu/README.md) · [历史播放器底层原理](https://github.com/jokers963/TV/blob/fongmi/LUOYUQIU_ARCHITECTURE.md)。实际定制源码在 `luoyuqiu`，下方 TV 的 `fongmi` 基线仅用于解释原始研究。
+配套文档：[历史定制播放器分支](https://github.com/jokers963/TV/blob/luoyuqiu/README.md) · [历史播放器底层原理](https://github.com/jokers963/TV/blob/fongmi/LUOYUQIU_ARCHITECTURE.md)。**用户当前使用上游 FongMi TV 5.7.3（ExoPlayer）**，「落雨秋」是本配置名而非自建播放器；`luoyuqiu` 定制分支仅为历史参考，下方 TV 的 `fongmi` 基线用于解释原始研究。
 
 ## 1. 研究范围与版本边界
 

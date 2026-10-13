@@ -1,12 +1,12 @@
 # 站点实现档案
 
-更新时间：2026-10-06。这里记录站点的实现过程、运行原理、验证方法和可复用经验。故障时间线仍放在 `docs/handovers/`，旧实验放在 `docs/history/`；不要用历史状态覆盖当前实现。
+更新时间：2026-10-13。这里记录站点的实现过程、运行原理、验证方法和可复用经验。故障时间线仍放在 `docs/handovers/`，旧实验放在 `docs/history/`；不要用历史状态覆盖当前实现。
 
 ## 当前站点
 
 核心作者栏按项目所有者的直接确认记录，不替代各文档中的后续协作提交历史。
 
-正式配置当前五站见根目录 [AGENTS 唯一现状卡](../../AGENTS.md)；Jable **已从正式/测试入口关闭**（实现保留）。
+正式配置当前六站见根目录 [AGENTS 唯一现状卡](../../AGENTS.md)；Jable **已从正式/测试入口关闭**（实现保留）。
 
 | 站点 | 正式配置 | 核心作者 | 主要接入模式 | 播放模式 | 实现档案 |
 | --- | --- | --- | --- | --- | --- |
@@ -15,6 +15,7 @@
 | 肉视频（Rou） | 在用 `?v=6` | Codex | DOM + 页面内编码 hydration | 本地代理解包伪 PNG HLS | [肉视频](rou.md) |
 | Hanime1 | 在用 `?v=3` | Codex | DOM 抓取 + 固定分类/筛选 | 多清晰度 MP4 直链 | [Hanime1](hanime1.md) |
 | JavGuru | 在用 `?v=4` | Codex | DOM + 第三方网页播放器 | WebView 启播后嗅探 HLS | [JavGuru](javguru.md) |
+| SupJav | 在用 `?v=12` | Grok Bot | DOM 抓取 + lk1 中转（GM_xmlhttpRequest） | EVS/VAS/FST 直链 HLS；ST 手动点播放 + 嗅探 | [SupJav](supjav.md) |
 | Jable | **已关闭**（脚本保留） | Codex | DOM 抓取 + AJAX 分页 + 验证页兼容 | 详情页 HLS 直链 | [Jable](jable.md) |
 
 ## 共用运行链路

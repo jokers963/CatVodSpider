@@ -159,6 +159,52 @@
         "type": "rect",
         "ratio": 1.5
       }
+    },
+    {
+      "key": "supjav",
+      "name": "🎬 SupJav",
+      "type": 3,
+      "api": "csp_GMSubs",
+      "searchable": 1,
+      "quickSearch": 0,
+      "changeable": 0,
+      "filterable": 0,
+      "timeout": 60,
+      "ext": {
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/supjav.user.js?v=12",
+        "subtitleLibrary": "https://pub-662c4b411cfb4cf69f52f71f22140341.r2.dev/",
+        "debug": false,
+        "webViewSettings": {
+          "blockNetworkImage": true,
+          "blockList": [
+            "https://llvpn.com/*",
+            "https://*.llvpn.com/*",
+            "https://pyppo.com/*",
+            "https://*.pyppo.com/*",
+            "https://*.mulchimbiber.com/*",
+            "https://*.conermoocher.com/*",
+            "https://advtpe.com/*"
+          ]
+        },
+        "playUrlMatch": [
+          "https://evsishere.xyz/stream/*",
+          "https://fc2stream.tv/stream/*",
+          "https://*.acek-cdn.com/hls2/*",
+          "https://streamtape.com/get_video*",
+          "https://*.tapecontent.net/radosgw/*"
+        ],
+        "spider": {
+          "homeContent": {"loadUrl": "https://supjav.com/"},
+          "categoryContent": {"loadUrl": "https://supjav.com/category/${tid}/page/${pg:-1}/"},
+          "detailContent": {"loadUrl": "${id}"},
+          "playerContent": {"loadUrl": "${stpage:-https://jokers963.github.io/CatVodSpider/}"},
+          "searchContent": {"loadUrl": "https://supjav.com/?s=${key}"}
+        }
+      },
+      "style": {
+        "type": "rect",
+        "ratio": 1.5
+      }
     }
   ],
   "parses": [],
