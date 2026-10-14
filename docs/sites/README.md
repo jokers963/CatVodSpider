@@ -14,7 +14,8 @@
 | AV01 | 在用 `?v=5` | Claude Opus 5.5 | JSON API + 地区/授权接口 | 带 token 的 HLS 主清单 | [AV01](av01.md) |
 | 肉视频（Rou） | 在用 `?v=6` | Codex | DOM + 页面内编码 hydration | 本地代理解包伪 PNG HLS | [肉视频](rou.md) |
 | Hanime1 | 在用 `?v=3` | Codex | DOM 抓取 + 固定分类/筛选 | 多清晰度 MP4 直链 | [Hanime1](hanime1.md) |
-| JavGuru | 在用 `?v=4` | Codex | DOM + 第三方网页播放器 | WebView 启播后嗅探 HLS | [JavGuru](javguru.md) |
+| Upload18（原“JavGuru”仿站 javguru.fit，key `javguru`） | 在用 `?v=4` | Codex | DOM + 第三方网页播放器 | WebView 启播后嗅探 HLS | [Upload18](upload18.md) |
+| JavGuru 原站 jav.guru（key `jav_guru`） | 测试 `json/luoyuqiu-javguru-test.json`，`?v=1` | Codex | robots.txt + 页内 fetch 中转 | 原生 HTTP 解析 SB（StreamHG 1080p）/ LU（测试） | [JavGuru 原站](jav-guru.md) |
 | SupJav | 在用 `?v=14` | Grok Bot | DOM 抓取 + lk1 中转（GM_xmlhttpRequest） | EVS/VAS/FST 直链 HLS；ST 手动点播放 + 嗅探 | [SupJav](supjav.md) |
 | Jable | **已关闭**（脚本保留） | Codex | DOM 抓取 + AJAX 分页 + 验证页兼容 | 详情页 HLS 直链 | [Jable](jable.md) |
 
@@ -35,7 +36,7 @@ luoyuqiu.json 路由
 1. 页面已有稳定 HTTPS MP4/HLS：直接从 DOM 或页面变量返回，参考 MissAV、Jable、Hanime1。
 2. 站点有公开 JSON API：直接调用 API，先做参数白名单和超时，参考 AV01。
 3. 播放需要短期 token：复用站点授权接口，不缓存签名地址，参考 AV01。
-4. 地址只在真实播放器运行时有效：让 WebView 播放器发请求，再用 `playUrlMatch` 嗅探，参考 JavGuru。
+4. 地址只在真实播放器运行时有效：让 WebView 播放器发请求，再用 `playUrlMatch` 嗅探，参考 Upload18（原 JavGuru 仿站）。
 5. 媒体做了站点专有封装：只在精确域名和路径上启用最小代理，参考 Rou；不要把特殊处理扩散到其他站。
 
 ## 最小验收顺序

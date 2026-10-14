@@ -1,4 +1,8 @@
-# JavGuru 实现档案
+# Upload18（原 JavGuru 仿站）实现档案
+
+> 2026-10-14 改名：正式配置中 key 仍为 `javguru`（保留用户历史/收藏），显示名由“🎬 JavGuru”改为“🎬 Upload18”。
+> 原因（用户说明）：`javguru.fit` 不是 jav.guru 原站，而是一个注册大量仿冒大站名域名的盗版站群，所有视频都来自同一个 Upload18 播放器。
+> 真正的 jav.guru 原站另行接入，见 [jav-guru.md](jav-guru.md)（测试配置）。下文的“JavGuru”均指该仿站。
 
 当前实现：`js/javguru.user.js` 1.0.2，正式脚本查询版本 `v=4`（与 `json/luoyuqiu.json` 一致）。播放故障与手机证据见 `docs/handovers/2026-10-02-doubao-to-codex-javguru-exoplayer.md`。
 

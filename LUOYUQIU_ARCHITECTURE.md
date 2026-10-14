@@ -103,7 +103,7 @@ GM 的详情扩展 `vod_play_data` 会被转换为宿主认识的线路/集数�
 | [AV01](js/av01.user.js) | 网站 API 查询内容与播放授权，构造主清单地址 | 授权、域名、子清单参数与可用画质 |
 | [肉视频](js/rou.user.js) | 解码 hydration 地址，GMSubs 解包伪 PNG HLS | 页面数据格式、自定义 PNG chunk、代理边界 |
 | [Hanime1](js/hanime1.user.js) | 搜索页抓列表，详情页返回多清晰度 MP4 | DOM、筛选原值、source 属性 |
-| [JavGuru](js/javguru.user.js) | 顶层运行 Upload18 网页播放器并嗅探 HLS | 播放器运行时、匹配规则、短期地址 |
+| [Upload18（原 JavGuru 仿站）](js/javguru.user.js) | 顶层运行 Upload18 网页播放器并嗅探 HLS | 播放器运行时、匹配规则、短期地址 |
 
 MissAV 当前采用普通直链的 `vod_play_url`，不要擅自改回带 `name` 的 GM `finalUrl` 描述。验证页面是真实访问条件；不应伪造验证成功或自动点击验证来掩盖问题。
 
