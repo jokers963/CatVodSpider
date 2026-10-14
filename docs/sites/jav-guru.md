@@ -1,13 +1,13 @@
 # JavGuru 原站（jav.guru）实现档案
 
-状态：**测试中**（2026-10-14）。入口 `json/luoyuqiu-javguru-test.json`，key `jav_guru`，脚本 `js/jav.guru.user.js` 0.1.0（`?v=1`）。未进入正式配置。
+状态：**测试中**（2026-10-14）。入口 `json/luoyuqiu-javguru-test.json`，key `jav_guru`，脚本 `js/jav.guru.user.js` 1.0.1（`?v=2`）。未进入正式配置。
 正式配置里原来叫“JavGuru”的 `javguru.fit` 是仿站，已改名为 Upload18，见 [upload18.md](upload18.md)。
 
 ## 路由
 
 | GM 方法 | loadUrl | 实际请求 |
 | --- | --- | --- |
-| homeContent | Pages 空白页 | 固定分类：jav / jav-uncensored / decensored / english-subbed / amateur / FC2 / 1080p |
+| homeContent | Pages 空白页 | 固定分类：jav / jav-uncensored / decensored / english-subbed / amateur / FC2 |
 | categoryContent | `jav.guru/robots.txt#/category/${tid}/page/${pg:-1}/` | 页内 fetch `/category/<tid>/`，第 N 页为 `/category/<tid>/page/N/` |
 | searchContent | `jav.guru/robots.txt#/page/${pg:-1}/?s=${key}` | 脚本按参数构造：第 1 页 `/?s=<kw>`，第 N 页 `/page/N/?s=<kw>`，关键词只 encodeURIComponent 一次 |
 | detailContent | `jav.guru/robots.txt#${id}` | 页内 fetch 详情页 |
@@ -27,3 +27,13 @@
   - **SB**：StreamHG，实测有 480/720/1080 三档，master 与分片带 Referer 的原生请求都返回 200。
   - **LU（测试）**：LuluStream，地址带 `_h`；master 绑定 IP，服务器上测试返回 403，需要在手机上确认能否播放、是否为 1080p。
 - 其余线路不收：JK（maxstream）实测只有 720p；VO（Voe）、VI（vidara）、DD（DoodStream）需要网页播放器或 IP 绑定，未验证 1080p。
+
+## 1.0.1（2026-10-14，手机反馈修复）
+
+- **封面全部一样**：列表封面在 `cdn.javmiku.com` 上，这个 CDN 开了 CF 机器人拦截，App 的图片加载器（非浏览器 TLS）拿到的是 403 验证页，所以每张都显示同一张默认图。同一文件在 `jav.guru/wp-content/` 下可以直接取（okhttp 实测 200），现在改写到原站；取图顺序为 data-src、data-lazy-src、srcset、src，跳过 data: 和占位图。
+- **去掉“1080p”分类**。
+- **SB/LU 都播放失败**：服务器上无法复现。实测 jav.guru 会拦非浏览器 UA（Dalvik UA 返回 403），嵌入页没有 jav.guru 的 Referer 时不输出播放器脚本，推测手机上原生请求 jav.guru 被 CF 拦了。改为：
+  1. 网关页先用页内同源 fetch（播放阶段页面就是 jav.guru/robots.txt），失败再走原生；
+  2. 真实地址先用原生请求跟随跳转（8 秒超时）；失败就整页跳转到真实地址（会带上 jav.guru 的 Referer），由嵌入页上的本脚本（`@match https://*/e/*`）直接从页面解析 master.m3u8；
+  3. 失败提示写明卡在哪一步：网关页被拦截、网关页结构变化、嵌入页无播放器（可能被拦截）、嵌入页解析失败。
+- 本地 e2e 用非浏览器 TLS（python requests）模拟原生请求，正常和“jav.guru 原生全部 403”两种情况都能解析出 SB 的 1080p master，分片 200；LU 在服务器上仍是 403（地址绑定 IP），只能等手机确认。

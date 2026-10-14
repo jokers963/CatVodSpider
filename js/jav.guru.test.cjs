@@ -6,13 +6,14 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const src = fs.readFileSync(path.join(__dirname, 'jav.guru.user.js'), 'utf8');
 
-function run(spArgs, href, {fetchImpl, gm, doc} = {}) {
+function run(spArgs, href, {fetchImpl, gm, doc, outer} = {}) {
     let resolveR; const got = new Promise(r => { resolveR = r; });
     let replaced = '';
     const fetched = [], gmCalls = [];
     const win = {fetch: fetchImpl ? (u, o) => { fetched.push(u); return fetchImpl(u, o); } : undefined};
     vm.runInNewContext(src, {
-        document: doc || {readyState: 'complete', title: '', querySelector: () => null, querySelectorAll: () => []},
+        document: doc || {readyState: 'complete', title: '', documentElement: {outerHTML: outer || ''}, querySelector: () => null, querySelectorAll: () => []},
+        sessionStorage: {setItem() {}},
         location: {href, hash: href.includes('#') ? href.slice(href.indexOf('#')) : '', replace: u => { replaced = u; resolveR(null); }},
         navigator: {userAgent: 'UA'}, Date, URL, Promise, JSON, Buffer, unsafeWindow: win,
         DOMParser: function () { this.parseFromString = () => doc; },
@@ -29,7 +30,8 @@ function run(spArgs, href, {fetchImpl, gm, doc} = {}) {
     assert.equal(cfg.sites.length, 1);
     const site = cfg.sites[0];
     assert.equal(site.key, 'jav_guru'); assert.equal(site.name, '🎬 JavGuru（测试）');
-    assert.match(site.ext.userScript, /\/js\/jav\.guru\.user\.js\?v=\d+$/);
+    assert.match(site.ext.userScript, /\/js\/jav\.guru\.user\.js\?v=2$/);
+    assert.match(src, /@version\s+1\.0\.1/);
     assert.equal(site.ext.subtitleLibrary, 'https://pub-662c4b411cfb4cf69f52f71f22140341.r2.dev/');
     assert.equal(site.ext.spider.searchContent.loadUrl, 'https://jav.guru/robots.txt#/page/${pg:-1}/?s=${key}');
     assert.equal(site.ext.spider.categoryContent.loadUrl, 'https://jav.guru/robots.txt#/category/${tid}/page/${pg:-1}/');
@@ -42,7 +44,7 @@ function run(spArgs, href, {fetchImpl, gm, doc} = {}) {
 
     const listHtml = '<div class="inside-article">';
     const card = (id, title) => ({querySelector: s => s.startsWith('.imgg') ? {getAttribute: () => `https://jav.guru/${id}/slug-${id}/`}
-        : s === 'img' ? {getAttribute: k => (k === 'src' ? 'https://cdn.example/p.jpg' : null)}
+        : s === 'img' ? {getAttribute: k => (k === 'src' ? 'data:image/gif;base64,R0lGOD' : k === 'data-src' ? `https://cdn.javmiku.com/wp-content/uploads/2026/10/${id}pl-550x374.jpg` : null)}
         : s === 'h2 a' ? {textContent: title} : s === '.date' ? {textContent: '13 Oct, 26'} : null});
     const listDoc = cards => ({readyState: 'complete', title: '', querySelector: () => null,
         querySelectorAll: q => q === '.inside-article' ? cards : q === 'a[href]' ? [{getAttribute: () => '/page/54/?s=SSIS'}] : []});
@@ -56,6 +58,7 @@ function run(spArgs, href, {fetchImpl, gm, doc} = {}) {
         assert.equal(s.r.page, +pg); assert.equal(s.r.pagecount, 54);
         assert.equal(s.r.list[0].vod_id, 'https://jav.guru/1062787/slug-1062787/');
         assert.deepEqual(s.gmCalls, []);
+        assert.equal(s.r.list[0].vod_pic, 'https://jav.guru/wp-content/uploads/2026/10/1062787pl-550x374.jpg', 'cover: data-src, cdn.javmiku → jav.guru');
     }
     // 分类第 1 页不带 /page/
     const c1 = await run(['categoryContent', 'jav', '1', true, {}], 'https://jav.guru/robots.txt#/category/jav/page/1/',
@@ -95,7 +98,7 @@ function run(spArgs, href, {fetchImpl, gm, doc} = {}) {
         : u === 'https://jav.guru/searcho/?xr=ihgfedcba' ? {status: 200, finalUrl: 'https://javclan.example/e/qq', responseText: 'jwplayer({"hls4":"/stream/T/master.m3u8","hls2":"https://cdn.example/hls2/master.m3u8?t=1"})'}
         : null});
     assert.deepEqual(p.gmCalls.map(c => c[0]), [gw('x'), 'https://jav.guru/searcho/?xr=ihgfedcba']);
-    assert.equal(p.gmCalls[0][1], page);
+    assert.equal(p.gmCalls[1][1], gw('x'), 'real gateway requested with gateway Referer');
     assert.deepEqual(p.r, {type: 'url', ext: {url: 'https://javclan.example/stream/T/master.m3u8',
         header: {'User-Agent': 'UA', Referer: 'https://javclan.example/', Origin: 'https://javclan.example'}}});
     // 原生请求网关被拦 → 页内同源 fetch 网关页
@@ -106,6 +109,20 @@ function run(spArgs, href, {fetchImpl, gm, doc} = {}) {
     assert.equal(p2.r.ext.url, 'https://cdn.example/hls2/x_h/master.m3u8?t=2');
     // 全部失败 → 提示换线路
     const p3 = await run(['playerContent', 'x', media], 'https://jav.guru/robots.txt', {});
-    assert.equal(p3.r.msg, '播放地址解析失败，请换线路重试');
+    assert.equal(p3.r.msg, '播放失败（网关页被拦截），请换线路重试');
+    // 原生请求真实地址被拦 → 页内取网关后整页跳转真实地址
+    const p4 = await run(['playerContent', 'x', media], 'https://jav.guru/robots.txt', {
+        fetchImpl: () => Promise.resolve({ok: true, text: () => Promise.resolve(gwHtml)})});
+    assert.equal(p4.replaced, 'https://jav.guru/searcho/?xr=ihgfedcba');
+    // 嵌入页（整页跳转后）：直接从页面解析 hls4
+    const p5 = await run(['playerContent', 'x', media], 'https://javclan.example/e/qq', {outer: '<script>jwplayer({"hls4":"/stream/T/master.m3u8"})</script>'});
+    assert.equal(p5.r.ext.url, 'https://javclan.example/stream/T/master.m3u8');
+    assert.equal(p5.r.ext.header.Referer, 'https://javclan.example/');
+    // 嵌入页上非播放阶段不运行
+    let ran = false;
+    vm.runInNewContext(src, {document: {readyState: 'complete'}, location: {href: 'https://x.example/e/1'}, navigator: {}, JSON, unsafeWindow: {},
+        GmSpiderInject: {GetSpiderArgs: () => '["categoryContent","jav","1"]', SetSpiderResult() { ran = true; }}, setInterval: () => { ran = true; return 1; }, setTimeout: () => 1});
+    assert.equal(ran, false);
+    assert.ok(!/1080p/.test(JSON.stringify(src.match(/const CLASSES = \[[\s\S]*?\];/)[0])), 'no 1080p category');
     console.log('jav.guru adapter checks passed.');
 })().catch(e => { console.error(e); process.exit(1); });

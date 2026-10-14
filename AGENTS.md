@@ -8,7 +8,7 @@
 | --- | --- |
 | 正式入口 | `https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json`（手机只填此地址） |
 | Spider | `gm_subs-v40.jar?v=40`，MD5 `c6a36e891a26e269300069fe7c317fef`；v39/v38/v37 保留回退 |
-| JavGuru 原站（测试） | jav.guru，key `jav_guru`，入口 `json/luoyuqiu-javguru-test.json`，脚本 `js/jav.guru.user.js?v=1`；线路 SB（1080p）/ LU（测试），见 [docs/sites/jav-guru.md](docs/sites/jav-guru.md) |
+| JavGuru 原站（测试） | jav.guru，key `jav_guru`，入口 `json/luoyuqiu-javguru-test.json`，脚本 `js/jav.guru.user.js?v=2`；线路 SB（1080p）/ LU（测试），见 [docs/sites/jav-guru.md](docs/sites/jav-guru.md) |
 | 正式六站 | MissAV `?v=9`、AV01 `?v=5`、肉视频 `?v=6`、Hanime1 `?v=3`、Upload18（原“JavGuru”仿站，key `javguru`）`?v=4`、SupJav `?v=16`（2026-10-13 用户要求正式上线；线路 EVS/VAS/FST/ST，见 [docs/sites/supjav.md](docs/sites/supjav.md)；开发通道 `json/luoyuqiu-supjav-test.json`） |
 | Jable | **已关闭**（脚本/实现保留）；未经用户新指令不恢复 |
 | 手机验收 | **v40 手机 QA 未做**；发布≠实机通过；不截图 |

@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         JavGuru (jav.guru)
 // @namespace    luoyuqiuspider
-// @version      0.1.0
+// @version      1.0.1
 // @description  jav.guru 原站 WebView 适配（测试配置）。列表/详情走 robots.txt + 页内 fetch 中转；线路 SB（StreamHG，1080p）与 LU（LuluStream，测试）由原生 HTTP 解析 master.m3u8，不点击任何元素。
 // @match        https://jav.guru/*
 // @match        https://jokers963.github.io/CatVodSpider/*
+// @match        https://*/e/*
 // @grant        unsafeWindow
 // @grant        GM_xmlhttpRequest
 // ==/UserScript==
@@ -21,6 +22,8 @@
     try { W.__lyqJavGuruRan = true; } catch (_) {}
     const args = typeof GmSpiderInject === "undefined" ? ["homeContent", "true"] : JSON.parse(GmSpiderInject.GetSpiderArgs());
     const method = args.shift();
+    // 托管站嵌入页（@match https://*/e/*）只在播放阶段整页跳转后处理。
+    if (!/^https:\/\/(jav\.guru|jokers963\.github\.io)\//.test(location.href || "") && method !== "playerContent") return;
 
     const BASE = "https://jav.guru/";
     // 线路按详情页按钮文字（STREAM XX）识别；只收 1080p 线路。SB = StreamHG（javclan 等别名域），LU = LuluStream（测试，地址绑定 IP）。
@@ -32,13 +35,25 @@
         {type_id: "decensored", type_name: "去码"},
         {type_id: "english-subbed", type_name: "英字"},
         {type_id: "amateur", type_name: "素人"},
-        {type_id: "FC2", type_name: "FC2"},
-        {type_id: "1080p", type_name: "1080p"}
+        {type_id: "FC2", type_name: "FC2"}
     ];
     let DOC = document;
 
     function absUrl(href) { try { return new URL(href, BASE).href; } catch (_) { return href || ""; } }
     function isVideoLink(href) { return /^https:\/\/jav\.guru\/\d+\/[^/?#]+\/?$/.test(absUrl(href)); }
+    // 封面：cdn.javmiku.com 开着 CF 机器人拦截，App 图片加载器（非浏览器 TLS）拿到 403 验证页，所有封面都显示成同一张默认图；
+    // 同一文件在 jav.guru/wp-content/ 下可直接访问，改写到原站。优先 data-src / data-lazy-src / srcset，跳过 data:/占位图。
+    function coverUrl(img) {
+        if (!img) return "";
+        const cands = [img.getAttribute("data-src"), img.getAttribute("data-lazy-src"),
+            ((img.getAttribute("data-srcset") || img.getAttribute("srcset") || "").split(",")[0] || "").trim().split(/\s+/)[0],
+            img.getAttribute("src")];
+        for (const c of cands) {
+            if (!c || /^data:|placeholder|blank\.gif|lazy/i.test(c)) continue;
+            return absUrl(c).replace(/^https?:\/\/cdn\.javmiku\.com\/wp-content\//, BASE + "wp-content/");
+        }
+        return "";
+    }
     function text(el) { return el ? String(el.textContent || "").replace(/\s+/g, " ").trim() : ""; }
 
     // 作品编码：FC2PPV 1234567 → FC2PPV-1234567；[ABC-123] → ABC-123。
@@ -66,7 +81,7 @@
             list.push({
                 vod_id: href,
                 vod_name: name,
-                vod_pic: img ? absUrl(img.getAttribute("data-src") || img.getAttribute("src") || "") : "",
+                vod_pic: coverUrl(img),
                 vod_remarks: text(card.querySelector(".date"))
             });
         });
@@ -157,18 +172,18 @@
         return base + "?" + rtype + "r=" + token.split("").reverse().join("");
     }
 
-    function gmGet(url, referer) {
+    function gmGet(url, referer, ms) {
         return new Promise(function (resolve) {
             if (typeof GM_xmlhttpRequest !== "function") { resolve(null); return; }
             let done = false;
             const fin = function (r) { if (!done) { done = true; resolve(r); } };
             try {
-                GM_xmlhttpRequest({method: "GET", url: url, timeout: 15000,
+                GM_xmlhttpRequest({method: "GET", url: url, timeout: ms || 15000,
                     headers: {"Referer": referer, "User-Agent": navigator.userAgent},
                     onload: function (r) { fin(r && r.status === 200 ? r : null); },
                     onerror: function () { fin(null); }, ontimeout: function () { fin(null); }});
             } catch (_) { fin(null); }
-            setTimeout(function () { fin(null); }, 20000);
+            setTimeout(function () { fin(null); }, (ms || 15000) + 3000);
         });
     }
 
@@ -180,28 +195,36 @@
         } catch (_) { return ""; }
     }
 
-    async function resolvePlay(rep) {
-        const gw = String(rep.gw || "");
-        if (!/^https:\/\/jav\.guru\/searcho\/\?/.test(gw)) return null;
-        const referer = /^https:\/\/jav\.guru\//.test(rep.page || "") ? rep.page : BASE;
-        // 网关页：原生 HTTP 优先；被 CF 拦（403）时用页内同源 fetch（本阶段页面就是 jav.guru/robots.txt）。
-        let gwHtml = ((await gmGet(gw, referer)) || {}).responseText || "";
-        if (!realGatewayUrl(gwHtml)) gwHtml = await pageFetch(gw);
-        const real = realGatewayUrl(gwHtml);
-        if (!real) return null;
-        // 真实地址 302 → 视频托管站嵌入页；HttpURLConnection 自动跟随，finalUrl 即嵌入页（域名别名随站点更换，不写死）。
-        const r = await gmGet(real, gw);
-        if (!r) return null;
-        const embed = String(r.finalUrl || "").split("#")[0];
-        if (!/^https:\/\//.test(embed) || /^https:\/\/jav\.guru\//.test(embed)) return null;
-        let url = hlsFromEmbed(r.responseText, embed);
-        if (!url) {
-            const again = await gmGet(embed, BASE);
-            url = again ? hlsFromEmbed(again.responseText, embed) : "";
-        }
-        if (!url) return null;
+    function fail(step) { return {type: "url", ext: {url: "", header: {}}, msg: "播放失败（" + step + "），请换线路重试"}; }
+    function playResult(url, embed) {
         const origin = (/^https:\/\/[^/]+/.exec(embed) || [""])[0];
         return {type: "url", ext: {url: url, header: {"User-Agent": navigator.userAgent, "Referer": origin + "/", "Origin": origin}}};
+    }
+
+    // 播放阶段页面 = jav.guru/robots.txt：
+    // 1) 网关页用页内同源 fetch（WebView 的 Cookie/UA/TLS，不受 CF 对原生请求的拦截），失败再试原生；
+    // 2) 真实地址（302 → 托管站嵌入页）先用原生请求（HttpURLConnection 跟随跳转、保留 Referer），
+    //    被拦时整页跳转过去，由嵌入页上的本脚本（@match https://*/e/*）直接从页面解析地址；
+    // 3) 嵌入页必须带 jav.guru 的 Referer 才输出播放器脚本。
+    async function resolvePlay(rep) {
+        const gw = String(rep.gw || "");
+        if (!/^https:\/\/jav\.guru\/searcho\/\?/.test(gw)) return fail("线路参数异常");
+        let gwHtml = await pageFetch(gw);
+        if (!realGatewayUrl(gwHtml)) gwHtml = ((await gmGet(gw, BASE, 8000)) || {}).responseText || "";
+        const real = realGatewayUrl(gwHtml);
+        if (!real) return fail(gwHtml ? "网关页结构变化" : "网关页被拦截");
+        const r = await gmGet(real, gw, 8000);
+        const embed = r ? String(r.finalUrl || "").split("#")[0] : "";
+        if (!r || !/^https:\/\//.test(embed) || /^https:\/\/jav\.guru\//.test(embed)) {
+            return {navigate: real};
+        }
+        let url = hlsFromEmbed(r.responseText, embed);
+        if (!url) {
+            const again = await gmGet(embed, BASE, 8000);
+            url = again ? hlsFromEmbed(again.responseText, embed) : "";
+        }
+        if (!url) return {navigate: real};
+        return playResult(url, embed);
     }
 
     function playerMedium() { try { return JSON.parse(args[1] || "{}"); } catch (_) { return {}; } }
@@ -240,15 +263,14 @@
             if (!playData.length) return {list: []};
             return {list: [{
                 vod_id: page, vod_name: title,
-                vod_pic: img ? absUrl(img.getAttribute("src") || "") : "",
+                vod_pic: coverUrl(img),
                 vod_actor: actress.join(","),
                 vod_content: title,
                 vod_play_data: playData
             }]};
         },
         playerContent: async function () {
-            const r = await resolvePlay((playerMedium().ext || {}).replace || {});
-            return r || {type: "url", ext: {url: "", header: {}}, msg: "播放地址解析失败，请换线路重试"};
+            return await resolvePlay((playerMedium().ext || {}).replace || {});
         }
     };
 
@@ -298,6 +320,14 @@
     const startedAt = Date.now();
     function deliver(result) {
         if (sent) return;
+        if (result && result.navigate) {
+            // 原生请求被拦：带 jav.guru Referer 整页跳到真实地址，嵌入页上的本脚本继续解析。
+            sent = true;
+            clearInterval(poller);
+            try { sessionStorage.setItem("__lyqJgNav", String(Date.now())); } catch (_) {}
+            location.replace(result.navigate);
+            return;
+        }
         sent = true;
         clearInterval(poller);
         try { GmSpiderInject.HideWebview(); } catch (_) {}
@@ -310,10 +340,18 @@
     function sendResult() {
         if (sent || busy) return;
         if (!spider[method]) { deliver({list: [], msg: "请求参数异常，请重试"}); return; }
+        if (method === "playerContent" && !/^https:\/\/jav\.guru\//.test(location.href || "")) {
+            // 托管站嵌入页（整页跳转后）：从本页脚本解析 master.m3u8；最多等 10 秒。
+            const html = (document.documentElement && document.documentElement.outerHTML) || "";
+            const url = hlsFromEmbed(html, location.href);
+            if (url) { deliver(playResult(url, location.href)); return; }
+            if (Date.now() - startedAt > 10000) deliver(fail(/p,a,c,k,e,d/.test(html) ? "嵌入页解析失败" : "嵌入页无播放器（可能被拦截）"));
+            return;
+        }
         if (method === "playerContent") {
             busy = true;
             Promise.resolve(spider.playerContent()).then(deliver, function () {
-                deliver({type: "url", ext: {url: "", header: {}}, msg: "播放地址解析失败，请换线路重试"});
+                deliver(fail("脚本异常"));
             });
             return;
         }
