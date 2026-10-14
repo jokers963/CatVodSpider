@@ -110,9 +110,9 @@ async function main() {
     assert.ok(site.ext.playUrlMatch.includes('https://streamtape.com/get_video*'));
     assert.ok(site.ext.playUrlMatch.includes('https://*.tapecontent.net/radosgw/*'));
     assert.match(userSrc0(), /@match\s+https:\/\/streamtape\.com\/e\/\*/);
-    assert.match(site.ext.userScript, /supjav\.user\.js\?v=15$/);
+    assert.match(site.ext.userScript, /supjav\.user\.js\?v=16$/);
     const userSrc = fs.readFileSync(__dirname + '/supjav.user.js', 'utf8');
-    assert.match(userSrc, /@version\s+2\.7\.0/);
+    assert.match(userSrc, /@version\s+2\.7\.1/);
     assert.match(userSrc, /@match\s+https:\/\/jokers963\.github\.io\/CatVodSpider\/\*/);
     assert.ok(!/clickServer/.test(userSrc));
     // ST: lk1 → streamtape embed; result is bare {type:'match'}, WebView shown, then top-level jump with referrer meta; no click.
@@ -264,7 +264,7 @@ async function main() {
         const sp = site.ext.spider;
         assert.equal(sp.homeContent.loadUrl, 'https://jokers963.github.io/CatVodSpider/');
         assert.equal(sp.categoryContent.loadUrl, 'https://supjav.com/robots.txt#/category/${tid}/page/${pg:-1}/');
-        assert.equal(sp.searchContent.loadUrl, 'https://supjav.com/robots.txt#/?s=${key}');
+        assert.equal(sp.searchContent.loadUrl, 'https://supjav.com/robots.txt#/page/${pg:-1}/?s=${key}');
         assert.equal(sp.detailContent.loadUrl, 'https://supjav.com/robots.txt#${id}');
         assert.equal(site.ext.webViewSettings.userAgentString, undefined, 'keep WebView default UA like MissAV (cf_clearance is UA-bound)');
         assert.ok(!site.ext.webViewSettings.blockList.some(x => /cloudflare|turnstile|supjav\.com/i.test(x)));
@@ -291,16 +291,16 @@ async function main() {
             querySelectorAll: q => q === 'div.post' && /class="post"/.test(html)
                 ? [{querySelector: s => s.startsWith('a.img') ? {getAttribute: k => ({href: 'https://supjav.com/464694.html', title: 'FC2PPV 4991238 X'})[k] || null, textContent: ''} : null}]
                 : q === 'a[href]' ? [{getAttribute: () => '/category/censored-jav/page/7/'}] : []});
-        const mk = fetchImpl => {
+        const mk = (fetchImpl, spArgs = ['categoryContent', 'censored-jav', '2', true, {}], href = 'https://supjav.com/robots.txt#/category/censored-jav/page/2/') => {
             let replaced = ''; let resolveR; const got = new Promise(r => { resolveR = r; });
             const gmCalls = [];
             const win = {fetch: fetchImpl};
             vm.runInNewContext(fs.readFileSync(__dirname + '/supjav.user.js', 'utf8'), {
                 document: {readyState: 'complete', title: '', querySelector: () => null, querySelectorAll: () => []},
-                location: {href: 'https://supjav.com/robots.txt#/category/censored-jav/page/2/', hash: '#/category/censored-jav/page/2/', replace: u => { replaced = u; resolveR(null); }},
+                location: {href, hash: href.slice(href.indexOf('#')), replace: u => { replaced = u; resolveR(null); }},
                 navigator: {userAgent: 'UA'}, performance: {timeOrigin: Date.now()}, Date, URL, Promise, JSON,
                 DOMParser: function () { this.parseFromString = parsed; }, unsafeWindow: win,
-                GmSpiderInject: {GetSpiderArgs: () => JSON.stringify(['categoryContent', 'censored-jav', '2', true, {}]), HideWebview() {}, ShowWebview() {}, SetSpiderResult: v => resolveR(JSON.parse(v))},
+                GmSpiderInject: {GetSpiderArgs: () => JSON.stringify(spArgs), HideWebview() {}, ShowWebview() {}, SetSpiderResult: v => resolveR(JSON.parse(v))},
                 GM_xmlhttpRequest: d => gmCalls.push(d.url), setInterval: () => 1, clearInterval() {}, setTimeout: () => 1
             });
             return got.then(r => ({r, replaced, gmCalls}));
@@ -314,6 +314,18 @@ async function main() {
         assert.equal(cf.r, null); assert.equal(cf.replaced, 'https://supjav.com/category/censored-jav/page/2/');
         const ch = await mk(() => Promise.resolve({ok: true, text: () => Promise.resolve('<html><head><title>Just a moment...</title></head></html>')}));
         assert.equal(ch.replaced, 'https://supjav.com/category/censored-jav/page/2/');
+        // 2.7.1 search pagination: page N → /page/N/?s=, keyword encoded once; page 1 has no /page/.
+        for (const [kw, pg, want] of [['SSIS', '3', 'https://supjav.com/page/3/?s=SSIS'], ['SSIS-001', '1', 'https://supjav.com/?s=SSIS-001'],
+            ['三上 a&b#c+%', '2', 'https://supjav.com/page/2/?s=' + encodeURIComponent('三上 a&b#c+%')]]) {
+            const seen = [];
+            const sr = await mk(u => { seen.push(u); return Promise.resolve({ok: true, text: () => Promise.resolve(listHtml)}); },
+                ['searchContent', kw, false, pg], 'https://supjav.com/robots.txt#/page/' + pg + '/?s=' + kw);
+            assert.deepEqual(seen, [want]);
+            assert.equal(sr.r.page, +pg); assert.equal(sr.r.pagecount, Math.max(7, +pg));
+        }
+        const empty = await mk(() => Promise.resolve({ok: true, text: () => Promise.resolve('<html><title>Search</title></html>')}),
+            ['searchContent', 'zzqqxxnone', false, '1'], 'https://supjav.com/robots.txt#/page/1/?s=zzqqxxnone');
+        assert.deepEqual(empty.r.list, []); assert.equal(empty.r.pagecount, 1);
     }
 
     console.log('SupJav adapter checks passed.');

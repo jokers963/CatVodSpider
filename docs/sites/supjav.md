@@ -1,6 +1,6 @@
 # SupJav
 
-更新时间：2026-10-13。正式配置 `json/luoyuqiu.json`（key `supjav`，脚本 `js/supjav.user.js?v=15`，@version 2.6.0）；开发通道 `json/luoyuqiu-supjav-test.json`（同脚本，名称带「测试」，先在此验证再同步正式）。
+更新时间：2026-10-13。正式配置 `json/luoyuqiu.json`（key `supjav`，脚本 `js/supjav.user.js?v=16`，@version 2.6.0）；开发通道 `json/luoyuqiu-supjav-test.json`（同脚本，名称带「测试」，先在此验证再同步正式）。
 
 ## 线路（顺序 EVS / VAS / FST / ST）
 
@@ -61,3 +61,9 @@
 - 差异点：supjav 带 `_cfuvid`（限速），每次整页加载会产生大量同域资源请求。
 - 做法：分类、搜索、详情三个阶段改为加载 CF 边缘缓存的 `https://supjav.com/robots.txt#<目标>`（不会触发验证），再在页内用 `fetch(credentials:same-origin)` 取 HTML（与 WebView 共用 Cookie、UA 和 TLS），用 DOMParser 解析。每个阶段只发 1 个 HTML 请求。
 - fetch 失败、返回 403 或验证页时，`location.replace(目标)` 回退为整页导航，交给用户手动完成验证（不自动点击）。验证通过后真实页面加载完成，再等 1.5 秒交结果，让 Cookie 落盘。
+
+## 搜索分页（2.7.1）
+
+- 2.7.0 及更早的问题：searchContent 的 URL 里没有页码，翻到第 N 页仍然拿到第 1 页，而 pagecount 却按分页链接算出 123，所以播放器会一直往下翻，同一批结果循环出现。
+- 现在的做法：搜索目标页由脚本按参数构造。第 1 页是 `/?s=<kw>`，第 N 页是 `/page/N/?s=<kw>`，关键词只用 `encodeURIComponent` 编码一次。配置里的 loadUrl 也改成了 `robots.txt#/page/${pg:-1}/?s=${key}`。
+- 分类和搜索都会返回 `page`，pagecount 取 max(分页链接里的最大页码, 当前页)；结果为空时 pagecount = 当前页，播放器不会再往下翻。

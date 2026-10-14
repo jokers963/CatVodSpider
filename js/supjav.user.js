@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      2.7.0
+// @version      2.7.1
 // @description  SupJav WebView adapter for the open-source GM spider runtime. TEST ONLY - not in formal config.
 // @match        https://supjav.com/*
 // @match        https://jokers963.github.io/CatVodSpider/*
@@ -452,8 +452,16 @@
 
     const spider = {
         homeContent: function () { return {class: CLASSES, list: []}; },
-        categoryContent: function () { return {list: videos(), pagecount: pageCount()}; },
-        searchContent: function () { return {list: videos(), pagecount: pageCount()}; },
+        categoryContent: function (tid, pg) {
+            const page = Math.max(1, parseInt(pg, 10) || 1);
+            const list = videos();
+            return {list: list, page: page, pagecount: list.length ? Math.max(pageCount(), page) : page};
+        },
+        searchContent: function (key, quick, pg) {
+            const page = Math.max(1, parseInt(pg, 10) || 1);
+            const list = videos();
+            return {list: list, page: page, pagecount: list.length ? Math.max(pageCount(), page) : page};
+        },
         detailContent: function (ids) {
             const page = ids[0];
             const h1 = (DOC.querySelector(".archive-title h1, h1") || {}).textContent;
@@ -542,6 +550,12 @@
     const RELAY_PAGE = /^https:\/\/supjav\.com\/robots\.txt(?:[?#]|$)/;
     function relayTarget() {
         if (!RELAY_PAGE.test(location.href || "")) return "";
+        if (method === "searchContent") {
+            // 搜索目标页由脚本按参数构造：关键词统一 encodeURIComponent（避免 & # % + 等破坏 hash/查询串），页码走 /page/N/?s=。
+            const kw = String(args[0] == null ? "" : args[0]).trim();
+            const pg = Math.max(1, parseInt(args[2], 10) || 1);
+            return kw ? "https://supjav.com/" + (pg > 1 ? "page/" + pg + "/" : "") + "?s=" + encodeURIComponent(kw) : "";
+        }
         let h = String(location.hash || "").replace(/^#/, "");
         try { h = decodeURIComponent(h); } catch (_) {}
         if (!h) return "";

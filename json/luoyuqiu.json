@@ -171,7 +171,7 @@
       "filterable": 0,
       "timeout": 60,
       "ext": {
-        "userScript": "https://jokers963.github.io/CatVodSpider/js/supjav.user.js?v=15",
+        "userScript": "https://jokers963.github.io/CatVodSpider/js/supjav.user.js?v=16",
         "subtitleLibrary": "https://pub-662c4b411cfb4cf69f52f71f22140341.r2.dev/",
         "debug": false,
         "webViewSettings": {
@@ -198,7 +198,7 @@
           "categoryContent": {"loadUrl": "https://supjav.com/robots.txt#/category/${tid}/page/${pg:-1}/"},
           "detailContent": {"loadUrl": "https://supjav.com/robots.txt#${id}"},
           "playerContent": {"loadUrl": "${stpage:-https://jokers963.github.io/CatVodSpider/}"},
-          "searchContent": {"loadUrl": "https://supjav.com/robots.txt#/?s=${key}"}
+          "searchContent": {"loadUrl": "https://supjav.com/robots.txt#/page/${pg:-1}/?s=${key}"}
         }
       },
       "style": {
