@@ -168,7 +168,7 @@ const jgDetail = await run('javguru', 'detailContent', 'ipzz-961', {
     title: 'IPZZ-961 title | JavGuru', readyState: 'complete',
     querySelector: selector => selector === 'meta[property="og:title"]' ? {content: 'IPZZ-961 title'}
         : selector === 'meta[property="og:image"]' ? {content: 'https://upload18.cc/v/IPZZ-961/poster.jpg'}
-        : selector === "iframe[src*='upload18.org/play']" ? {src: 'https://upload18.org/play/index/ipzz-961'}
+        : selector.includes("iframe[src*='upload18.org/play']") ? {getAttribute: () => null, src: 'https://upload18.org/play/index/ipzz-961'}
         : null,
     querySelectorAll: () => []
 });
@@ -187,6 +187,20 @@ const jgPlayer = await run('javguru', 'playerContent', '', {
     })}
 });
 assert.equal(jgPlayer.type, 'match', 'player stays in browser sniff mode even when PLAYER_CONFIG exposes a URL');
+// 1.0.4: upload18 devtool guard (redirects top to /login inside WebView) is pre-empted at document-start.
+const u18Win = {PLAYER_CONFIG: jgPlayerCfg, jwplayer: () => ({play() {}, setMute() {}, getPlaylistItem: () => ({file: jgPlayerCfg.m3u8})})};
+await run('javguru', 'playerContent', '', {title: 'x', readyState: 'loading', querySelector: () => null, querySelectorAll: () => []},
+    {location: {origin: 'https://upload18.org', href: 'https://upload18.org/play/index/agmx-271'}, unsafeWindow: u18Win,
+     setInterval: f => { setTimeout(f, 0); return 1; }});
+assert.ok(u18Win.__u18DevtoolGuard && u18Win.__u18DevtoolGuard.version === 'lyq-stub', 'devtool guard placeholder installed');
+// Detail page: upload18 iframe is neutered (src saved to data-lyq-src) and the slug still comes from it.
+const jgDetail2 = await run('javguru', 'detailContent', 'x-1', {
+    title: 'T', readyState: 'complete',
+    querySelector: selector => selector.startsWith('iframe[data-lyq-src]') ? {getAttribute: k => k === 'data-lyq-src' ? 'https://upload18.org/play/index/ipzz-961' : null, src: 'about:blank'} : null,
+    querySelectorAll: () => []
+});
+assert.equal(jgDetail2.list[0].vod_play_data[0].media[0].ext.replace.slug, 'ipzz-961');
+assert.match(fs.readFileSync(__dirname + '/javguru.user.js', 'utf8'), /@version\s+1\.0\.4[\s\S]*@run-at\s+document-start/);
 console.log('New-site adapter checks passed.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

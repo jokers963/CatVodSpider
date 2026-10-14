@@ -4,7 +4,7 @@
 > 原因（用户说明）：`javguru.fit` 不是 jav.guru 原站，而是一个注册大量仿冒大站名域名的盗版站群，所有视频都来自同一个 Upload18 播放器。
 > 真正的 jav.guru 原站另行接入，见 [jav-guru.md](jav-guru.md)（测试配置）。下文的“JavGuru”均指该仿站。
 
-当前实现：`js/javguru.user.js` 1.0.2，正式脚本查询版本 `v=4`（与 `json/luoyuqiu.json` 一致）。播放故障与手机证据见 `docs/handovers/2026-10-02-doubao-to-codex-javguru-exoplayer.md`。
+当前实现：`js/javguru.user.js` 1.0.4，正式脚本查询版本 `v=5`（与 `json/luoyuqiu.json` 一致）。播放故障与手机证据见 `docs/handovers/2026-10-02-doubao-to-codex-javguru-exoplayer.md`。
 
 ## 站点定位与接入选择
 
@@ -51,3 +51,9 @@
 - 短期地址出现在页面变量中不代表可以脱离网页播放器使用。
 - `playUrlMatch` 必须按真实 URL 形态编写，不能假定 HLS 地址一定带 `.m3u8`。
 - 嵌套 iframe 中脚本注入受限时，可把已授权的播放器页作为 `playerContent` 顶层页面加载。
+
+## 1.0.4（2026-10-14，手机加载失败）
+
+- 排查：正式配置里该站（key `javguru`）在改名提交 `47088ad` 前后只有 `name` 不同，脚本地址、loadUrl、playUrlMatch、blockList 都没变。jav.guru 原站的脚本（`@match https://jav.guru/*` 与 `https://*/e/*`）不匹配 javguru.fit 和 upload18.org 的页面；GM 运行时每个站点用各自的脚本库（按 userScript 地址做后缀），不存在跨站注入，也不按站点名取脚本。javguru.fit 本身在线，列表、搜索、详情都能打开。
+- 复现：详情页里的 upload18 播放 iframe 会把顶层页面改写到 `upload18.org/login`；播放阶段在有界面的 Chrome 里也会自己跳到 `/login`。原因是 upload18 2026-10 新增的开发者工具检测（`player-devtool-guard` + `disable-devtool`，`redirectOnDetect: true`）：在 WebView 环境里误判后停掉播放器并跳到站点根目录，根目录再转到登录页。
+- 修复：播放页在 document-start 预置 `window.__u18DevtoolGuard`（守卫脚本检测到已存在就直接返回）；详情页用 MutationObserver 把 upload18 iframe 的 src 改成 about:blank（slug 另存到 data-lyq-src，解析照常）。实测：播放页不再跳转，helvid 的 m3u8 请求正常发出；详情页标题、封面、slug 都正常。

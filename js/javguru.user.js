@@ -1,13 +1,45 @@
 // ==UserScript==
 // @name         JavGuru
 // @namespace    luoyuqiuspider
-// @version      1.0.3
+// @version      1.0.4
 // @description  JavGuru (upload18) WebView adapter for the open-source GM spider runtime.
 // @match        https://javguru.fit/*
 // @match        https://upload18.org/*
+// @run-at       document-start
 // @grant        unsafeWindow
 // ==/UserScript==
 (function () {
+    // 2026-10 upload18 播放页新增开发者工具检测（player-devtool-guard + disable-devtool）：在 WebView/自动化环境里误判后
+    // 停掉播放器并把顶层页面跳到 upload18.org/ → /login（嵌在详情页时也会改写 top.location），导致播放/详情失败。
+    // 该守卫脚本开头若 window.__u18DevtoolGuard 已存在就直接返回，故在 document-start 预先占位。
+    const W = typeof unsafeWindow !== "undefined" ? unsafeWindow : (typeof window !== "undefined" ? window : {});
+    const onPlayer = /(^|\.)upload18\.org$/.test((function () { try { return new URL(location.href).hostname; } catch (_) { return ""; } })());
+    if (onPlayer) {
+        try { Object.defineProperty(W, "__u18DevtoolGuard", {value: Object.freeze({version: "lyq-stub", ready: true, open: false}), writable: false, configurable: false}); } catch (_) {}
+    } else if (typeof document !== "undefined" && typeof MutationObserver === "function") {
+        // 详情页（javguru.fit）：upload18 iframe 只需要 src 里的 slug，不让它加载，避免其守卫改写顶层页面。
+        const neuter = function (f) {
+            const src = f.getAttribute("src") || "";
+            if (/upload18\.org\/play/.test(src)) { f.setAttribute("data-lyq-src", src); f.setAttribute("src", "about:blank"); }
+        };
+        try {
+            new MutationObserver(function (ms) {
+                ms.forEach(function (m) { m.addedNodes.forEach(function (n) {
+                    if (n.tagName === "IFRAME") neuter(n);
+                    else if (n.querySelectorAll) n.querySelectorAll("iframe").forEach(neuter);
+                }); });
+            }).observe(document.documentElement || document, {childList: true, subtree: true});
+        } catch (_) {}
+    }
+    if (!onPlayer && typeof document !== "undefined" && document.readyState && document.readyState !== "complete"
+            && typeof W.addEventListener === "function") {
+        W.addEventListener("load", main, {once: true});
+    } else main();
+
+    function main() {
+    try { if (W.top && W.top !== W) return; } catch (_) { return; } // 只在顶层文档运行
+    if (W.__lyqJavguruRan) return;
+    try { W.__lyqJavguruRan = true; } catch (_) {}
     const args = typeof GmSpiderInject === "undefined"
             ? ["homeContent", "true"]
             : JSON.parse(GmSpiderInject.GetSpiderArgs());
@@ -100,8 +132,8 @@
         detailContent: function (ids) {
             const title = document.querySelector('meta[property="og:title"]')?.content || document.title;
             const image = document.querySelector('meta[property="og:image"]')?.content || "";
-            const frame = document.querySelector("iframe[src*='upload18.org/play']");
-            const src = frame ? frame.src : "";
+            const frame = document.querySelector("iframe[data-lyq-src], iframe[src*='upload18.org/play']");
+            const src = frame ? (frame.getAttribute("data-lyq-src") || frame.src || "") : "";
             const m = src.match(/\/play\/index\/([^\/?#]+)/);
             const slug = m ? decodeURIComponent(m[1]) : ids[0];
             return {list: [{
@@ -235,4 +267,5 @@
     else if (typeof unsafeWindow !== "undefined" && unsafeWindow.addEventListener) {
         unsafeWindow.addEventListener("load", sendResult, {once: true});
     } else sendResult();
+    }
 })();
