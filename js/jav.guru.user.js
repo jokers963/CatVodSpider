@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         JavGuru (jav.guru)
 // @namespace    luoyuqiuspider
-// @version      1.0.1
-// @description  jav.guru 原站 WebView 适配（测试配置）。列表/详情走 robots.txt + 页内 fetch 中转；线路 SB（StreamHG，1080p）与 LU（LuluStream，测试）由原生 HTTP 解析 master.m3u8，不点击任何元素。
+// @version      1.0.2
+// @description  jav.guru 原站 WebView 适配（测试配置）。列表/详情走 robots.txt + 页内 fetch 中转；线路 SB（StreamHG，1080p）由原生 HTTP 解析 master.m3u8，不点击任何元素。
 // @match        https://jav.guru/*
 // @match        https://jokers963.github.io/CatVodSpider/*
 // @match        https://*/e/*
@@ -27,8 +27,8 @@
 
     const BASE = "https://jav.guru/";
     // 线路按详情页按钮文字（STREAM XX）识别；只收 1080p 线路。SB = StreamHG（javclan 等别名域），LU = LuluStream（测试，地址绑定 IP）。
-    const LINES = ["SB", "LU"];
-    const LINE_LABEL = {SB: "SB", LU: "LU（测试）"};
+    const LINES = ["SB"]; // LU（LuluStream）与 SupJav 的 LUC 同一托管，仅 720p，不收。
+    const LINE_LABEL = {SB: "SB"};
     const CLASSES = [
         {type_id: "jav", type_name: "有码"},
         {type_id: "jav-uncensored", type_name: "无码"},
@@ -306,7 +306,7 @@
                 if (html && !looksChallenged(html)) {
                     DOC = new DOMParser().parseFromString(html, "text/html");
                     const result = spider[method].apply(spider, args);
-                    if (method === "detailContent" && !(result.list[0] && result.list[0].vod_play_data)) result.msg = "没有可用线路（仅支持 SB/LU）";
+                    if (method === "detailContent" && !(result.list[0] && result.list[0].vod_play_data)) result.msg = "没有可用线路（仅支持 SB）";
                     else if (method !== "detailContent" && !result.list.length) result.msg = "当前页面没有匹配内容";
                     return result;
                 }
@@ -380,7 +380,7 @@
             return;
         }
         if (Date.now() - startedAt < 15000) return;
-        result.msg = method === "detailContent" ? "没有可用线路（仅支持 SB/LU）" : "当前页面没有匹配内容";
+        result.msg = method === "detailContent" ? "没有可用线路（仅支持 SB）" : "当前页面没有匹配内容";
         deliver(result);
     }
     poller = setInterval(sendResult, 500);

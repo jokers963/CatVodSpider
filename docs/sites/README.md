@@ -15,7 +15,7 @@
 | 肉视频（Rou） | 在用 `?v=6` | Codex | DOM + 页面内编码 hydration | 本地代理解包伪 PNG HLS | [肉视频](rou.md) |
 | Hanime1 | 在用 `?v=3` | Codex | DOM 抓取 + 固定分类/筛选 | 多清晰度 MP4 直链 | [Hanime1](hanime1.md) |
 | Upload18（原“JavGuru”仿站 javguru.fit，key `javguru`） | 在用 `?v=4` | Codex | DOM + 第三方网页播放器 | WebView 启播后嗅探 HLS | [Upload18](upload18.md) |
-| JavGuru 原站 jav.guru（key `jav_guru`） | 测试 `json/luoyuqiu-javguru-test.json`，`?v=2` | Codex | robots.txt + 页内 fetch 中转 | 原生 HTTP 解析 SB（StreamHG 1080p）/ LU（测试） | [JavGuru 原站](jav-guru.md) |
+| JavGuru 原站 jav.guru（key `jav_guru`） | 在用 `?v=3`（开发通道 `json/luoyuqiu-javguru-test.json`） | Codex | robots.txt + 页内 fetch 中转 | 原生 HTTP 解析 SB（StreamHG 1080p）；LU 仅 720p 不收 | [JavGuru 原站](jav-guru.md) |
 | SupJav | 在用 `?v=14` | Grok Bot | DOM 抓取 + lk1 中转（GM_xmlhttpRequest） | EVS/VAS/FST 直链 HLS；ST 手动点播放 + 嗅探 | [SupJav](supjav.md) |
 | Jable | **已关闭**（脚本保留） | Codex | DOM 抓取 + AJAX 分页 + 验证页兼容 | 详情页 HLS 直链 | [Jable](jable.md) |
 

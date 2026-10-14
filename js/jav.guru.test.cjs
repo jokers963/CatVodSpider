@@ -30,15 +30,16 @@ function run(spArgs, href, {fetchImpl, gm, doc, outer} = {}) {
     assert.equal(cfg.sites.length, 1);
     const site = cfg.sites[0];
     assert.equal(site.key, 'jav_guru'); assert.equal(site.name, '🎬 JavGuru（测试）');
-    assert.match(site.ext.userScript, /\/js\/jav\.guru\.user\.js\?v=2$/);
-    assert.match(src, /@version\s+1\.0\.1/);
+    assert.match(site.ext.userScript, /\/js\/jav\.guru\.user\.js\?v=3$/);
+    assert.match(src, /@version\s+1\.0\.2/);
     assert.equal(site.ext.subtitleLibrary, 'https://pub-662c4b411cfb4cf69f52f71f22140341.r2.dev/');
     assert.equal(site.ext.spider.searchContent.loadUrl, 'https://jav.guru/robots.txt#/page/${pg:-1}/?s=${key}');
     assert.equal(site.ext.spider.categoryContent.loadUrl, 'https://jav.guru/robots.txt#/category/${tid}/page/${pg:-1}/');
     assert.equal(site.ext.spider.playerContent.loadUrl, 'https://jav.guru/robots.txt');
     assert.ok(site.ext.webViewSettings.blockList.some(u => u.includes('pemsrv.com')));
     const formal = JSON.parse(fs.readFileSync(path.join(root, 'json/luoyuqiu.json'), 'utf8'));
-    assert.ok(!formal.sites.some(s => s.key === 'jav_guru'), 'jav.guru 原站暂不进正式配置');
+    assert.deepEqual({...formal.sites.find(s => s.key === 'jav_guru'), name: ''}, {...site, name: ''}, '正式 JavGuru 原站须与测试入口一致（名称除外）');
+    assert.equal(formal.sites.find(s => s.key === 'jav_guru').name, '🎬 JavGuru');
     assert.equal(formal.sites.find(s => s.key === 'javguru').name, '🎬 Upload18');
     assert.ok(!/\.click\(\)|dispatchEvent|start_player\(/.test(src.replace(/\/\/.*$/gm, '')), 'no programmatic clicks');
 
@@ -86,7 +87,7 @@ function run(spArgs, href, {fetchImpl, gm, doc, outer} = {}) {
     const d = await run(['detailContent', [page]], 'https://jav.guru/robots.txt#' + page, {fetchImpl: okFetch, doc: detailDoc});
     const v = d.r.list[0];
     assert.equal(v.vod_actor, 'Aozora Hikari');
-    assert.deepEqual(v.vod_play_data.map(x => x.from), ['START-660 SB', 'START-660 LU（测试）']);
+    assert.deepEqual(v.vod_play_data.map(x => x.from), ['START-660 SB']);
     assert.deepEqual(v.vod_play_data[0].media[0].ext.replace, {page, gw: gw('x'), line: 'SB'});
 
     // 播放：网关页 → 计算真实地址（3 段 data 拼接后反转）→ 302 嵌入页 → hls4 master.m3u8（同域相对路径）。

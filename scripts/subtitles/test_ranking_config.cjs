@@ -32,7 +32,7 @@ assert.equal(read('jar/gm_subs-v40.jar.md5').toString().trim(), 'c6a36e891a26e26
 assert.deepEqual(read('jar/gm_subs-v39.jar'), read(jar), 'Previous v39 rollback must reuse verified fix3 bytes');
 assert.equal(hash('jar/gm_subs-v38.jar', 'sha256'), '52a182633f21b6fa53f12bd6aa8279f8f15e1ebe36436f417938438a35d4fc04');
 test.spider = formal.spider;
-assert.deepEqual(formal.sites.map(site => site.key), ['missav', 'av01', 'rou', 'hanime1', 'javguru', 'supjav']);
-formal.sites = formal.sites.filter(site => site.key !== 'supjav'); // SupJav 正式上线晚于该测试入口
+assert.deepEqual(formal.sites.map(site => site.key), ['missav', 'av01', 'rou', 'hanime1', 'javguru', 'jav_guru', 'supjav']);
+formal.sites = formal.sites.filter(site => site.key !== 'supjav' && site.key !== 'jav_guru'); // SupJav 正式上线晚于该测试入口
 assert.deepEqual(test, formal, 'Only test JAR and removal of library lookup may differ');
 console.log('Ranking test config: old fix3 test isolated from formal v40, v39/v38 rollback preservation checked');

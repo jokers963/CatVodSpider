@@ -43,7 +43,10 @@ assert.equal(createHash('sha256').update(read('jar/gm_subs-v37.jar')).digest('he
   '03b7bba54a47c958b5b11b04e96382a4687b01825eade40295976443b5af0021');
 assert.equal(read('jar/gm_subs-v37.jar.md5').toString().trim(), '004df47ae36384de6fe14d5e31f23ff7');
 // 正式配置 = 字幕测试五站 + SupJav（2026-10-13 正式上线；字幕测试入口不含 SupJav）
-assert.deepEqual(formal.sites.map(site => site.key), [...enabledKeys, 'supjav']);
+assert.deepEqual(formal.sites.map(site => site.key), ['missav', 'av01', 'rou', 'hanime1', 'javguru', 'jav_guru', 'supjav']);
+const jgFormal = formal.sites.find(site => site.key === 'jav_guru');
+const jgDev = JSON.parse(read('json/luoyuqiu-javguru-test.json')).sites.find(site => site.key === 'jav_guru');
+assert.deepEqual({...jgFormal, name: ''}, {...jgDev, name: ''}, 'Formal jav.guru must equal dev channel entry except name');
 assert.ok(!formal.sites.some(site => site.key === 'memojav' || site.key === 'jable'));
 const supjavFormal = formal.sites.find(site => site.key === 'supjav');
 const supjavDev = JSON.parse(read('json/luoyuqiu-supjav-test.json')).sites.find(site => site.key === 'supjav');
@@ -57,6 +60,6 @@ for (const site of formal.sites) {
   delete site.ext.subtitleLibrary;
 }
 test.spider = formal.spider;
-formal.sites = formal.sites.filter(site => site.key !== 'supjav');
+formal.sites = formal.sites.filter(site => site.key !== 'supjav' && site.key !== 'jav_guru');
 assert.deepEqual(test, formal, 'Only candidate JAR and subtitleLibrary may differ from formal config');
 console.log('Subtitle config: v40 candidate hash verified, v39/v38/v37 rollback unchanged, five library roots + SupJav formal, Jable disabled');

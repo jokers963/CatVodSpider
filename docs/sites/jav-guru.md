@@ -1,6 +1,6 @@
 # JavGuru 原站（jav.guru）实现档案
 
-状态：**测试中**（2026-10-14）。入口 `json/luoyuqiu-javguru-test.json`，key `jav_guru`，脚本 `js/jav.guru.user.js` 1.0.1（`?v=2`）。未进入正式配置。
+状态：**正式上线**（2026-10-14，用户批准）。正式配置 `json/luoyuqiu.json` 名称“🎬 JavGuru”，key `jav_guru`（与 Upload18 的 `javguru` 不冲突），放在 Upload18 之后；脚本 `js/jav.guru.user.js` 1.0.2（`?v=3`）。`json/luoyuqiu-javguru-test.json` 保留为开发通道，除名称外须与正式条目一致（test_config 检查）。
 正式配置里原来叫“JavGuru”的 `javguru.fit` 是仿站，已改名为 Upload18，见 [upload18.md](upload18.md)。
 
 ## 路由
@@ -37,3 +37,8 @@
   2. 真实地址先用原生请求跟随跳转（8 秒超时）；失败就整页跳转到真实地址（会带上 jav.guru 的 Referer），由嵌入页上的本脚本（`@match https://*/e/*`）直接从页面解析 master.m3u8；
   3. 失败提示写明卡在哪一步：网关页被拦截、网关页结构变化、嵌入页无播放器（可能被拦截）、嵌入页解析失败。
 - 本地 e2e 用非浏览器 TLS（python requests）模拟原生请求，正常和“jav.guru 原生全部 403”两种情况都能解析出 SB 的 1080p master，分片 200；LU 在服务器上仍是 403（地址绑定 IP），只能等手机确认。
+
+## 1.0.2（2026-10-14）
+
+- 手机实测 SB 可以播放。
+- 去掉 LU 线路：LuluStream 和 SupJav 的 LUC 是同一个托管，只有 720p，按“只收 1080p”的规则不收。现在只剩 SB 一条线路。

@@ -4,7 +4,7 @@
 
 1. **正式入口**：`https://jokers963.github.io/CatVodSpider/json/luoyuqiu.json`（勿用 blob、本地路径、CNAME 域或 `luoyuqiu-api`）。
 2. **JAR**：`gm_subs-v40.jar?v=40`；MD5 `c6a36e891a26e269300069fe7c317fef`；回退 v39/v38/v37。
-3. **六站脚本**：MissAV `?v=9`、AV01 `?v=5`、肉视频 `?v=6`、Hanime1 `?v=3`、Upload18（原“JavGuru”仿站 javguru.fit，2026-10-14 改显示名，key 仍 `javguru`）`?v=4`、SupJav `?v=16`（2026-10-13 正式上线，线路 EVS/VAS/FST 1080p + ST 720p 备用，见 [supjav 档案](docs/sites/supjav.md)；开发通道 `json/luoyuqiu-supjav-test.json`）。
+3. **七站脚本**：MissAV `?v=9`、AV01 `?v=5`、肉视频 `?v=6`、Hanime1 `?v=3`、Upload18（原“JavGuru”仿站 javguru.fit，2026-10-14 改显示名，key 仍 `javguru`）`?v=4`、JavGuru 原站 jav.guru `?v=3`（key `jav_guru`，2026-10-14 正式上线，只有 SB 1080p）、SupJav `?v=16`（2026-10-13 正式上线，线路 EVS/VAS/FST 1080p + ST 720p 备用，见 [supjav 档案](docs/sites/supjav.md)；开发通道 `json/luoyuqiu-supjav-test.json`）。
 4. **Jable**：正式/测试入口已关闭；脚本保留；无新指令不恢复。
 5. **手机**：v40 加载/绘制/切换等 **QA 未做**；不截图；发布≠验收通过。
 6. **勿恢复**：MemoJav、NBD-022、旧 `supjav.json`、已关 Jable（SupJav 已于 2026-10-13 按用户明确要求正式上线，移出本清单）。
