@@ -15,5 +15,6 @@ jobs:
           node js/new-sites.test.cjs
           node js/hanime1.nav.test.cjs
           node js/jav.guru.test.cjs
+          node js/cfgrace.test.cjs
           node scripts/subtitles/test_config.cjs
           node scripts/subtitles/test_ranking_config.cjs
