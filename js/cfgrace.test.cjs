@@ -12,17 +12,28 @@ const blockOf = s => { const m = s.match(/ *\/\/ ==LYQ-CF-GRACE-BEGIN==[\s\S]*?\
 const ref = blockOf(src('missav'));
 for (const f of files) assert.equal(blockOf(src(f)), ref, f + ' shared block differs');
 assert.ok(ref.includes('graceMs || 8000') && ref.includes('fallbackMs || 9500'), 'grace must stay under 10s');
+assert.ok(!ref.includes('const cfGate ='), 'cfGate instantiation must stay outside shared block');
+for (const f of files) {
+    const body = src(f);
+    const after = body.split('// ==LYQ-CF-GRACE-END==')[1] || '';
+    assert.ok(/const cfGate = lyqCfGate\(/.test(after), f + ' must instantiate cfGate after shared block');
+}
+assert.ok(/lyqCfGate\(\{graceMs: 2000, fallbackMs: 2500\}\)/.test(src('hanime1')), 'hanime1 aggressive grace');
+assert.ok(/lyqCfGate\(\{graceMs: 2000, fallbackMs: 2500\}\)/.test(src('supjav')), 'supjav aggressive grace');
+for (const f of files.filter(n => n !== 'hanime1' && n !== 'supjav')) {
+    assert.ok(/const cfGate = lyqCfGate\(\);/.test(src(f).split('// ==LYQ-CF-GRACE-END==')[1] || ''), f + ' keeps default grace');
+}
 for (const f of files) assert.ok(!/ShowWebview\(\)/.test(src(f).replace(ref, '').replace(/try \{ GmSpiderInject\.ShowWebview\(\); \} catch \(_\) \{\}\n\s*GmSpiderInject\.SetSpiderResult\(JSON\.stringify\(\{type: "match"\}\)\)/, '')),
     f + ' still calls ShowWebview outside the gate');
 
 // 2) 宽限逻辑单元测试
-const gateSrc = ref.replace('const cfGate = lyqCfGate();', '');
-function makeGate(doc) {
+const gateSrc = ref;
+function makeGate(doc, opts) {
     let t = 1000, shows = 0;
     const ctx = {Date, GmSpiderInject: {ShowWebview() { shows++; }}, document: doc || {querySelectorAll: () => [], querySelector: () => null}};
     vm.createContext(ctx);
     vm.runInContext(gateSrc + '\nthis.lyqCfGate = lyqCfGate;', ctx);
-    const gate = ctx.lyqCfGate({now: () => t});
+    const gate = ctx.lyqCfGate(Object.assign({now: () => t}, opts || {}));
     return {gate, at: v => { t = 1000 + v; return gate.tick(true); }, off: v => { t = 1000 + v; return gate.tick(false); }, shows: () => shows};
 }
 const el = (w, h) => ({getBoundingClientRect: () => ({width: w, height: h})});
@@ -59,6 +70,11 @@ const docWith = ({turnstile = [], iframes = [], stageInput = false} = {}) => ({
 { // 宽限前即使有可交互元素也不显示
     const g = makeGate(docWith({turnstile: [el(300, 65)]})); g.at(0); g.at(7900); assert.equal(g.shows(), 0);
 }
+{ // 激进宽限 opts：2s 后可交互即显，2.5s 无条件兜底
+    const g = makeGate(undefined, {graceMs: 2000, fallbackMs: 2500});
+    for (const v of [0, 1000, 1999]) { g.at(v); assert.equal(g.shows(), 0, 'no show at ' + v); }
+    g.at(2500); assert.equal(g.shows(), 1);
+}
 
 // 3) 脚本集成：MissAV / Hanime1
 function runScript(name, method, args, state) {
@@ -77,12 +93,12 @@ for (const [name, msg] of [['missav', /验证/], ['hanime1', /验证/]]) {
     const state = {now: 0, shows: 0, document: {title: 'Just a moment', querySelector: s => /challenge/.test(s) ? {} : null,
         querySelectorAll: () => [], addEventListener() {}}};
     const r = runScript(name, 'homeContent', ['true'], state);
-    if (name === 'hanime1') { // 首页不依赖内容也 ready，改用搜索使其等待
+    if (name === 'hanime1') { // 首页不依赖内容也 ready，改用搜索使其等待；激进宽限 2s/2.5s
         const s2 = {now: 0, shows: 0, document: state.document};
         const r2 = runScript(name, 'searchContent', ['x', '1'], s2);
-        for (const t of [0, 500, 5000, 9000]) r2.tick(t);
+        for (const t of [0, 500, 1999]) r2.tick(t);
         assert.equal(s2.shows, 0, name + ' hidden during grace');
-        r2.tick(9600); assert.equal(s2.shows, 1, name + ' fallback show');
+        r2.tick(2600); assert.equal(s2.shows, 1, name + ' aggressive fallback show');
         r2.tick(25000); assert.match(r2.result().msg, msg); assert.ok(s2.hides >= 1);
         continue;
     }

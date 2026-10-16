@@ -56,8 +56,8 @@
             interactive: interactive
         };
     }
-    const cfGate = lyqCfGate();
     // ==LYQ-CF-GRACE-END==
+    const cfGate = lyqCfGate();
 
     function videos() {
         const seen = new Set();

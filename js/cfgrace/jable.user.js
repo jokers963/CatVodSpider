@@ -223,8 +223,8 @@
             interactive: interactive
         };
     }
-    const cfGate = lyqCfGate();
     // ==LYQ-CF-GRACE-END==
+    const cfGate = lyqCfGate();
     const startedAt = navigationStartedAt();
     function sendResult() {
         if (sent) return;

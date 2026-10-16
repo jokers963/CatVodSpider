@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SupJav
 // @namespace    luoyuqiuspider
-// @version      2.8.0-cfgrace
+// @version      2.8.1-cfgrace
 // @description  SupJav WebView adapter for the open-source GM spider runtime. TEST ONLY - not in formal config.
 // @match        https://supjav.com/*
 // @match        https://jokers963.github.io/CatVodSpider/*
@@ -570,8 +570,9 @@
             interactive: interactive
         };
     }
-    const cfGate = lyqCfGate();
     // ==LYQ-CF-GRACE-END==
+    // SupJav/Hanime1：隐藏 WebView 下 CF 自动挑战常跑不完，缩短宽限至 2s/2.5s 兜底显示
+    const cfGate = lyqCfGate({graceMs: 2000, fallbackMs: 2500});
     let settleAt = 0;
     const startedAt = navigationStartedAt();
     function deliver(result) {

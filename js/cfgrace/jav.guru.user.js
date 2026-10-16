@@ -364,8 +364,8 @@
             interactive: interactive
         };
     }
-    const cfGate = lyqCfGate();
     // ==LYQ-CF-GRACE-END==
+    const cfGate = lyqCfGate();
     function deliver(result) {
         if (sent) return;
         if (result && result.navigate) {

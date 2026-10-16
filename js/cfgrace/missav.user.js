@@ -154,8 +154,8 @@
             interactive: interactive
         };
     }
-    const cfGate = lyqCfGate();
     // ==LYQ-CF-GRACE-END==
+    const cfGate = lyqCfGate();
     function sendResult() {
         if (sent || !spider[method]) return;
         const challenged = /just a moment|checking your browser|verify you are human|请稍候/i.test(document.title)

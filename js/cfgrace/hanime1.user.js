@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hanime1
 // @namespace    luoyuqiuspider
-// @version      3.0.0-cfgrace
+// @version      3.0.1-cfgrace
 // @match        https://hanime1.me/*
 // @grant        unsafeWindow
 // ==/UserScript==
@@ -56,8 +56,9 @@
             interactive: interactive
         };
     }
-    const cfGate = lyqCfGate();
     // ==LYQ-CF-GRACE-END==
+    // SupJav/Hanime1：隐藏 WebView 下 CF 自动挑战常跑不完，缩短宽限至 2s/2.5s 兜底显示
+    const cfGate = lyqCfGate({graceMs: 2000, fallbackMs: 2500});
     const categories = [
         ['裏番', '里番'], ['泡麵番', '泡面番'], ['Motion Anime', 'Motion Anime'],
         ['3DCG', '3DCG'], ['2.5D', '2.5D'], ['2D動畫', '2D动画'],
