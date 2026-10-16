@@ -16,7 +16,7 @@
 
 ---
 
-**CF 验证弹窗延迟显示测试（2026-10-15，仅测试入口，正式未改）**：测试入口 `https://jokers963.github.io/CatVodSpider/json/luoyuqiu-cfgrace-test.json`（MissAV/Hanime1/Upload18/JavGuru/SupJav，名称带“CF延迟弹窗测试”）引用 `js/cfgrace/*.user.js` 副本（?v 分别 10/4/6/4/17）。遇 Cloudflare 验证页先隐藏，记 seenAt，宽限 8s 内验证消失/内容出现则永不显示；8s 后仅出现可见 turnstile/iframe/#challenge-stage 内 input 才显示，9.5s 无条件兜底显示；不自动点击，总超时与失败文案不变。共享片段 `LYQ-CF-GRACE` 在各副本逐字相同，测试 `js/cfgrace.test.cjs`。用副本而非改原文件，是因为 Pages 忽略 `?v=`，改原脚本会立即影响正式；验收通过后再把副本合回原脚本并升正式 ?v。airav/jable 副本无入口。手机未验收。
+**CF 验证弹窗延迟显示（2026-10-16）**：试过隐藏 WebView 延迟弹出，SupJav/Hanime1 验证过不去，且问题主要由出口 IP 决定，用户决定放弃；测试入口与 js/cfgrace 副本已删除，正式配置未改。
 
 **SupJav 正式上线（2026-10-13）**：用户确认 ST 在手机（上游 FongMi TV 5.7.3）可播、720p，保留为备用线路，并明确要求上线正式。`json/luoyuqiu.json` 末尾新增 `supjav`（与开发通道 `?v=12` 条目逐字段一致，仅名称去掉「测试」）；其余五站、JAR v40 不变。测试版历程：2.1.0 EVS/FST 直链 → 2.2.0 播放阶段改载 Pages → 2.3.0 VAS → 2.4.0 ST 手动点播放 + 嗅探 → 2.4.1 去遮罩/首击广告 → 2.4.2 document-start + 点按截断 + 广告脚本/外链跳转阻断（修 `intent://pyppo.com` 跳转）。`test_config`/`test_ranking_config` 改为：正式 = 字幕测试五站 + SupJav。提交与公网核对见本段所在提交（`feat: supjav 正式上线`）。
 
